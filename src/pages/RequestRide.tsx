@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Send, MessageSquare } from "lucide-react";
-import { MOTOBOYS, DEFAULT_PROFILE, REGIONS } from "@/lib/data";
+import { ArrowLeft, MapPin, Send, MessageSquare, Bike } from "lucide-react";
+import { getMotoboys, getRegions, DEFAULT_PROFILE } from "@/lib/data";
 import MotoboyCard from "@/components/MotoboyCard";
 import BottomNav from "@/components/BottomNav";
 
 const RequestRide = () => {
   const navigate = useNavigate();
+  const motoboys = useMemo(() => getMotoboys(), []);
+  const regions = useMemo(() => getRegions(), []);
+
   const [name] = useState(DEFAULT_PROFILE.name);
   const [phone] = useState(DEFAULT_PROFILE.phone);
   const [pickup, setPickup] = useState("");
@@ -16,8 +19,8 @@ const RequestRide = () => {
   const [region, setRegion] = useState("Todos");
   const [selectedMotoboy, setSelectedMotoboy] = useState<string | null>(null);
 
-  const filtered = region === "Todos" ? MOTOBOYS : MOTOBOYS.filter((m) => m.region === region);
-  const chosen = MOTOBOYS.find((m) => m.id === selectedMotoboy);
+  const filtered = region === "Todos" ? motoboys : motoboys.filter((m) => m.region === region);
+  const chosen = motoboys.find((m) => m.id === selectedMotoboy);
 
   const handleSubmit = () => {
     if (!pickup || !delivery || !chosen || !orderMessage.trim()) return;
@@ -79,18 +82,6 @@ const RequestRide = () => {
           </div>
         </div>
 
-        {/* Name & Phone */}
-        <div className="grid grid-cols-2 gap-3 animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nome</label>
-            <div className="mt-1.5 rounded-lg border bg-muted px-3 py-2.5 text-sm">{name}</div>
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Telefone</label>
-            <div className="mt-1.5 rounded-lg border bg-muted px-3 py-2.5 text-sm truncate">{phone}</div>
-          </div>
-        </div>
-
         {/* Addresses */}
         <div className="space-y-3 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
           <div>
@@ -134,40 +125,59 @@ const RequestRide = () => {
           </div>
         </div>
 
-        {/* Region filter */}
-        <div className="animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Filtrar por região</label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {REGIONS.map((r) => (
+        {/* Region filter — only if there are motoboys */}
+        {regions.length > 0 && (
+          <div className="animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Filtrar por região</label>
+            <div className="mt-2 flex flex-wrap gap-2">
               <button
-                key={r}
-                onClick={() => setRegion(r)}
+                onClick={() => setRegion("Todos")}
                 className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors active:scale-95 ${
-                  region === r
+                  region === "Todos"
                     ? "bg-primary text-primary-foreground"
                     : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                 }`}
               >
-                {r}
+                Todos
               </button>
-            ))}
+              {regions.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRegion(r)}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors active:scale-95 ${
+                    region === r
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Motoboy list */}
         <div className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Escolha um Motoboy</label>
           <div className="mt-2 space-y-2">
-            {filtered.map((m) => (
-              <div
-                key={m.id}
-                className={`rounded-lg transition-all ${
-                  selectedMotoboy === m.id ? "ring-2 ring-primary" : ""
-                }`}
-              >
-                <MotoboyCard motoboy={m} onSelect={() => setSelectedMotoboy(m.id)} />
+            {filtered.length > 0 ? (
+              filtered.map((m) => (
+                <div
+                  key={m.id}
+                  className={`rounded-lg transition-all ${
+                    selectedMotoboy === m.id ? "ring-2 ring-primary" : ""
+                  }`}
+                >
+                  <MotoboyCard motoboy={m} onSelect={() => setSelectedMotoboy(m.id)} />
+                </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <Bike className="h-10 w-10 text-muted-foreground/40 mb-2" />
+                <p className="text-sm text-muted-foreground">Nenhum motoboy disponível no momento</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 

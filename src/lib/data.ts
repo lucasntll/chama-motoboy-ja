@@ -3,7 +3,7 @@ export interface Motoboy {
   name: string;
   phone: string;
   vehicle: string;
-  plate: string;
+  plate?: string;
   photo: string;
   region: string;
   rating: number;
@@ -17,7 +17,7 @@ export interface RideRequest {
   motoboyPhoto: string;
   motoboyPhone: string;
   motoboyVehicle: string;
-  motoboyPlate: string;
+  motoboyPlate?: string;
   pickupAddress: string;
   deliveryAddress: string;
   date: string;
@@ -30,68 +30,43 @@ export interface UserProfile {
   photo: string;
 }
 
-export const MOTOBOYS: Motoboy[] = [
-  {
-    id: "1",
-    name: "Carlos Silva",
-    phone: "5535997570009",
-    vehicle: "Honda CG 160",
-    plate: "ABC-1234",
-    photo: "",
-    region: "Centro",
-    rating: 4.8,
-    totalRides: 247,
-  },
-  {
-    id: "2",
-    name: "Rafael Souza",
-    phone: "5511988776655",
-    vehicle: "Yamaha Factor 150",
-    plate: "DEF-5678",
-    photo: "",
-    region: "Vila Nova",
-    rating: 4.6,
-    totalRides: 183,
-  },
-  {
-    id: "3",
-    name: "Lucas Oliveira",
-    phone: "5511977665544",
-    vehicle: "Honda Bros 160",
-    plate: "GHI-9012",
-    photo: "",
-    region: "Jardim América",
-    rating: 4.9,
-    totalRides: 312,
-  },
-  {
-    id: "4",
-    name: "Pedro Santos",
-    phone: "5511966554433",
-    vehicle: "Yamaha Crosser 150",
-    plate: "JKL-3456",
-    photo: "",
-    region: "Centro",
-    rating: 4.3,
-    totalRides: 98,
-  },
-  {
-    id: "5",
-    name: "André Costa",
-    phone: "5511955443322",
-    vehicle: "Honda Pop 110",
-    plate: "MNO-7890",
-    photo: "",
-    region: "Bairro Alto",
-    rating: 4.7,
-    totalRides: 156,
-  },
-];
+// Motoboys are loaded from localStorage. Start empty — add real ones via addMotoboy().
+const STORAGE_KEY = "motoboys";
 
-export const REGIONS = ["Todos", "Centro", "Vila Nova", "Jardim América", "Bairro Alto"];
+export function getMotoboys(): Motoboy[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveMotoboys(list: Motoboy[]): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+
+export function addMotoboy(m: Omit<Motoboy, "id" | "rating" | "totalRides">): Motoboy {
+  const motoboy: Motoboy = {
+    ...m,
+    id: Date.now().toString(),
+    rating: 5,
+    totalRides: 0,
+  };
+  const list = getMotoboys();
+  list.push(motoboy);
+  saveMotoboys(list);
+  return motoboy;
+}
+
+export function getRegions(): string[] {
+  const motoboys = getMotoboys();
+  const unique = [...new Set(motoboys.map((m) => m.region))];
+  return unique.sort();
+}
 
 export const DEFAULT_PROFILE: UserProfile = {
-  name: "Maria Fernanda",
-  phone: "5511944332211",
+  name: "",
+  phone: "",
   photo: "",
 };
