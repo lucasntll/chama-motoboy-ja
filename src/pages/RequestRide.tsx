@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Send } from "lucide-react";
+import { ArrowLeft, MapPin, Send, MessageSquare } from "lucide-react";
 import { MOTOBOYS, DEFAULT_PROFILE, REGIONS } from "@/lib/data";
 import MotoboyCard from "@/components/MotoboyCard";
 import BottomNav from "@/components/BottomNav";
@@ -11,6 +11,7 @@ const RequestRide = () => {
   const [phone] = useState(DEFAULT_PROFILE.phone);
   const [pickup, setPickup] = useState("");
   const [delivery, setDelivery] = useState("");
+  const [orderMessage, setOrderMessage] = useState("");
   const [service, setService] = useState<"entrega" | "corrida">("entrega");
   const [region, setRegion] = useState("Todos");
   const [selectedMotoboy, setSelectedMotoboy] = useState<string | null>(null);
@@ -19,11 +20,12 @@ const RequestRide = () => {
   const chosen = MOTOBOYS.find((m) => m.id === selectedMotoboy);
 
   const handleSubmit = () => {
-    if (!pickup || !delivery || !chosen) return;
+    if (!pickup || !delivery || !chosen || !orderMessage.trim()) return;
+
     const msg = encodeURIComponent(
-      `Olá! Preciso de uma ${service === "entrega" ? "entrega" : "corrida"} do endereço ${pickup} para ${delivery}. Você pode me atender?`
+      `Olá, tudo bem?\n\nMeu nome é ${name}.\n\n📦 Pedido:\n${orderMessage}\n\n📍 Retirada: ${pickup}\n📍 Entrega: ${delivery}\n\n📞 Meu telefone: ${phone}`
     );
-    // Store ride in history
+
     const ride = {
       id: Date.now().toString(),
       motoboyId: chosen.id,
@@ -39,14 +41,13 @@ const RequestRide = () => {
     const history = JSON.parse(localStorage.getItem("ride_history") || "[]");
     localStorage.setItem("ride_history", JSON.stringify([ride, ...history]));
 
-    // Navigate to confirmation, then open WhatsApp
     navigate("/confirmacao", { state: { motoboy: chosen } });
     setTimeout(() => {
       window.open(`https://wa.me/${chosen.phone}?text=${msg}`, "_blank");
     }, 500);
   };
 
-  const canSubmit = pickup.trim() && delivery.trim() && selectedMotoboy;
+  const canSubmit = pickup.trim() && delivery.trim() && selectedMotoboy && orderMessage.trim();
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
@@ -78,7 +79,7 @@ const RequestRide = () => {
           </div>
         </div>
 
-        {/* Name & Phone (pre-filled) */}
+        {/* Name & Phone */}
         <div className="grid grid-cols-2 gap-3 animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nome</label>
@@ -115,6 +116,21 @@ const RequestRide = () => {
                 className="w-full rounded-lg border bg-card py-2.5 pl-9 pr-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Order description */}
+        <div className="animate-fade-in-up" style={{ animationDelay: "0.12s" }}>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Descreva seu pedido</label>
+          <div className="relative mt-1.5">
+            <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-primary" />
+            <textarea
+              value={orderMessage}
+              onChange={(e) => setOrderMessage(e.target.value)}
+              placeholder="Ex: 1 marmitex grande, 2 refrigerantes..."
+              rows={3}
+              className="w-full rounded-lg border bg-card py-2.5 pl-9 pr-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            />
           </div>
         </div>
 
@@ -155,7 +171,7 @@ const RequestRide = () => {
           </div>
         </div>
 
-        {/* Submit */}
+        {/* Submit via WhatsApp */}
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
@@ -166,7 +182,7 @@ const RequestRide = () => {
           }`}
         >
           <Send className="h-4 w-4" />
-          Enviar Solicitação via WhatsApp
+          Enviar Pedido via WhatsApp
         </button>
       </main>
 
