@@ -14,7 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      motoboys: {
+        Row: {
+          created_at: string
+          id: string
+          is_available: boolean
+          latitude: number | null
+          longitude: number | null
+          name: string
+          phone: string
+          photo: string | null
+          plate: string | null
+          rating: number
+          region: string
+          total_rides: number
+          vehicle: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          phone: string
+          photo?: string | null
+          plate?: string | null
+          rating?: number
+          region: string
+          total_rides?: number
+          vehicle: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          phone?: string
+          photo?: string | null
+          plate?: string | null
+          rating?: number
+          region?: string
+          total_rides?: number
+          vehicle?: string
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          created_at: string
+          customer_name: string
+          customer_phone: string
+          delivery_address: string
+          delivery_lat: number | null
+          delivery_lng: number | null
+          distance_km: number | null
+          estimated_price: number | null
+          estimated_time_min: number | null
+          id: string
+          item_description: string
+          motoboy_id: string | null
+          pickup_address: string
+          pickup_lat: number | null
+          pickup_lng: number | null
+          service_type: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          customer_phone: string
+          delivery_address: string
+          delivery_lat?: number | null
+          delivery_lng?: number | null
+          distance_km?: number | null
+          estimated_price?: number | null
+          estimated_time_min?: number | null
+          id?: string
+          item_description: string
+          motoboy_id?: string | null
+          pickup_address: string
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          service_type?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string
+          delivery_address?: string
+          delivery_lat?: number | null
+          delivery_lng?: number | null
+          distance_km?: number | null
+          estimated_price?: number | null
+          estimated_time_min?: number | null
+          id?: string
+          item_description?: string
+          motoboy_id?: string | null
+          pickup_address?: string
+          pickup_lat?: number | null
+          pickup_lng?: number | null
+          service_type?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_motoboy_id_fkey"
+            columns: ["motoboy_id"]
+            isOneToOne: false
+            referencedRelation: "motoboys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
