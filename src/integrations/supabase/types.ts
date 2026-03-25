@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           id: string
           is_available: boolean
+          last_activity: string | null
           latitude: number | null
           longitude: number | null
           name: string
@@ -27,6 +28,7 @@ export type Database = {
           plate: string | null
           rating: number
           region: string
+          status: string
           total_rides: number
           vehicle: string
         }
@@ -34,6 +36,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_available?: boolean
+          last_activity?: string | null
           latitude?: number | null
           longitude?: number | null
           name: string
@@ -42,6 +45,7 @@ export type Database = {
           plate?: string | null
           rating?: number
           region: string
+          status?: string
           total_rides?: number
           vehicle: string
         }
@@ -49,6 +53,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_available?: boolean
+          last_activity?: string | null
           latitude?: number | null
           longitude?: number | null
           name?: string
@@ -57,6 +62,7 @@ export type Database = {
           plate?: string | null
           rating?: number
           region?: string
+          status?: string
           total_rides?: number
           vehicle?: string
         }
@@ -76,9 +82,7 @@ export type Database = {
           id: string
           item_description: string
           motoboy_id: string | null
-          pickup_address: string
-          pickup_lat: number | null
-          pickup_lng: number | null
+          purchase_location: string | null
           service_type: string
           status: string
         }
@@ -95,9 +99,7 @@ export type Database = {
           id?: string
           item_description: string
           motoboy_id?: string | null
-          pickup_address: string
-          pickup_lat?: number | null
-          pickup_lng?: number | null
+          purchase_location?: string | null
           service_type?: string
           status?: string
         }
@@ -114,9 +116,7 @@ export type Database = {
           id?: string
           item_description?: string
           motoboy_id?: string | null
-          pickup_address?: string
-          pickup_lat?: number | null
-          pickup_lng?: number | null
+          purchase_location?: string | null
           service_type?: string
           status?: string
         }

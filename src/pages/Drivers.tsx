@@ -7,14 +7,13 @@ import { Bike, Loader2 } from "lucide-react";
 const Drivers = () => {
   const [motoboys, setMotoboys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [region, setRegion] = useState("Todos");
+  const [filter, setFilter] = useState("Todos");
 
   useEffect(() => {
     const fetchMotoboys = async () => {
       const { data } = await supabase
         .from("motoboys")
         .select("*")
-        .eq("is_available", true)
         .order("name");
       setMotoboys(data || []);
       setLoading(false);
@@ -22,10 +21,15 @@ const Drivers = () => {
     fetchMotoboys();
   }, []);
 
-  const regions = [...new Set(motoboys.map((m) => m.region))].sort();
-  const filtered = region === "Todos" ? motoboys : motoboys.filter((m) => m.region === region);
+  const statusFilters = ["Todos", "Disponível", "Ocupado", "Inativo"];
+  const statusMap: Record<string, string> = {
+    "Disponível": "available",
+    "Ocupado": "busy",
+    "Inativo": "inactive",
+  };
 
-  // Map DB fields to component interface
+  const filtered = filter === "Todos" ? motoboys : motoboys.filter((m) => m.status === statusMap[filter]);
+
   const mapMotoboy = (m: any) => ({
     id: m.id,
     name: m.name,
@@ -36,12 +40,14 @@ const Drivers = () => {
     region: m.region,
     rating: Number(m.rating),
     totalRides: m.total_rides,
+    status: m.status || "available",
+    lastActivity: m.last_activity,
   });
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
       <header className="border-b bg-card px-5 py-4">
-        <h1 className="text-lg font-bold">Motoboys Disponíveis</h1>
+        <h1 className="text-lg font-bold">Motoboys</h1>
       </header>
 
       <main className="flex-1 px-5 py-4 space-y-4">
@@ -51,33 +57,21 @@ const Drivers = () => {
           </div>
         ) : (
           <>
-            {regions.length > 0 && (
-              <div className="flex flex-wrap gap-2 animate-fade-in-up">
+            <div className="flex flex-wrap gap-2 animate-fade-in-up">
+              {statusFilters.map((s) => (
                 <button
-                  onClick={() => setRegion("Todos")}
+                  key={s}
+                  onClick={() => setFilter(s)}
                   className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors active:scale-95 ${
-                    region === "Todos"
+                    filter === s
                       ? "bg-primary text-primary-foreground"
                       : "bg-secondary text-secondary-foreground"
                   }`}
                 >
-                  Todos
+                  {s === "Disponível" && "🟢 "}{s === "Ocupado" && "🔴 "}{s === "Inativo" && "⚪ "}{s}
                 </button>
-                {regions.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRegion(r)}
-                    className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors active:scale-95 ${
-                      region === r
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground"
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            )}
+              ))}
+            </div>
 
             <div className="space-y-2">
               {filtered.map((m, i) => (
@@ -91,7 +85,7 @@ const Drivers = () => {
                     <Bike className="h-8 w-8 text-muted-foreground" />
                   </div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    🔄 Buscando motoboys próximos...
+                    Nenhum motoboy encontrado
                   </p>
                 </div>
               )}
