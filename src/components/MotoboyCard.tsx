@@ -1,12 +1,33 @@
-import { Bike, Phone, MapPin } from "lucide-react";
-import type { Motoboy } from "@/lib/data";
+import { Bike, Phone, MapPin, Clock } from "lucide-react";
 import StarRating from "./StarRating";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface MotoboyData {
+  id: string;
+  name: string;
+  phone: string;
+  vehicle: string;
+  plate?: string;
+  photo: string;
+  region: string;
+  rating: number;
+  totalRides: number;
+  status?: string;
+  lastActivity?: string;
+}
 
 interface MotoboyCardProps {
-  motoboy: Motoboy;
-  onSelect?: (motoboy: Motoboy) => void;
+  motoboy: MotoboyData;
+  onSelect?: (motoboy: MotoboyData) => void;
   compact?: boolean;
 }
+
+const statusConfig: Record<string, { label: string; dot: string; color: string }> = {
+  available: { label: "Disponível", dot: "🟢", color: "text-green-600" },
+  busy: { label: "Ocupado", dot: "🔴", color: "text-red-500" },
+  inactive: { label: "Inativo", dot: "⚪", color: "text-muted-foreground" },
+};
 
 const MotoboyCard = ({ motoboy, onSelect, compact }: MotoboyCardProps) => {
   const initials = motoboy.name
@@ -14,6 +35,12 @@ const MotoboyCard = ({ motoboy, onSelect, compact }: MotoboyCardProps) => {
     .map((n) => n[0])
     .join("")
     .slice(0, 2);
+
+  const status = statusConfig[motoboy.status || "available"] || statusConfig.available;
+
+  const lastActivityText = motoboy.lastActivity
+    ? formatDistanceToNow(new Date(motoboy.lastActivity), { addSuffix: true, locale: ptBR })
+    : null;
 
   return (
     <div
@@ -26,7 +53,12 @@ const MotoboyCard = ({ motoboy, onSelect, compact }: MotoboyCardProps) => {
         {initials}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm truncate">{motoboy.name}</p>
+        <div className="flex items-center gap-2">
+          <p className="font-semibold text-sm truncate">{motoboy.name}</p>
+          <span className={`text-xs font-medium ${status.color}`}>
+            {status.dot} {status.label}
+          </span>
+        </div>
         {!compact && (
           <>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
@@ -37,6 +69,12 @@ const MotoboyCard = ({ motoboy, onSelect, compact }: MotoboyCardProps) => {
               <MapPin className="h-3.5 w-3.5" />
               <span>{motoboy.region}</span>
             </div>
+            {lastActivityText && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                <Clock className="h-3.5 w-3.5" />
+                <span>Ativo {lastActivityText}</span>
+              </div>
+            )}
           </>
         )}
         <div className="flex items-center gap-2 mt-1">

@@ -1,44 +1,31 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, Bike, Send, Loader2, Bell } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Send, Loader2, Bell, Store } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getRoute } from "@/hooks/useGeocoding";
 import { useCurrentLocation } from "@/hooks/useGeocoding";
 import AddressInput from "@/components/AddressInput";
-import DeliveryMap from "@/components/DeliveryMap";
-import PriceEstimate from "@/components/PriceEstimate";
 import SearchingMotoboy from "@/components/SearchingMotoboy";
 import BottomNav from "@/components/BottomNav";
 
-const BASE_PRICE = 5;
-const PRICE_PER_KM = 1;
+const BASE_PRICE = 7;
+const PRICE_PER_KM = 1.5;
 
-type ServiceType = "entrega" | "corrida";
-type FlowStep = "form" | "calculated" | "searching" | "found";
+type FlowStep = "form" | "searching" | "found";
 
 const RequestRide = () => {
   const navigate = useNavigate();
   const { getLocation, loading: locLoading } = useCurrentLocation();
 
-  const [service, setService] = useState<ServiceType>("entrega");
-  const [pickup, setPickup] = useState("");
-  const [pickupCoords, setPickupCoords] = useState<[number, number] | null>(null);
-  const [delivery, setDelivery] = useState("");
+  const [orderDesc, setOrderDesc] = useState("");
+  const [purchaseLocation, setPurchaseLocation] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryCoords, setDeliveryCoords] = useState<[number, number] | null>(null);
-  const [itemDesc, setItemDesc] = useState("");
-  const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
-  const [distance, setDistance] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [price, setPrice] = useState(0);
   const [step, setStep] = useState<FlowStep>("form");
-  const [calculating, setCalculating] = useState(false);
   const [motoboyName, setMotoboyName] = useState("");
-  const [motoboyPhone, setMotoboyPhone] = useState("");
 
   const customerName = localStorage.getItem("profile_name") || "";
   const customerPhone = localStorage.getItem("profile_phone") || "";
 
-  // Auto-get location on mount
   useEffect(() => {
     handleUseLocation();
   }, []);
@@ -46,82 +33,55 @@ const RequestRide = () => {
   const handleUseLocation = async () => {
     const loc = await getLocation();
     if (loc) {
-      setPickup(loc.address.split(",").slice(0, 3).join(",").trim());
-      setPickupCoords([loc.lat, loc.lon]);
+      setDeliveryAddress(loc.address.split(",").slice(0, 3).join(",").trim());
+      setDeliveryCoords([loc.lat, loc.lon]);
     }
   };
 
-  const handlePickupChange = (value: string, coords?: [number, number]) => {
-    setPickup(value);
-    if (coords) setPickupCoords(coords);
-    setStep("form");
-  };
-
   const handleDeliveryChange = (value: string, coords?: [number, number]) => {
-    setDelivery(value);
+    setDeliveryAddress(value);
     if (coords) setDeliveryCoords(coords);
-    setStep("form");
   };
 
-  const canCalculate = pickup.trim() && delivery.trim() && pickupCoords && deliveryCoords && itemDesc.trim();
+  const canOrder = orderDesc.trim() && deliveryAddress.trim();
 
-  const handleCalculate = async () => {
-    if (!pickupCoords || !deliveryCoords) return;
-    setCalculating(true);
-
-    const result = await getRoute(pickupCoords, deliveryCoords);
-    setDistance(result.distance);
-    setDuration(result.duration);
-    setPrice(BASE_PRICE + PRICE_PER_KM * result.distance);
-    setRouteCoords(result.coordinates);
-    setStep("calculated");
-    setCalculating(false);
-  };
+  const estimatedPrice = BASE_PRICE + (purchaseLocation ? 3 : 0);
+  const estimatedTime = 20 + (purchaseLocation ? 10 : 0);
 
   const handleOrder = async () => {
+    if (!canOrder) return;
     setStep("searching");
 
-    // Find nearest available motoboy
     const { data: motoboys } = await supabase
       .from("motoboys")
       .select("*")
       .eq("is_available", true)
-      .order("created_at", { ascending: true });
+      .order("last_activity", { ascending: false });
 
-    if (!motoboys || motoboys.length === 0) {
-      // No motoboys — stay in searching state with notify option
-      return;
-    }
+    if (!motoboys || motoboys.length === 0) return;
 
-    // Sort by distance if coords available
-    let chosen = motoboys[0];
-    if (pickupCoords) {
-      const sorted = motoboys
-        .filter((m) => m.latitude && m.longitude)
-        .map((m) => {
-          const dlat = (m.latitude! - pickupCoords[0]) * 111;
-          const dlng = (m.longitude! - pickupCoords[1]) * 111 * Math.cos((pickupCoords[0] * Math.PI) / 180);
-          return { ...m, dist: Math.sqrt(dlat ** 2 + dlng ** 2) };
-        })
-        .sort((a, b) => a.dist - b.dist);
-      if (sorted.length > 0) chosen = sorted[0];
-    }
+    // Prefer available status, then by last activity
+    const sorted = [...motoboys].sort((a, b) => {
+      const statusOrder: Record<string, number> = { available: 0, busy: 1, inactive: 2 };
+      const sa = statusOrder[(a as any).status] ?? 2;
+      const sb = statusOrder[(b as any).status] ?? 2;
+      if (sa !== sb) return sa - sb;
+      return new Date((b as any).last_activity || 0).getTime() - new Date((a as any).last_activity || 0).getTime();
+    });
 
-    // Save order to database
+    const chosen = sorted[0];
+
     await supabase.from("orders").insert({
       customer_name: customerName,
       customer_phone: customerPhone,
-      pickup_address: pickup,
-      delivery_address: delivery,
-      item_description: itemDesc,
-      service_type: service,
-      pickup_lat: pickupCoords?.[0],
-      pickup_lng: pickupCoords?.[1],
+      delivery_address: deliveryAddress,
+      item_description: orderDesc,
+      purchase_location: purchaseLocation,
+      service_type: "compra_entrega",
       delivery_lat: deliveryCoords?.[0],
       delivery_lng: deliveryCoords?.[1],
-      distance_km: distance,
-      estimated_price: price,
-      estimated_time_min: duration,
+      estimated_price: estimatedPrice,
+      estimated_time_min: estimatedTime,
       motoboy_id: chosen.id,
       status: "pending",
     });
@@ -135,24 +95,21 @@ const RequestRide = () => {
       motoboyPhone: chosen.phone,
       motoboyVehicle: chosen.vehicle,
       motoboyPlate: chosen.plate || "",
-      pickupAddress: pickup,
-      deliveryAddress: delivery,
+      pickupAddress: purchaseLocation || "A definir",
+      deliveryAddress,
       date: new Date().toISOString(),
     };
     const history = JSON.parse(localStorage.getItem("ride_history") || "[]");
     localStorage.setItem("ride_history", JSON.stringify([ride, ...history]));
 
     setMotoboyName(chosen.name);
-    setMotoboyPhone(chosen.phone);
 
-    // Simulate finding delay
+    const msg = encodeURIComponent(
+      `Novo pedido:\n\n🛒 Pedido: ${orderDesc}${purchaseLocation ? `\n🏪 Local: ${purchaseLocation}` : ""}\n📍 Entregar em: ${deliveryAddress}\n💰 Ganho: R$${estimatedPrice.toFixed(2)}\n⏱️ Tempo estimado: ${estimatedTime} min\n\nResponda ACEITAR para pegar`
+    );
+
     setTimeout(() => {
       setStep("found");
-
-      // Build WhatsApp message
-      const msg = encodeURIComponent(
-        `Novo pedido disponível:\n\n📍 Retirada: ${pickup}\n📍 Entrega: ${delivery}\n📦 Item: ${itemDesc}\n💰 Valor: R$${price.toFixed(2)}\n⏱️ Tempo estimado: ${duration} min\n\nResponda 'ACEITAR' para pegar a corrida`
-      );
 
       setTimeout(() => {
         window.open(`https://wa.me/${chosen.phone}?text=${msg}`, "_blank");
@@ -173,90 +130,73 @@ const RequestRide = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
-      {/* Header */}
       <header className="flex items-center gap-3 bg-card px-4 py-3 border-b">
         <button onClick={() => navigate(-1)} className="rounded-full p-1.5 active:scale-90 transition-transform hover:bg-secondary">
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-lg font-bold">Solicitar Entrega</h1>
+        <h1 className="text-lg font-bold">Pedir Agora</h1>
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4">
-        {/* Map */}
+        {/* Order description */}
         <div className="animate-fade-in-up">
-          <DeliveryMap
-            pickupCoords={pickupCoords}
-            deliveryCoords={deliveryCoords}
-            routeCoords={routeCoords}
-          />
-        </div>
-
-        {/* Service type */}
-        <div className="animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            O que você precisa?
-          </label>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <button
-              onClick={() => setService("entrega")}
-              className={`flex items-center justify-center gap-2 rounded-xl border py-3 text-sm font-semibold transition-all active:scale-[0.97] ${
-                service === "entrega"
-                  ? "border-primary bg-primary text-primary-foreground shadow-md"
-                  : "border-border bg-card text-foreground hover:bg-secondary"
-              }`}
-            >
-              <Package className="h-4 w-4" />
-              Entregar algo
-            </button>
-            <button
-              onClick={() => setService("corrida")}
-              className={`flex items-center justify-center gap-2 rounded-xl border py-3 text-sm font-semibold transition-all active:scale-[0.97] ${
-                service === "corrida"
-                  ? "border-primary bg-primary text-primary-foreground shadow-md"
-                  : "border-border bg-card text-foreground hover:bg-secondary"
-              }`}
-            >
-              <Bike className="h-4 w-4" />
-              Ir até um local
-            </button>
-          </div>
-        </div>
-
-        {/* Addresses */}
-        <div className="space-y-3 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-          <AddressInput
-            value={pickup}
-            onChange={handlePickupChange}
-            placeholder="De onde sai?"
-            icon="pickup"
-            onUseLocation={handleUseLocation}
-            locationLoading={locLoading}
-          />
-          <AddressInput
-            value={delivery}
-            onChange={handleDeliveryChange}
-            placeholder="Para onde vai?"
-            icon="delivery"
-          />
-        </div>
-
-        {/* Item description */}
-        <div className="animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            O que será entregue?
+            O que você quer que a gente traga?
           </label>
           <textarea
-            value={itemDesc}
-            onChange={(e) => setItemDesc(e.target.value)}
-            placeholder="Ex: Documento, marmita, peça, etc..."
-            rows={2}
+            value={orderDesc}
+            onChange={(e) => setOrderDesc(e.target.value)}
+            placeholder="Ex: Açaí, lanche, remédio, bebida..."
+            rows={3}
             className="mt-1.5 w-full rounded-xl border bg-card py-3 px-4 text-sm font-medium placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring resize-none transition-shadow"
           />
         </div>
 
+        {/* Delivery address */}
+        <div className="animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            Entregar onde?
+          </label>
+          <div className="mt-1.5">
+            <AddressInput
+              value={deliveryAddress}
+              onChange={handleDeliveryChange}
+              placeholder="Seu endereço de entrega"
+              icon="delivery"
+              onUseLocation={handleUseLocation}
+              locationLoading={locLoading}
+            />
+          </div>
+        </div>
+
+        {/* Purchase location (optional) */}
+        <div className="animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            De onde quer pedir? <span className="text-muted-foreground/60">(opcional)</span>
+          </label>
+          <div className="mt-1.5 flex items-center gap-2 rounded-xl border bg-card px-4 py-3">
+            <Store className="h-4 w-4 text-muted-foreground shrink-0" />
+            <input
+              value={purchaseLocation}
+              onChange={(e) => setPurchaseLocation(e.target.value)}
+              placeholder="Ex: Farmácia São João, Padaria Central..."
+              className="w-full bg-transparent text-sm font-medium placeholder:text-muted-foreground/50 focus:outline-none"
+            />
+          </div>
+        </div>
+
         {/* Price estimate */}
-        {step !== "form" && distance > 0 && (
-          <PriceEstimate distance={distance} duration={duration} price={price} />
+        {canOrder && (
+          <div className="animate-fade-in-up rounded-xl border bg-card p-4 space-y-2" style={{ animationDelay: "0.15s" }}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">💰 Valor estimado</span>
+              <span className="text-lg font-bold text-primary">R$ {estimatedPrice.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">⏱️ Tempo estimado</span>
+              <span className="text-sm font-semibold">{estimatedTime} min</span>
+            </div>
+          </div>
         )}
 
         {/* Searching / found status */}
@@ -286,31 +226,15 @@ const RequestRide = () => {
         {/* Main action button */}
         {step === "form" && (
           <button
-            onClick={handleCalculate}
-            disabled={!canCalculate || calculating}
+            onClick={handleOrder}
+            disabled={!canOrder}
             className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold transition-all active:scale-[0.97] shadow-lg ${
-              canCalculate && !calculating
+              canOrder
                 ? "bg-primary text-primary-foreground hover:shadow-xl"
                 : "bg-muted text-muted-foreground cursor-not-allowed shadow-none"
             }`}
           >
-            {calculating ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Calculando...
-              </>
-            ) : (
-              "CALCULAR ENTREGA"
-            )}
-          </button>
-        )}
-
-        {step === "calculated" && (
-          <button
-            onClick={handleOrder}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground shadow-lg transition-all active:scale-[0.97] hover:shadow-xl animate-fade-in-up"
-          >
-            <Send className="h-5 w-5" />
+            <ShoppingBag className="h-5 w-5" />
             PEDIR AGORA
           </button>
         )}
