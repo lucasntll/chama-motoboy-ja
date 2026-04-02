@@ -1,84 +1,141 @@
 import { useNavigate } from "react-router-dom";
-import { ShoppingBag, ArrowRight, Clock, MessageCircle } from "lucide-react";
+import { ShoppingBag, Bike, Package, ArrowRight, MessageCircle } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import WhatsAppFAB from "@/components/WhatsAppFAB";
+import AnimatedCounter from "@/components/AnimatedCounter";
+import TestimonialCarousel from "@/components/TestimonialCarousel";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const WHATSAPP_NUMBER = "5535997570009";
 
+const steps = [
+  { icon: ShoppingBag, title: "1. Peça", desc: "Diga o que você quer e onde entregar." },
+  { icon: Bike, title: "2. A gente busca", desc: "Um motoboy vai até o local e compra pra você." },
+  { icon: Package, title: "3. Receba", desc: "Entrega rápida na porta da sua casa." },
+];
+
 const Index = () => {
   const navigate = useNavigate();
+  const howItWorks = useScrollAnimation();
+  const counters = useScrollAnimation();
+  const testimonials = useScrollAnimation();
+  const ctaFinal = useScrollAnimation();
 
   const handleWhatsApp = () => {
-    const msg = encodeURIComponent(
-      "Olá! Gostaria de fazer um pedido. Podem me ajudar?"
-    );
+    const msg = encodeURIComponent("Olá! Gostaria de fazer um pedido. Podem me ajudar?");
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`, "_blank");
   };
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
-      <header className="relative overflow-hidden bg-primary px-6 pb-12 pt-14 text-primary-foreground">
-        <div className="animate-fade-in-up relative z-10">
-          <div className="flex items-center gap-2 mb-3">
+      {/* ===== HERO ===== */}
+      <header className="relative overflow-hidden bg-primary px-6 pb-16 pt-14 text-primary-foreground">
+        <div className="absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-primary-foreground/10" />
+        <div className="absolute -top-6 right-12 h-20 w-20 rounded-full bg-primary-foreground/5" />
+        <div className="absolute bottom-4 left-6 h-12 w-12 rounded-full bg-primary-foreground/5" />
+
+        <div className="relative z-10 animate-fade-in-up">
+          <div className="flex items-center gap-2 mb-4">
             <ShoppingBag className="h-7 w-7" />
             <span className="text-lg font-extrabold tracking-tight">ChamaMotoboy</span>
           </div>
-          <h1 className="text-2xl font-extrabold leading-tight max-w-[280px]">
-            Precisa de algo? A gente busca e entrega pra você.
+          <h1 className="text-[1.7rem] font-extrabold leading-[1.15] max-w-[300px] mb-3">
+            A gente busca e entrega pra você.
           </h1>
+          <p className="text-sm opacity-90 max-w-[260px] mb-6">
+            Peça qualquer coisa — remédio, comida, documento — e receba em minutos.
+          </p>
+
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => navigate("/solicitar")}
+              className="flex items-center justify-center gap-2 rounded-xl bg-card px-6 py-4 text-lg font-extrabold text-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
+            >
+              CHAMAR MOTOBOY
+              <ArrowRight className="h-5 w-5" />
+            </button>
+            <button
+              onClick={handleWhatsApp}
+              className="flex items-center justify-center gap-2 rounded-xl border border-primary-foreground/30 px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:scale-105 active:scale-95"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Pedir pelo WhatsApp
+            </button>
+          </div>
         </div>
-        <div className="absolute -bottom-8 -right-8 h-32 w-32 rounded-full bg-primary-foreground/10" />
-        <div className="absolute -top-4 right-10 h-16 w-16 rounded-full bg-primary-foreground/5" />
       </header>
 
-      <main className="flex-1 px-5 -mt-5 space-y-4">
-        {/* Main CTA */}
+      {/* ===== COMO FUNCIONA ===== */}
+      <section
+        ref={howItWorks.ref}
+        className={`px-5 py-10 transition-all duration-700 ${
+          howItWorks.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
+      >
+        <h2 className="text-center text-xl font-extrabold mb-6">Como funciona?</h2>
+        <div className="grid gap-4">
+          {steps.map((step, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-4 rounded-2xl border bg-card p-5 shadow-sm transition-all duration-500"
+              style={{ transitionDelay: `${i * 100}ms` }}
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <step.icon className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="font-bold text-base">{step.title}</p>
+                <p className="text-sm text-muted-foreground">{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== CONTADORES ===== */}
+      <section
+        ref={counters.ref}
+        className={`px-5 py-8 transition-all duration-700 ${
+          counters.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
+      >
+        <div className="grid grid-cols-3 gap-4 rounded-2xl border bg-card p-6 shadow-sm">
+          <AnimatedCounter target={500} suffix="+" label="Entregas" />
+          <AnimatedCounter target={50} suffix="+" label="Clientes" />
+          <AnimatedCounter target={4.9} label="Avaliação" decimals={1} />
+        </div>
+      </section>
+
+      {/* ===== DEPOIMENTOS ===== */}
+      <section
+        ref={testimonials.ref}
+        className={`px-5 py-8 transition-all duration-700 ${
+          testimonials.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
+      >
+        <h2 className="text-center text-xl font-extrabold mb-6">O que nossos clientes dizem</h2>
+        <TestimonialCarousel />
+      </section>
+
+      {/* ===== CTA FINAL ===== */}
+      <section
+        ref={ctaFinal.ref}
+        className={`mx-5 mb-6 rounded-2xl bg-primary px-6 py-10 text-primary-foreground text-center transition-all duration-700 ${
+          ctaFinal.isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
+      >
+        <h2 className="text-2xl font-extrabold mb-2">Precisa de algo?</h2>
+        <p className="text-sm opacity-90 mb-6">A gente busca pra você em minutos.</p>
         <button
           onClick={() => navigate("/solicitar")}
-          className="animate-fade-in-up group flex w-full items-center justify-between rounded-2xl bg-card p-5 shadow-lg border transition-all hover:shadow-xl active:scale-[0.98]"
+          className="w-full rounded-xl bg-card px-6 py-4 text-lg font-extrabold text-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
         >
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
-              <ShoppingBag className="h-7 w-7" />
-            </div>
-            <div className="text-left">
-              <span className="block text-lg font-bold">CHAMAR MOTOBOY</span>
-              <span className="text-sm text-muted-foreground">Peça qualquer coisa!</span>
-            </div>
-          </div>
-          <ArrowRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+          CHAMAR MOTOBOY AGORA
         </button>
-
-        {/* Secondary actions */}
-        <div className="grid grid-cols-2 gap-3 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-          <button
-            onClick={() => navigate("/meus-pedidos")}
-            className="flex flex-col items-center gap-2 rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md active:scale-[0.97]"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-              <Clock className="h-5 w-5" />
-            </div>
-            <span className="text-sm font-semibold">Meus Pedidos</span>
-          </button>
-
-          <button
-            onClick={handleWhatsApp}
-            className="flex flex-col items-center gap-2 rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md active:scale-[0.97]"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <MessageCircle className="h-5 w-5" />
-            </div>
-            <span className="text-sm font-semibold">Pedir pelo WhatsApp</span>
-          </button>
-        </div>
-
-        <div className="rounded-xl border bg-secondary/50 p-4 animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
-          <p className="text-xs text-secondary-foreground leading-relaxed">
-            <strong>Como funciona:</strong> Diga o que precisa, informe seu endereço e um motoboy vai buscar e entregar pra você. Simples assim!
-          </p>
-        </div>
-      </main>
+      </section>
 
       <BottomNav />
+      <WhatsAppFAB />
     </div>
   );
 };
