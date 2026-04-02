@@ -40,8 +40,7 @@ const AddressInput = ({
   };
 
   const selectSuggestion = (s: { display_name: string; lat: number; lon: number }) => {
-    const shortName = s.display_name.split(",").slice(0, 3).join(",").trim();
-    onChange(shortName, [Number(s.lat), Number(s.lon)]);
+    onChange(s.display_name, [Number(s.lat), Number(s.lon)]);
     clearSuggestions();
     setShowSuggestions(false);
   };
@@ -86,7 +85,7 @@ const AddressInput = ({
               className="flex w-full items-center gap-2.5 px-3.5 py-3 text-left text-sm hover:bg-secondary transition-colors first:rounded-t-xl last:rounded-b-xl"
             >
               <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="truncate">{s.display_name.split(",").slice(0, 3).join(",")}</span>
+              <span className="truncate">{s.display_name}</span>
             </button>
           ))}
         </div>
