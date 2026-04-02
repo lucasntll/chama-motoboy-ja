@@ -94,7 +94,7 @@ const RequestRide = () => {
     const history = JSON.parse(localStorage.getItem("ride_history") || "[]");
     localStorage.setItem("ride_history", JSON.stringify([ride, ...history]));
 
-    setMotoboyName(chosen.name);
+    setMotoboyName(GILBERTO_NAME);
 
     // Build Google Maps link
     const mapsLink = deliveryCoords
@@ -102,16 +102,18 @@ const RequestRide = () => {
       : "";
 
     const msg = encodeURIComponent(
-      `Novo pedido! 🚀\n\n🛒 *Pedido:* ${orderDesc}${purchaseLocation ? `\n🏪 *Local:* ${purchaseLocation}` : ""}\n📍 *Entregar em:* ${fullAddress}\n🗺️ *Mapa:* ${mapsLink}\n👤 *Cliente:* ${customerName}\n📞 *Telefone:* ${customerPhone}\n💰 *Ganho:* R$${(FIXED_PRICE - COMMISSION).toFixed(2)}\n\nResponda ACEITAR para pegar`
+      `Novo pedido! 🚀\n\n🛒 *Pedido:* ${orderDesc}${purchaseLocation ? `\n🏪 *Local:* ${purchaseLocation}` : ""}\n📍 *Entregar em:* ${fullAddress}\n🏠 *Referência:* ${houseRef}\n🗺️ *Mapa:* ${mapsLink}\n👤 *Cliente:* ${customerName}\n📞 *Telefone:* ${customerPhone}\n💰 *Ganho:* R$${(FIXED_PRICE - COMMISSION).toFixed(2)}\n\nResponda ACEITAR para pegar`
     );
 
     setTimeout(() => {
       setStep("found");
       setTimeout(() => {
         setStep("confirmed");
-        window.open(`https://wa.me/${chosen.phone}?text=${msg}`, "_blank");
       }, 1500);
     }, 2000);
+
+    // Store WhatsApp link for the confirmed view
+    localStorage.setItem("pending_wpp_msg", `https://wa.me/${GILBERTO_PHONE}?text=${msg}`);
   };
 
   return (
