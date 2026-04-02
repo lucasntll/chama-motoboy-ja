@@ -83,8 +83,8 @@ const RequestRide = () => {
     // Save to localStorage for client history
     const ride = {
       id: Date.now().toString(),
-      motoboyName: chosen.name,
-      motoboyPhone: chosen.phone,
+      motoboyName: GILBERTO_NAME,
+      motoboyPhone: GILBERTO_PHONE,
       orderDesc,
       deliveryAddress: fullAddress,
       price: FIXED_PRICE,
