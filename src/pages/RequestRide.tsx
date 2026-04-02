@@ -76,7 +76,7 @@ const RequestRide = () => {
       estimated_price: FIXED_PRICE,
       estimated_time_min: 25,
       commission_amount: COMMISSION,
-      motoboy_id: chosen.id,
+      motoboy_id: motoboyDbId,
       status: "pending",
     } as any);
 
