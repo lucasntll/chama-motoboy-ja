@@ -9,6 +9,8 @@ import BottomNav from "@/components/BottomNav";
 
 const FIXED_PRICE = 7;
 const COMMISSION = 2;
+const GILBERTO_PHONE = "5535999198318";
+const GILBERTO_NAME = "Gilberto";
 
 type FlowStep = "form" | "searching" | "found" | "confirmed";
 
@@ -50,24 +52,16 @@ const RequestRide = () => {
     if (!canOrder) return;
     setStep("searching");
 
-    const { data: motoboys } = await supabase
-      .from("motoboys")
-      .select("*")
-      .eq("is_available", true)
-      .order("last_activity", { ascending: false });
-
-    if (!motoboys || motoboys.length === 0) return;
-
-    const sorted = [...motoboys].sort((a, b) => {
-      const statusOrder: Record<string, number> = { available: 0, busy: 1, inactive: 2 };
-      const sa = statusOrder[(a as any).status] ?? 2;
-      const sb = statusOrder[(b as any).status] ?? 2;
-      if (sa !== sb) return sa - sb;
-      return new Date((b as any).last_activity || 0).getTime() - new Date((a as any).last_activity || 0).getTime();
-    });
-
-    const chosen = sorted[0];
     const fullAddress = `${deliveryAddress} - ${houseRef}`;
+
+    // Use Gilberto as primary motoboy
+    const { data: gilbertoRow } = await supabase
+      .from("motoboys")
+      .select("id")
+      .eq("phone", GILBERTO_PHONE)
+      .maybeSingle();
+
+    const motoboyDbId = gilbertoRow?.id ?? null;
 
     await supabase.from("orders").insert({
       customer_name: customerName,
@@ -82,15 +76,15 @@ const RequestRide = () => {
       estimated_price: FIXED_PRICE,
       estimated_time_min: 25,
       commission_amount: COMMISSION,
-      motoboy_id: chosen.id,
+      motoboy_id: motoboyDbId,
       status: "pending",
     } as any);
 
     // Save to localStorage for client history
     const ride = {
       id: Date.now().toString(),
-      motoboyName: chosen.name,
-      motoboyPhone: chosen.phone,
+      motoboyName: GILBERTO_NAME,
+      motoboyPhone: GILBERTO_PHONE,
       orderDesc,
       deliveryAddress: fullAddress,
       price: FIXED_PRICE,
@@ -100,7 +94,7 @@ const RequestRide = () => {
     const history = JSON.parse(localStorage.getItem("ride_history") || "[]");
     localStorage.setItem("ride_history", JSON.stringify([ride, ...history]));
 
-    setMotoboyName(chosen.name);
+    setMotoboyName(GILBERTO_NAME);
 
     // Build Google Maps link
     const mapsLink = deliveryCoords
@@ -108,16 +102,18 @@ const RequestRide = () => {
       : "";
 
     const msg = encodeURIComponent(
-      `Novo pedido! 🚀\n\n🛒 *Pedido:* ${orderDesc}${purchaseLocation ? `\n🏪 *Local:* ${purchaseLocation}` : ""}\n📍 *Entregar em:* ${fullAddress}\n🗺️ *Mapa:* ${mapsLink}\n👤 *Cliente:* ${customerName}\n📞 *Telefone:* ${customerPhone}\n💰 *Ganho:* R$${(FIXED_PRICE - COMMISSION).toFixed(2)}\n\nResponda ACEITAR para pegar`
+      `Novo pedido! 🚀\n\n🛒 *Pedido:* ${orderDesc}${purchaseLocation ? `\n🏪 *Local:* ${purchaseLocation}` : ""}\n📍 *Entregar em:* ${fullAddress}\n🏠 *Referência:* ${houseRef}\n🗺️ *Mapa:* ${mapsLink}\n👤 *Cliente:* ${customerName}\n📞 *Telefone:* ${customerPhone}\n💰 *Ganho:* R$${(FIXED_PRICE - COMMISSION).toFixed(2)}\n\nResponda ACEITAR para pegar`
     );
 
     setTimeout(() => {
       setStep("found");
       setTimeout(() => {
         setStep("confirmed");
-        window.open(`https://wa.me/${chosen.phone}?text=${msg}`, "_blank");
       }, 1500);
     }, 2000);
+
+    // Store WhatsApp link for the confirmed view
+    localStorage.setItem("pending_wpp_msg", `https://wa.me/${GILBERTO_PHONE}?text=${msg}`);
   };
 
   return (
@@ -252,29 +248,52 @@ const RequestRide = () => {
   );
 };
 
-const ConfirmedView = ({ motoboyName }: { motoboyName: string }) => (
-  <div className="flex flex-col items-center justify-center py-12 space-y-6 animate-fade-in-up">
-    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-      <span className="text-4xl">🚀</span>
-    </div>
-    <div className="text-center space-y-2">
-      <h2 className="text-xl font-bold">Pronto!</h2>
-      <p className="text-base text-muted-foreground">
-        Estamos chamando um motoboy pra você
-      </p>
-      {motoboyName && (
-        <p className="text-sm font-semibold text-primary">
-          Motoboy: {motoboyName}
+const ConfirmedView = ({ motoboyName }: { motoboyName: string }) => {
+  const wppLink = localStorage.getItem("pending_wpp_msg") || `https://wa.me/${GILBERTO_PHONE}`;
+
+  return (
+    <div className="flex flex-col items-center justify-center py-12 space-y-6 animate-fade-in-up">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+        <span className="text-4xl">🚀</span>
+      </div>
+      <div className="text-center space-y-2">
+        <h2 className="text-xl font-bold">Pedido Confirmado!</h2>
+        <p className="text-base text-muted-foreground">
+          Agora é só enviar para o motoboy
         </p>
-      )}
+      </div>
+
+      {/* Motoboy info card */}
+      <div className="w-full rounded-xl border bg-card p-5 space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-secondary-foreground font-bold text-lg">
+            G
+          </div>
+          <div>
+            <p className="font-bold text-base">{motoboyName}</p>
+            <p className="text-sm text-muted-foreground">📞 (35) 99919-8318</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Send to Gilberto button */}
+      <a
+        href={wppLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(142,70%,45%)] py-4 text-base font-bold text-white shadow-lg transition-all hover:shadow-xl active:scale-[0.97]"
+      >
+        📲 Enviar para {motoboyName}
+      </a>
+
+      <div className="w-full space-y-3">
+        <StatusStep label="Pedido confirmado" active done />
+        <StatusStep label="Enviado para motoboy" active done={false} />
+        <StatusStep label="Entrega finalizada" active={false} done={false} />
+      </div>
     </div>
-    <div className="w-full space-y-3">
-      <StatusStep label="Procurando motoboy" active done />
-      <StatusStep label="Motoboy a caminho" active={false} done={false} />
-      <StatusStep label="Entrega finalizada" active={false} done={false} />
-    </div>
-  </div>
-);
+  );
+};
 
 const StatusStep = ({ label, active, done }: { label: string; active: boolean; done: boolean }) => (
   <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
