@@ -30,6 +30,7 @@ export type Database = {
           region: string
           status: string
           total_rides: number
+          user_id: string | null
           vehicle: string
         }
         Insert: {
@@ -47,6 +48,7 @@ export type Database = {
           region: string
           status?: string
           total_rides?: number
+          user_id?: string | null
           vehicle: string
         }
         Update: {
@@ -64,12 +66,15 @@ export type Database = {
           region?: string
           status?: string
           total_rides?: number
+          user_id?: string | null
           vehicle?: string
         }
         Relationships: []
       }
       orders: {
         Row: {
+          commission_amount: number | null
+          completed_at: string | null
           created_at: string
           customer_name: string
           customer_phone: string
@@ -79,7 +84,9 @@ export type Database = {
           distance_km: number | null
           estimated_price: number | null
           estimated_time_min: number | null
+          house_reference: string | null
           id: string
+          is_paid: boolean | null
           item_description: string
           motoboy_id: string | null
           purchase_location: string | null
@@ -87,6 +94,8 @@ export type Database = {
           status: string
         }
         Insert: {
+          commission_amount?: number | null
+          completed_at?: string | null
           created_at?: string
           customer_name: string
           customer_phone: string
@@ -96,7 +105,9 @@ export type Database = {
           distance_km?: number | null
           estimated_price?: number | null
           estimated_time_min?: number | null
+          house_reference?: string | null
           id?: string
+          is_paid?: boolean | null
           item_description: string
           motoboy_id?: string | null
           purchase_location?: string | null
@@ -104,6 +115,8 @@ export type Database = {
           status?: string
         }
         Update: {
+          commission_amount?: number | null
+          completed_at?: string | null
           created_at?: string
           customer_name?: string
           customer_phone?: string
@@ -113,7 +126,9 @@ export type Database = {
           distance_km?: number | null
           estimated_price?: number | null
           estimated_time_min?: number | null
+          house_reference?: string | null
           id?: string
+          is_paid?: boolean | null
           item_description?: string
           motoboy_id?: string | null
           purchase_location?: string | null
@@ -130,15 +145,71 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          admin_note: string | null
+          amount: number
+          created_at: string | null
+          id: string
+          motoboy_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          amount: number
+          created_at?: string | null
+          id?: string
+          motoboy_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          amount?: number
+          created_at?: string | null
+          id?: string
+          motoboy_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_motoboy_id_fkey"
+            columns: ["motoboy_id"]
+            isOneToOne: false
+            referencedRelation: "motoboys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "motoboy"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -265,6 +336,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "motoboy"],
+    },
   },
 } as const
