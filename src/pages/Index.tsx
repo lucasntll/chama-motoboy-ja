@@ -64,7 +64,7 @@ const Index = () => {
             onClick={handleWhatsApp}
             className="flex flex-col items-center gap-2 rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md active:scale-[0.97]"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
               <MessageCircle className="h-5 w-5" />
             </div>
             <span className="text-sm font-semibold">Pedir pelo WhatsApp</span>
