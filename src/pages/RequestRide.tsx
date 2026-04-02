@@ -248,29 +248,52 @@ const RequestRide = () => {
   );
 };
 
-const ConfirmedView = ({ motoboyName }: { motoboyName: string }) => (
-  <div className="flex flex-col items-center justify-center py-12 space-y-6 animate-fade-in-up">
-    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
-      <span className="text-4xl">🚀</span>
-    </div>
-    <div className="text-center space-y-2">
-      <h2 className="text-xl font-bold">Pronto!</h2>
-      <p className="text-base text-muted-foreground">
-        Estamos chamando um motoboy pra você
-      </p>
-      {motoboyName && (
-        <p className="text-sm font-semibold text-primary">
-          Motoboy: {motoboyName}
+const ConfirmedView = ({ motoboyName }: { motoboyName: string }) => {
+  const wppLink = localStorage.getItem("pending_wpp_msg") || `https://wa.me/${GILBERTO_PHONE}`;
+
+  return (
+    <div className="flex flex-col items-center justify-center py-12 space-y-6 animate-fade-in-up">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
+        <span className="text-4xl">🚀</span>
+      </div>
+      <div className="text-center space-y-2">
+        <h2 className="text-xl font-bold">Pedido Confirmado!</h2>
+        <p className="text-base text-muted-foreground">
+          Agora é só enviar para o motoboy
         </p>
-      )}
+      </div>
+
+      {/* Motoboy info card */}
+      <div className="w-full rounded-xl border bg-card p-5 space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-secondary-foreground font-bold text-lg">
+            G
+          </div>
+          <div>
+            <p className="font-bold text-base">{motoboyName}</p>
+            <p className="text-sm text-muted-foreground">📞 (35) 99919-8318</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Send to Gilberto button */}
+      <a
+        href={wppLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(142,70%,45%)] py-4 text-base font-bold text-white shadow-lg transition-all hover:shadow-xl active:scale-[0.97]"
+      >
+        📲 Enviar para {motoboyName}
+      </a>
+
+      <div className="w-full space-y-3">
+        <StatusStep label="Pedido confirmado" active done />
+        <StatusStep label="Enviado para motoboy" active done={false} />
+        <StatusStep label="Entrega finalizada" active={false} done={false} />
+      </div>
     </div>
-    <div className="w-full space-y-3">
-      <StatusStep label="Procurando motoboy" active done />
-      <StatusStep label="Motoboy a caminho" active={false} done={false} />
-      <StatusStep label="Entrega finalizada" active={false} done={false} />
-    </div>
-  </div>
-);
+  );
+};
 
 const StatusStep = ({ label, active, done }: { label: string; active: boolean; done: boolean }) => (
   <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
