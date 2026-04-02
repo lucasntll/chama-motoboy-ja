@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ShoppingBag, Bell, Store, Hash, Loader2 } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Bell, Hash, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentLocation } from "@/hooks/useGeocoding";
 import AddressInput from "@/components/AddressInput";
+import PlaceSuggestionInput, { savePopularPlace } from "@/components/PlaceSuggestionInput";
 import SearchingMotoboy from "@/components/SearchingMotoboy";
 import BottomNav from "@/components/BottomNav";
 
@@ -53,6 +54,11 @@ const RequestRide = () => {
     setStep("searching");
 
     const fullAddress = `${deliveryAddress} - ${houseRef}`;
+
+    // Save purchase location to popular places
+    if (purchaseLocation.trim()) {
+      savePopularPlace(purchaseLocation);
+    }
 
     // Use Gilberto as primary motoboy
     const { data: gilbertoRow } = await supabase
@@ -183,13 +189,11 @@ const RequestRide = () => {
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 De onde vai sair? <span className="text-muted-foreground/60">(opcional)</span>
               </label>
-              <div className="mt-1.5 flex items-center gap-2 rounded-xl border bg-card px-4 py-3">
-                <Store className="h-4 w-4 text-muted-foreground shrink-0" />
-                <input
+              <div className="mt-1.5">
+                <PlaceSuggestionInput
                   value={purchaseLocation}
-                  onChange={(e) => setPurchaseLocation(e.target.value)}
+                  onChange={(v) => setPurchaseLocation(v)}
                   placeholder="Ex: farmácia, mercado…"
-                  className="w-full bg-transparent text-sm font-medium placeholder:text-muted-foreground/50 focus:outline-none"
                 />
               </div>
             </div>

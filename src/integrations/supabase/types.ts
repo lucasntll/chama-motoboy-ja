@@ -177,6 +177,27 @@ export type Database = {
           },
         ]
       }
+      popular_places: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          usage_count: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          usage_count?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          usage_count?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

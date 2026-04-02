@@ -25,8 +25,18 @@ export function useGeocoding() {
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Cabo Verde, MG, Brasil")}&limit=5&addressdetails=1`
         );
-        const data: GeoResult[] = await res.json();
-        setSuggestions(data);
+        const data: (GeoResult & { address?: Record<string, string> })[] = await res.json();
+        // Format to show only street + Cabo Verde
+        const formatted = data.map((item) => {
+          const road = item.address?.road || item.address?.pedestrian || "";
+          const suburb = item.address?.suburb || item.address?.neighbourhood || "";
+          const parts = [road, suburb, "Cabo Verde"].filter(Boolean);
+          return {
+            ...item,
+            display_name: parts.join(", "),
+          };
+        });
+        setSuggestions(formatted);
       } catch {
         setSuggestions([]);
       } finally {
@@ -95,10 +105,13 @@ export function useCurrentLocation() {
             );
             const data = await res.json();
             setLoading(false);
+            const road = data.address?.road || data.address?.pedestrian || "";
+            const suburb = data.address?.suburb || data.address?.neighbourhood || "";
+            const shortAddr = [road, suburb, "Cabo Verde"].filter(Boolean).join(", ");
             resolve({
               lat: latitude,
               lon: longitude,
-              address: data.display_name || `${latitude}, ${longitude}`,
+              address: shortAddr || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
             });
           } catch {
             setLoading(false);
