@@ -52,24 +52,16 @@ const RequestRide = () => {
     if (!canOrder) return;
     setStep("searching");
 
-    const { data: motoboys } = await supabase
-      .from("motoboys")
-      .select("*")
-      .eq("is_available", true)
-      .order("last_activity", { ascending: false });
-
-    if (!motoboys || motoboys.length === 0) return;
-
-    const sorted = [...motoboys].sort((a, b) => {
-      const statusOrder: Record<string, number> = { available: 0, busy: 1, inactive: 2 };
-      const sa = statusOrder[(a as any).status] ?? 2;
-      const sb = statusOrder[(b as any).status] ?? 2;
-      if (sa !== sb) return sa - sb;
-      return new Date((b as any).last_activity || 0).getTime() - new Date((a as any).last_activity || 0).getTime();
-    });
-
-    const chosen = sorted[0];
     const fullAddress = `${deliveryAddress} - ${houseRef}`;
+
+    // Use Gilberto as primary motoboy
+    const { data: gilbertoRow } = await supabase
+      .from("motoboys")
+      .select("id")
+      .eq("phone", GILBERTO_PHONE)
+      .maybeSingle();
+
+    const motoboyDbId = gilbertoRow?.id ?? null;
 
     await supabase.from("orders").insert({
       customer_name: customerName,
