@@ -1,10 +1,9 @@
-import { Home, Clock, User, Users } from "lucide-react";
+import { Home, Clock, User } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const tabs = [
   { path: "/", icon: Home, label: "Início" },
-  { path: "/motoristas", icon: Users, label: "Motoboys" },
-  { path: "/historico", icon: Clock, label: "Histórico" },
+  { path: "/meus-pedidos", icon: Clock, label: "Pedidos" },
   { path: "/perfil", icon: User, label: "Perfil" },
 ];
 
@@ -22,9 +21,7 @@ const BottomNav = () => {
               key={path}
               onClick={() => navigate(path)}
               className={`flex flex-col items-center gap-0.5 rounded-lg px-4 py-1.5 transition-colors duration-150 active:scale-95 ${
-                active
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                active ? "text-primary" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
