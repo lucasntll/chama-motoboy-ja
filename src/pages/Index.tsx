@@ -5,6 +5,7 @@ import WhatsAppFAB from "@/components/WhatsAppFAB";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import TestimonialCarousel from "@/components/TestimonialCarousel";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import logoImg from "@/assets/logo-chamamoto.png";
 
 const WHATSAPP_NUMBER = "5535997570009";
 
@@ -29,24 +30,28 @@ const Index = () => {
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
       {/* ===== HERO ===== */}
-      <header className="relative overflow-hidden bg-primary px-6 pb-16 pt-14 text-primary-foreground">
-        <div className="absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-primary-foreground/10" />
-        <div className="absolute -top-6 right-12 h-20 w-20 rounded-full bg-primary-foreground/5" />
-        <div className="absolute bottom-4 left-6 h-12 w-12 rounded-full bg-primary-foreground/5" />
+      <header className="relative overflow-hidden bg-primary px-6 pb-20 pt-10 text-primary-foreground">
+        {/* Decorative circles */}
+        <div className="absolute -bottom-16 -right-16 h-56 w-56 rounded-full bg-primary-foreground/10" />
+        <div className="absolute -top-8 right-10 h-24 w-24 rounded-full bg-primary-foreground/5" />
+        <div className="absolute bottom-8 left-4 h-16 w-16 rounded-full bg-primary-foreground/5" />
 
-        <div className="relative z-10 animate-fade-in-up">
-          <div className="flex items-center gap-2 mb-4">
-            <ShoppingBag className="h-7 w-7" />
-            <span className="text-lg font-extrabold tracking-tight">ChamaMotoboy</span>
-          </div>
-          <h1 className="text-[1.7rem] font-extrabold leading-[1.15] max-w-[300px] mb-3">
-            A gente busca e entrega pra você.
+        <div className="relative z-10 flex flex-col items-center text-center animate-fade-in-up">
+          {/* Logo */}
+          <img
+            src={logoImg}
+            alt="ChamaMoto"
+            className="h-16 w-auto mb-6 drop-shadow-lg"
+          />
+
+          <h1 className="text-[1.75rem] font-extrabold leading-[1.15] max-w-[320px] mb-3">
+            Peça qualquer coisa. A gente entrega.
           </h1>
-          <p className="text-sm opacity-90 max-w-[260px] mb-6">
-            Peça qualquer coisa — remédio, comida, documento — e receba em minutos.
+          <p className="text-sm opacity-90 max-w-[280px] mb-8">
+            Rápido, fácil e sem complicação.
           </p>
 
-          <div className="flex flex-col gap-3">
+          <div className="flex w-full flex-col gap-3 max-w-[320px]">
             <button
               onClick={() => navigate("/solicitar")}
               className="flex items-center justify-center gap-2 rounded-xl bg-card px-6 py-4 text-lg font-extrabold text-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
