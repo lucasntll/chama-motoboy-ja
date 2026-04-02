@@ -9,6 +9,8 @@ import BottomNav from "@/components/BottomNav";
 
 const FIXED_PRICE = 7;
 const COMMISSION = 2;
+const GILBERTO_PHONE = "5535999198318";
+const GILBERTO_NAME = "Gilberto";
 
 type FlowStep = "form" | "searching" | "found" | "confirmed";
 
