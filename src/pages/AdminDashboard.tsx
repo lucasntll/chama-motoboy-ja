@@ -63,7 +63,7 @@ const AdminDashboard = () => {
     if (unpaid.length > 0) {
       await supabase.from("payments" as any).insert({
         motoboy_id: motoboyId,
-        amount: unpaid.length * 2,
+        amount: unpaid.length * 1,
         admin_note: `Pagamento de ${unpaid.length} corridas`,
       });
     }
