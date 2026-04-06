@@ -15,6 +15,7 @@ const MotoboyDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [confirmOrderId, setConfirmOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!motoboyId) {
