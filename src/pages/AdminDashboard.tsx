@@ -32,10 +32,10 @@ const AdminDashboard = () => {
   const getMotoboyStats = (motoboyId: string) => {
     const motoboyOrders = orders.filter((o) => o.motoboy_id === motoboyId && o.status === "completed");
     const totalRides = motoboyOrders.length;
-    const totalEarned = totalRides * 5;
-    const totalCommission = totalRides * 2;
+    const totalEarned = totalRides * 6; // R$7 - R$1 commission = R$6 net
+    const totalCommission = totalRides * 1;
     const paidOrders = motoboyOrders.filter((o: any) => o.is_paid);
-    const totalPaid = paidOrders.length * 2;
+    const totalPaid = paidOrders.length * 1;
     const owed = totalCommission - totalPaid;
     return { totalRides, totalEarned, totalCommission, owed };
   };
@@ -63,7 +63,7 @@ const AdminDashboard = () => {
     if (unpaid.length > 0) {
       await supabase.from("payments" as any).insert({
         motoboy_id: motoboyId,
-        amount: unpaid.length * 2,
+        amount: unpaid.length * 1,
         admin_note: `Pagamento de ${unpaid.length} corridas`,
       });
     }
@@ -85,7 +85,7 @@ const AdminDashboard = () => {
   }
 
   const totalCompletedOrders = orders.filter((o) => o.status === "completed").length;
-  const totalRevenue = totalCompletedOrders * 2; // Admin earns commission
+  const totalRevenue = totalCompletedOrders * 1; // R$1 commission per ride
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
