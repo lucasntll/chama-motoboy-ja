@@ -59,7 +59,7 @@ const ClientOrder = () => {
 
     const fullAddress = `${deliveryAddress} - ${houseRef}`;
 
-    await supabase.from("orders").insert({
+    const { data: inserted } = await supabase.from("orders").insert({
       customer_name: customerName,
       customer_phone: customerPhone,
       delivery_address: fullAddress,
@@ -73,10 +73,15 @@ const ClientOrder = () => {
       estimated_time_min: 25,
       commission_amount: 1,
       status: "pending",
-    } as any);
+    } as any).select("id").single();
 
     setSubmitting(false);
-    setConfirmed(true);
+
+    if (inserted?.id) {
+      navigate(`/acompanhar/${inserted.id}`);
+    } else {
+      setConfirmed(true);
+    }
   };
 
   if (confirmed) {
