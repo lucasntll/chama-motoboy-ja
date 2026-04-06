@@ -42,6 +42,9 @@ const MotoboyDashboard = () => {
     setLoading(false);
   }, [motoboyId]);
 
+  // Track previous pending count for notification
+  const prevPendingCount = useRef(0);
+
   // Realtime
   useEffect(() => {
     if (!motoboyId) return;
@@ -53,6 +56,42 @@ const MotoboyDashboard = () => {
 
     return () => { supabase.removeChannel(channel); };
   }, [motoboyId, fetchAll]);
+
+  // Notification when new pending orders arrive
+  useEffect(() => {
+    if (allPending.length > prevPendingCount.current && prevPendingCount.current >= 0 && isOnline && !hasActiveRide) {
+      // Play notification sound
+      try {
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = "sine";
+        gain.gain.value = 0.3;
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.stop(ctx.currentTime + 0.5);
+        // Second beep
+        setTimeout(() => {
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.frequency.value = 1100;
+          osc2.type = "sine";
+          gain2.gain.value = 0.3;
+          osc2.start();
+          gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+          osc2.stop(ctx.currentTime + 0.5);
+        }, 200);
+      } catch (_) {}
+
+      toast.success("Nova corrida disponível! 🚀");
+    }
+    prevPendingCount.current = allPending.length;
+  }, [allPending.length, isOnline]);
 
   const todayCompleted = orders.filter(
     (o) => o.status === "completed" && new Date(o.created_at).toDateString() === new Date().toDateString()
@@ -75,16 +114,15 @@ const MotoboyDashboard = () => {
       .eq("id", motoboyId);
     setIsOnline(newStatus);
     setToggling(false);
-    toast({ title: newStatus ? "Você está online! 🟢" : "Você está offline ⚪" });
+    toast(newStatus ? "Você está online! 🟢" : "Você está offline ⚪");
   };
 
   const acceptOrder = async (orderId: string) => {
     if (hasActiveRide) {
-      toast({ title: "Você já tem uma corrida ativa!", variant: "destructive" });
+      toast.error("Você já tem uma corrida ativa!");
       return;
     }
 
-    // Check if order is still available
     const { data: check } = await supabase
       .from("orders")
       .select("status, motoboy_id")
@@ -92,7 +130,7 @@ const MotoboyDashboard = () => {
       .maybeSingle();
 
     if (!check || check.motoboy_id || check.status !== "pending") {
-      toast({ title: "Corrida já aceita por outro motoboy", variant: "destructive" });
+      toast.error("Corrida já aceita por outro motoboy");
       fetchAll();
       return;
     }
@@ -107,7 +145,7 @@ const MotoboyDashboard = () => {
       last_activity: new Date().toISOString(),
     }).eq("id", motoboyId);
 
-    toast({ title: "Corrida aceita! 🚀" });
+    toast.success("Corrida aceita! 🚀");
     fetchAll();
   };
 
@@ -122,7 +160,7 @@ const MotoboyDashboard = () => {
       last_activity: new Date().toISOString(),
     }).eq("id", motoboyId!);
 
-    toast({ title: "Entrega finalizada! ✅" });
+    toast.success("Entrega finalizada! ✅");
     fetchAll();
   };
 
