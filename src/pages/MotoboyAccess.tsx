@@ -29,7 +29,7 @@ const MotoboyAccess = () => {
 
     const { data } = await supabase
       .from("motoboys")
-      .select("id, name, phone, vehicle, access_code" as any)
+      .select("*")
       .eq("phone", phone.trim())
       .maybeSingle();
 
