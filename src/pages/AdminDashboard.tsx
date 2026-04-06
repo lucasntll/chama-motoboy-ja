@@ -80,9 +80,8 @@ const AdminDashboard = () => {
     fetchData();
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
+  const handleSignOut = () => {
+    handleLogout();
   };
 
   if (loading) {
