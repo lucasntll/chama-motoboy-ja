@@ -1,36 +1,36 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Loader2, ArrowLeft } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "123admin";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
-  const [email, setEmail] = useState("");
+  const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    if (!user || !password) return;
 
     setLoading(true);
-    const { error } = await signIn(email, password);
-    setLoading(false);
-
-    if (error) {
-      toast({
-        title: "Erro ao entrar",
-        description: "Credenciais incorretas",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setTimeout(() => {
-      navigate("/admin");
-    }, 500);
+      if (user === ADMIN_USER && password === ADMIN_PASS) {
+        sessionStorage.setItem("admin_auth", "true");
+        navigate("/admin");
+      } else {
+        toast({
+          title: "Erro ao entrar",
+          description: "Usuário ou senha incorretos",
+          variant: "destructive",
+        });
+      }
+      setLoading(false);
+    }, 400);
   };
 
   return (
@@ -57,13 +57,13 @@ const Login = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Email
+                Usuário
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@email.com"
+                type="text"
+                value={user}
+                onChange={(e) => setUser(e.target.value)}
+                placeholder="admin"
                 className="mt-1 w-full rounded-xl border bg-card py-3.5 px-4 text-sm font-medium placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               />
@@ -85,7 +85,7 @@ const Login = () => {
 
             <button
               type="submit"
-              disabled={loading || !email || !password}
+              disabled={loading || !user || !password}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground transition-all active:scale-[0.97] disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "ENTRAR"}
