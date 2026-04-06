@@ -30,11 +30,7 @@ const App = () => (
 
           {/* Admin (login-based) */}
           <Route path="/login" element={<Login />} />
-          <Route path="/admin" element={
-            <ProtectedRoute requiredRole="admin">
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
+          <Route path="/admin" element={<AdminDashboard />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>

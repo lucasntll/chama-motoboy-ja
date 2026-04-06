@@ -8,7 +8,17 @@ type Tab = "motoboys" | "orders" | "payments";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+
+  useEffect(() => {
+    if (sessionStorage.getItem("admin_auth") !== "true") {
+      navigate("/login", { replace: true });
+    }
+  }, []);
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("admin_auth");
+    navigate("/login", { replace: true });
+  };
   const [tab, setTab] = useState<Tab>("motoboys");
   const [motoboys, setMotoboys] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
