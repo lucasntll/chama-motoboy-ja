@@ -306,6 +306,35 @@ const MotoboyDashboard = () => {
           </div>
         )}
       </main>
+
+      {/* Confirmation overlay */}
+      {confirmOrderId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
+            <h3 className="text-lg font-bold text-center">Aceitar corrida?</h3>
+            <p className="text-sm text-muted-foreground text-center">
+              Ao confirmar, você se compromete a realizar esta entrega.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmOrderId(null)}
+                className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  acceptOrder(confirmOrderId);
+                  setConfirmOrderId(null);
+                }}
+                className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground active:scale-[0.97]"
+              >
+                Confirmar ✓
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
