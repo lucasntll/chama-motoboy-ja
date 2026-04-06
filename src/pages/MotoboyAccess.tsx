@@ -3,17 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Bike, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const ACCESS_CODE = "moto2026";
-
 const MotoboyAccess = () => {
   const navigate = useNavigate();
+  const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
-  const [codeValid, setCodeValid] = useState(false);
-  const [motoboys, setMotoboys] = useState<any[]>([]);
-  const [loadingMotoboys, setLoadingMotoboys] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Check if already logged in
   useEffect(() => {
     const savedId = localStorage.getItem("motoboy_id");
     const savedName = localStorage.getItem("motoboy_name");
@@ -22,27 +18,35 @@ const MotoboyAccess = () => {
     }
   }, [navigate]);
 
-  const handleCodeSubmit = async () => {
-    if (code.trim().toLowerCase() !== ACCESS_CODE) {
-      setError("Código inválido");
+  const handleLogin = async () => {
+    if (!phone.trim() || !code.trim()) {
+      setError("Preencha todos os campos");
       return;
     }
+
+    setLoading(true);
     setError("");
-    setCodeValid(true);
-    setLoadingMotoboys(true);
 
     const { data } = await supabase
       .from("motoboys")
-      .select("id, name, phone, vehicle")
-      .order("name");
+      .select("id, name, phone, vehicle, access_code" as any)
+      .eq("phone", phone.trim())
+      .maybeSingle();
 
-    setMotoboys(data || []);
-    setLoadingMotoboys(false);
-  };
+    setLoading(false);
 
-  const selectMotoboy = (motoboy: any) => {
-    localStorage.setItem("motoboy_id", motoboy.id);
-    localStorage.setItem("motoboy_name", motoboy.name);
+    if (!data) {
+      setError("Telefone não cadastrado");
+      return;
+    }
+
+    if ((data as any).access_code !== code.trim()) {
+      setError("Código de acesso incorreto");
+      return;
+    }
+
+    localStorage.setItem("motoboy_id", data.id);
+    localStorage.setItem("motoboy_name", data.name);
     navigate("/motoboy", { replace: true });
   };
 
@@ -56,75 +60,54 @@ const MotoboyAccess = () => {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-6">
-        {!codeValid ? (
-          <div className="w-full max-w-sm space-y-6">
-            <div className="text-center space-y-2">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <Bike className="h-8 w-8" />
-              </div>
-              <h2 className="text-xl font-bold">Entrar como Motoboy</h2>
-              <p className="text-sm text-muted-foreground">
-                Digite o código de acesso para entrar
-              </p>
+        <div className="w-full max-w-sm space-y-6">
+          <div className="text-center space-y-2">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Bike className="h-8 w-8" />
             </div>
+            <h2 className="text-xl font-bold">Entrar como Motoboy</h2>
+            <p className="text-sm text-muted-foreground">
+              Use seu telefone e código de acesso
+            </p>
+          </div>
 
-            <div className="space-y-3">
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Telefone</label>
               <input
-                type="text"
+                type="tel"
+                value={phone}
+                onChange={(e) => { setPhone(e.target.value); setError(""); }}
+                placeholder="5535999999999"
+                className="mt-1 w-full rounded-xl border bg-card py-3.5 px-4 text-sm font-medium placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Código de acesso</label>
+              <input
+                type="password"
                 value={code}
                 onChange={(e) => { setCode(e.target.value); setError(""); }}
-                placeholder="Código de acesso"
-                className="w-full rounded-xl border bg-card py-3.5 px-4 text-center text-lg font-bold tracking-widest placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
-                onKeyDown={(e) => e.key === "Enter" && handleCodeSubmit()}
+                placeholder="Seu código pessoal"
+                className="mt-1 w-full rounded-xl border bg-card py-3.5 px-4 text-sm font-medium placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               />
-              {error && (
-                <p className="text-center text-sm font-semibold text-destructive">{error}</p>
-              )}
-              <button
-                onClick={handleCodeSubmit}
-                disabled={!code.trim()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground active:scale-[0.97] disabled:opacity-50"
-              >
-                ENTRAR
-              </button>
             </div>
-          </div>
-        ) : (
-          <div className="w-full max-w-sm space-y-4">
-            <h2 className="text-lg font-bold text-center">Quem é você?</h2>
-            <p className="text-sm text-muted-foreground text-center mb-4">
-              Selecione seu nome para continuar
-            </p>
 
-            {loadingMotoboys ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : motoboys.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-8">
-                Nenhum motoboy cadastrado no sistema
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {motoboys.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => selectMotoboy(m)}
-                    className="flex w-full items-center gap-3 rounded-xl border bg-card p-4 text-left transition-all active:scale-[0.98] hover:border-primary hover:shadow-md"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
-                      {m.name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">{m.name}</p>
-                      <p className="text-xs text-muted-foreground">{m.phone} • {m.vehicle}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
+            {error && (
+              <p className="text-center text-sm font-semibold text-destructive">{error}</p>
             )}
+
+            <button
+              onClick={handleLogin}
+              disabled={!phone.trim() || !code.trim() || loading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground active:scale-[0.97] disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "ENTRAR"}
+            </button>
           </div>
-        )}
+        </div>
       </main>
     </div>
   );

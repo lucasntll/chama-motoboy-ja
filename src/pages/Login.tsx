@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bike, Loader2, ArrowLeft } from "lucide-react";
+import { Shield, Loader2, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
@@ -22,16 +22,14 @@ const Login = () => {
     if (error) {
       toast({
         title: "Erro ao entrar",
-        description: "Email ou senha incorretos",
+        description: "Credenciais incorretas",
         variant: "destructive",
       });
       return;
     }
 
-    // Role-based redirect will happen via useAuth
-    // Small delay for auth state to propagate
     setTimeout(() => {
-      navigate("/motoboy");
+      navigate("/admin");
     }, 500);
   };
 
@@ -41,18 +39,18 @@ const Login = () => {
         <button onClick={() => navigate("/")} className="rounded-full p-1.5 active:scale-90 transition-transform hover:bg-secondary">
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-lg font-bold">Área do Motoboy</h1>
+        <h1 className="text-lg font-bold">Painel Admin</h1>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-6">
         <div className="w-full max-w-sm space-y-8">
           <div className="text-center space-y-2">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Bike className="h-8 w-8" />
+              <Shield className="h-8 w-8" />
             </div>
-            <h2 className="text-xl font-bold">Entrar como Motoboy</h2>
+            <h2 className="text-xl font-bold">Acesso Admin</h2>
             <p className="text-sm text-muted-foreground">
-              Use o email e senha cadastrados pelo admin
+              Área restrita do administrador
             </p>
           </div>
 
@@ -65,7 +63,7 @@ const Login = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
+                placeholder="admin@email.com"
                 className="mt-1 w-full rounded-xl border bg-card py-3.5 px-4 text-sm font-medium placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               />

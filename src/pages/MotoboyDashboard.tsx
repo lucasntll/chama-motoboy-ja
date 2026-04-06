@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Power, Loader2, MapPin, Phone, ExternalLink } from "lucide-react";
+import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -43,25 +43,19 @@ const MotoboyDashboard = () => {
     setLoading(false);
   }, [motoboyId]);
 
-  // Track previous pending count for notification
   const prevPendingCount = useRef(0);
 
-  // Realtime
   useEffect(() => {
     if (!motoboyId) return;
-
     const channel = supabase
       .channel("motoboy-dashboard")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => fetchAll())
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [motoboyId, fetchAll]);
 
-  // Notification when new pending orders arrive
   useEffect(() => {
     if (allPending.length > prevPendingCount.current && prevPendingCount.current >= 0 && isOnline && !hasActiveRide) {
-      // Play notification sound
       try {
         const ctx = new AudioContext();
         const osc = ctx.createOscillator();
@@ -74,7 +68,6 @@ const MotoboyDashboard = () => {
         osc.start();
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
         osc.stop(ctx.currentTime + 0.5);
-        // Second beep
         setTimeout(() => {
           const osc2 = ctx.createOscillator();
           const gain2 = ctx.createGain();
@@ -88,7 +81,6 @@ const MotoboyDashboard = () => {
           osc2.stop(ctx.currentTime + 0.5);
         }, 200);
       } catch (_) {}
-
       toast.success("Nova corrida disponível! 🚀");
     }
     prevPendingCount.current = allPending.length;
@@ -165,6 +157,11 @@ const MotoboyDashboard = () => {
     fetchAll();
   };
 
+  const openWhatsApp = (phone: string, name: string) => {
+    const msg = encodeURIComponent(`Olá ${name}, sou o motoboy da sua entrega pelo ChamaMoto!`);
+    window.open(`https://wa.me/${phone.replace(/\D/g, "")}?text=${msg}`, "_blank");
+  };
+
   const openMap = (lat: number | null, lng: number | null) => {
     if (lat && lng) window.open(`https://www.google.com/maps?q=${lat},${lng}`, "_blank");
   };
@@ -185,7 +182,6 @@ const MotoboyDashboard = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-4">
-      {/* Header */}
       <header className="flex items-center justify-between bg-card px-4 py-3 border-b">
         <div>
           <h1 className="text-lg font-bold">Olá, {motoboyName}</h1>
@@ -197,7 +193,6 @@ const MotoboyDashboard = () => {
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4">
-        {/* Online toggle */}
         <button
           onClick={toggleOnline}
           disabled={toggling}
@@ -211,14 +206,12 @@ const MotoboyDashboard = () => {
           {isOnline ? "ONLINE ✓" : "FICAR ONLINE"}
         </button>
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           <StatCard label="Corridas hoje" value={todayCompleted.length.toString()} />
           <StatCard label="Acumulado" value={`R$${totalAccumulated}`} highlight />
           <StatCard label="Comissão" value={`R$${totalAccumulated}`} />
         </div>
 
-        {/* Active ride */}
         {activeOrder && (
           <div className="space-y-2">
             <h2 className="text-sm font-bold uppercase text-muted-foreground">Corrida em andamento</h2>
@@ -229,7 +222,7 @@ const MotoboyDashboard = () => {
                 <p className="text-xs text-muted-foreground">📍 {activeOrder.delivery_address}</p>
                 <p className="text-xs text-muted-foreground">👤 {activeOrder.customer_name} • 📞 {activeOrder.customer_phone}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {activeOrder.delivery_lat && (
                   <button
                     onClick={() => openMap(activeOrder.delivery_lat, activeOrder.delivery_lng)}
@@ -246,6 +239,14 @@ const MotoboyDashboard = () => {
                     <Phone className="h-3 w-3" /> Ligar
                   </a>
                 )}
+                {activeOrder.customer_phone && (
+                  <button
+                    onClick={() => openWhatsApp(activeOrder.customer_phone, activeOrder.customer_name)}
+                    className="flex items-center gap-1 rounded-lg bg-green-600 text-white px-3 py-2 text-xs font-medium"
+                  >
+                    <MessageCircle className="h-3 w-3" /> WhatsApp
+                  </button>
+                )}
               </div>
               <button
                 onClick={() => finalizeOrder(activeOrder.id)}
@@ -257,7 +258,6 @@ const MotoboyDashboard = () => {
           </div>
         )}
 
-        {/* Available rides (only if online and no active ride) */}
         {isOnline && !hasActiveRide && allPending.length > 0 && (
           <div className="space-y-2">
             <h2 className="text-sm font-bold uppercase text-muted-foreground">
@@ -307,7 +307,6 @@ const MotoboyDashboard = () => {
         )}
       </main>
 
-      {/* Confirmation overlay */}
       {confirmOrderId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
           <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
