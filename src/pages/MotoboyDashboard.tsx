@@ -280,7 +280,7 @@ const MotoboyDashboard = () => {
                   </button>
                 )}
                 <button
-                  onClick={() => acceptOrder(order.id)}
+                  onClick={() => setConfirmOrderId(order.id)}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-base font-bold text-primary-foreground active:scale-[0.97]"
                 >
                   ACEITAR CORRIDA
