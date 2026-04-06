@@ -4,12 +4,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
-import RequestRide from "./pages/RequestRide";
-import MyOrders from "./pages/MyOrders";
-import Profile from "./pages/Profile";
-import Login from "./pages/Login";
+import ClientOrder from "./pages/ClientOrder";
+import MotoboyAccess from "./pages/MotoboyAccess";
 import MotoboyDashboard from "./pages/MotoboyDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -22,23 +21,13 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Client routes */}
           <Route path="/" element={<Index />} />
-          <Route path="/solicitar" element={<RequestRide />} />
-          <Route path="/meus-pedidos" element={<MyOrders />} />
-          <Route path="/perfil" element={<Profile />} />
+          <Route path="/cliente" element={<ClientOrder />} />
+          <Route path="/motoboy-acesso" element={<MotoboyAccess />} />
+          <Route path="/motoboy" element={<MotoboyDashboard />} />
 
-          {/* Auth */}
+          {/* Admin (login-based) */}
           <Route path="/login" element={<Login />} />
-
-          {/* Motoboy routes */}
-          <Route path="/motoboy" element={
-            <ProtectedRoute requiredRole="motoboy">
-              <MotoboyDashboard />
-            </ProtectedRoute>
-          } />
-
-          {/* Admin routes */}
           <Route path="/admin" element={
             <ProtectedRoute requiredRole="admin">
               <AdminDashboard />
