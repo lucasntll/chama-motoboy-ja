@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import ClientOrder from "./pages/ClientOrder";
+import OrderTracking from "./pages/OrderTracking";
 import MotoboyAccess from "./pages/MotoboyAccess";
 import MotoboyDashboard from "./pages/MotoboyDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -23,6 +24,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/cliente" element={<ClientOrder />} />
+          <Route path="/acompanhar/:orderId" element={<OrderTracking />} />
           <Route path="/motoboy-acesso" element={<MotoboyAccess />} />
           <Route path="/motoboy" element={<MotoboyDashboard />} />
 
