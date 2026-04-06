@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       motoboys: {
         Row: {
+          access_code: string | null
           created_at: string
           id: string
           is_available: boolean
@@ -34,6 +35,7 @@ export type Database = {
           vehicle: string
         }
         Insert: {
+          access_code?: string | null
           created_at?: string
           id?: string
           is_available?: boolean
@@ -52,6 +54,7 @@ export type Database = {
           vehicle: string
         }
         Update: {
+          access_code?: string | null
           created_at?: string
           id?: string
           is_available?: boolean
