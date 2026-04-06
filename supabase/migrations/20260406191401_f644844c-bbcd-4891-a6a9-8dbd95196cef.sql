@@ -1,0 +1,1 @@
+ALTER TABLE public.motoboys ADD COLUMN access_code text;
