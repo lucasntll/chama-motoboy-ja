@@ -85,7 +85,7 @@ const AdminDashboard = () => {
   }
 
   const totalCompletedOrders = orders.filter((o) => o.status === "completed").length;
-  const totalRevenue = totalCompletedOrders * 2; // Admin earns commission
+  const totalRevenue = totalCompletedOrders * 1; // R$1 commission per ride
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
