@@ -2,14 +2,23 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 
 type Tab = "motoboys" | "orders" | "payments";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+
+  useEffect(() => {
+    if (sessionStorage.getItem("admin_auth") !== "true") {
+      navigate("/login", { replace: true });
+    }
+  }, []);
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("admin_auth");
+    navigate("/login", { replace: true });
+  };
   const [tab, setTab] = useState<Tab>("motoboys");
   const [motoboys, setMotoboys] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
@@ -71,9 +80,8 @@ const AdminDashboard = () => {
     fetchData();
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
+  const handleSignOut = () => {
+    handleLogout();
   };
 
   if (loading) {
