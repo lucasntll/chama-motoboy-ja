@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Hash, Loader2, CheckCircle } from "lucide-react";
+import { ArrowLeft, Hash, Loader2, CheckCircle, RotateCcw, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentLocation } from "@/hooks/useGeocoding";
+import { useClientData, type LastOrder } from "@/hooks/useClientData";
 import PlaceSuggestionInput, { savePopularPlace } from "@/components/PlaceSuggestionInput";
 import AddressInput from "@/components/AddressInput";
+import SavedAddressPicker from "@/components/SavedAddressPicker";
+import { toast } from "sonner";
 
 const CATEGORIES = [
   { label: "🍔 Lanche", value: "Lanche" },
@@ -17,6 +20,7 @@ const CATEGORIES = [
 const ClientOrder = () => {
   const navigate = useNavigate();
   const { getLocation, loading: locLoading } = useCurrentLocation();
+  const { data: clientData, lastOrder, hasSavedData, saveAfterOrder, removeAddress, setDefaultAddress } = useClientData();
 
   const [category, setCategory] = useState("");
   const [orderDesc, setOrderDesc] = useState("");
@@ -29,8 +33,21 @@ const ClientOrder = () => {
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
+  // Auto-fill on mount with saved data
   useEffect(() => {
-    handleUseLocation();
+    if (hasSavedData) {
+      if (clientData.name) setCustomerName(clientData.name);
+      if (clientData.phone) setCustomerPhone(clientData.phone);
+
+      const defaultAddr = clientData.addresses.find((a) => a.isDefault) || clientData.addresses[0];
+      if (defaultAddr) {
+        setDeliveryAddress(defaultAddr.address);
+        setHouseRef(defaultAddr.houseRef);
+        if (defaultAddr.coords) setDeliveryCoords(defaultAddr.coords);
+      }
+    } else {
+      handleUseLocation();
+    }
   }, []);
 
   const handleUseLocation = async () => {
@@ -46,6 +63,31 @@ const ClientOrder = () => {
     if (coords) setDeliveryCoords(coords);
   };
 
+  const applyLastOrder = () => {
+    if (!lastOrder) return;
+    setCategory(lastOrder.category);
+    setOrderDesc(lastOrder.orderDesc);
+    setPurchaseLocation(lastOrder.purchaseLocation);
+    setDeliveryAddress(lastOrder.deliveryAddress);
+    setDeliveryCoords(lastOrder.deliveryCoords);
+    setHouseRef(lastOrder.houseRef);
+    setCustomerName(lastOrder.customerName);
+    setCustomerPhone(lastOrder.customerPhone);
+    toast.success("Último pedido carregado!");
+  };
+
+  const applySavedData = () => {
+    if (clientData.name) setCustomerName(clientData.name);
+    if (clientData.phone) setCustomerPhone(clientData.phone);
+    const defaultAddr = clientData.addresses.find((a) => a.isDefault) || clientData.addresses[0];
+    if (defaultAddr) {
+      setDeliveryAddress(defaultAddr.address);
+      setHouseRef(defaultAddr.houseRef);
+      if (defaultAddr.coords) setDeliveryCoords(defaultAddr.coords);
+    }
+    toast.success("Dados preenchidos!");
+  };
+
   const fullDescription = category ? `${category}: ${orderDesc}`.trim() : orderDesc;
   const canOrder = fullDescription.trim() && deliveryAddress.trim() && houseRef.trim() && customerName.trim() && customerPhone.trim();
 
@@ -53,11 +95,20 @@ const ClientOrder = () => {
     if (!canOrder || submitting) return;
     setSubmitting(true);
 
-    if (purchaseLocation.trim()) {
-      savePopularPlace(purchaseLocation);
-    }
+    if (purchaseLocation.trim()) savePopularPlace(purchaseLocation);
 
     const fullAddress = `${deliveryAddress} - ${houseRef}`;
+
+    const orderData: LastOrder = {
+      category,
+      orderDesc,
+      purchaseLocation,
+      deliveryAddress,
+      deliveryCoords,
+      houseRef,
+      customerName,
+      customerPhone,
+    };
 
     const { data: inserted } = await supabase.from("orders").insert({
       customer_name: customerName,
@@ -75,6 +126,10 @@ const ClientOrder = () => {
       status: "pending",
     } as any).select("id").single();
 
+    // Save data for future auto-fill
+    saveAfterOrder(orderData);
+    toast.success("Seus dados foram salvos para agilizar seus próximos pedidos.");
+
     setSubmitting(false);
 
     if (inserted?.id) {
@@ -91,16 +146,9 @@ const ClientOrder = () => {
           <CheckCircle className="h-10 w-10 text-primary" />
         </div>
         <h2 className="text-xl font-bold text-center mb-2">Pedido Enviado!</h2>
-        <p className="text-sm text-muted-foreground text-center mb-2">
-          Aguardando motoboy aceitar sua corrida...
-        </p>
-        <p className="text-xs text-muted-foreground text-center mb-8">
-          Você será notificado quando um motoboy aceitar
-        </p>
-        <button
-          onClick={() => navigate("/")}
-          className="w-full max-w-xs rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground active:scale-[0.97]"
-        >
+        <p className="text-sm text-muted-foreground text-center mb-2">Aguardando motoboy aceitar sua corrida...</p>
+        <p className="text-xs text-muted-foreground text-center mb-8">Você será notificado quando um motoboy aceitar</p>
+        <button onClick={() => navigate("/")} className="w-full max-w-xs rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground active:scale-[0.97]">
           Voltar ao início
         </button>
       </div>
@@ -117,6 +165,32 @@ const ClientOrder = () => {
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-6">
+        {/* Quick action buttons */}
+        {(hasSavedData || lastOrder) && (
+          <div className="flex gap-2">
+            {hasSavedData && (
+              <button
+                type="button"
+                onClick={applySavedData}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border bg-card py-3 text-sm font-semibold text-primary hover:bg-secondary transition-colors active:scale-[0.97]"
+              >
+                <UserCheck className="h-4 w-4" />
+                Usar dados salvos
+              </button>
+            )}
+            {lastOrder && (
+              <button
+                type="button"
+                onClick={applyLastOrder}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border bg-card py-3 text-sm font-semibold text-primary hover:bg-secondary transition-colors active:scale-[0.97]"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Repetir último pedido
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Customer info */}
         <div className="space-y-3">
           <div>
@@ -173,13 +247,24 @@ const ClientOrder = () => {
             De onde vai sair? <span className="text-muted-foreground/60">(opcional)</span>
           </label>
           <div className="mt-1.5">
-            <PlaceSuggestionInput
-              value={purchaseLocation}
-              onChange={setPurchaseLocation}
-              placeholder="Ex: farmácia, mercado…"
-            />
+            <PlaceSuggestionInput value={purchaseLocation} onChange={setPurchaseLocation} placeholder="Ex: farmácia, mercado…" />
           </div>
         </div>
+
+        {/* Saved addresses */}
+        {clientData.addresses.length > 0 && (
+          <SavedAddressPicker
+            addresses={clientData.addresses}
+            onSelect={(addr) => {
+              setDeliveryAddress(addr.address);
+              setHouseRef(addr.houseRef);
+              if (addr.coords) setDeliveryCoords(addr.coords);
+              toast.success(`Endereço "${addr.label}" selecionado`);
+            }}
+            onRemove={removeAddress}
+            onSetDefault={setDefaultAddress}
+          />
+        )}
 
         {/* Delivery address */}
         <div>
@@ -198,9 +283,7 @@ const ClientOrder = () => {
 
         {/* House number */}
         <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Número da casa / referência *
-          </label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Número da casa / referência *</label>
           <div className="mt-1.5 flex items-center gap-2 rounded-xl border bg-card px-4 py-3">
             <Hash className="h-4 w-4 text-muted-foreground shrink-0" />
             <input
@@ -222,11 +305,7 @@ const ClientOrder = () => {
               : "bg-muted text-muted-foreground cursor-not-allowed shadow-none"
           }`}
         >
-          {submitting ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <>🛵 CHAMAR MOTOBOY</>
-          )}
+          {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>🛵 CHAMAR MOTOBOY</>}
         </button>
       </main>
     </div>
