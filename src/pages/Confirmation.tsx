@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { CheckCircle2, Phone, Bike } from "lucide-react";
+import { whatsappUrl } from "@/lib/whatsapp";
 import type { Motoboy } from "@/lib/data";
 import BottomNav from "@/components/BottomNav";
 import StarRating from "@/components/StarRating";
@@ -53,7 +54,7 @@ const Confirmation = () => {
           </div>
 
           <a
-            href={`https://wa.me/${motoboy.phone}`}
+            href={whatsappUrl(motoboy.phone)}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow transition-shadow hover:shadow-lg active:scale-[0.97]"

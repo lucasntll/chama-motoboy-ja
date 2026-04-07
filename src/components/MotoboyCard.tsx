@@ -1,5 +1,6 @@
 import { Bike, Phone, MapPin, Clock } from "lucide-react";
 import StarRating from "./StarRating";
+import { whatsappUrl } from "@/lib/whatsapp";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -84,7 +85,7 @@ const MotoboyCard = ({ motoboy, onSelect, compact }: MotoboyCardProps) => {
       </div>
       {!compact && (
         <a
-          href={`https://wa.me/${motoboy.phone}`}
+          href={whatsappUrl(motoboy.phone)}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}

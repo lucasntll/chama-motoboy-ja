@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, Phone, MessageCircle, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { openWhatsApp } from "@/lib/whatsapp";
 
 const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }> = {
   pending: { label: "Procurando motoboy...", emoji: "🔍", color: "text-yellow-600" },
@@ -73,11 +74,9 @@ const OrderTracking = () => {
     fetchOrder();
   };
 
-  const openWhatsApp = () => {
+  const handleWhatsApp = () => {
     if (!motoboy?.phone) return;
-    const phone = motoboy.phone.replace(/\D/g, "");
-    const msg = encodeURIComponent(`Olá ${motoboy.name}, estou acompanhando meu pedido!`);
-    window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+    openWhatsApp(motoboy.phone, `Olá ${motoboy.name}, estou acompanhando meu pedido!`);
   };
 
   if (loading) {
@@ -145,7 +144,7 @@ const OrderTracking = () => {
                 <Phone className="h-4 w-4" /> Ligar
               </a>
               <button
-                onClick={openWhatsApp}
+                onClick={handleWhatsApp}
                 className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[hsl(142,70%,45%)] py-2.5 text-sm font-semibold text-white active:scale-[0.97]"
               >
                 <MessageCircle className="h-4 w-4" /> WhatsApp

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ShoppingBag, Bell, Hash, Loader2 } from "lucide-react";
+import { whatsappUrl } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentLocation } from "@/hooks/useGeocoding";
 import { useClientData } from "@/hooks/useClientData";
@@ -131,9 +132,7 @@ const RequestRide = () => {
       ? `https://www.google.com/maps?q=${deliveryCoords[0]},${deliveryCoords[1]}`
       : "";
 
-    const msg = encodeURIComponent(
-      `Novo pedido! 🚀\n\n🛒 *Pedido:* ${orderDesc}${purchaseLocation ? `\n🏪 *Local:* ${purchaseLocation}` : ""}\n📍 *Entregar em:* ${fullAddress}\n🏠 *Referência:* ${houseRef}\n🗺️ *Mapa:* ${mapsLink}\n👤 *Cliente:* ${customerName}\n📞 *Telefone:* ${customerPhone}\n💰 *Ganho:* R$${(FIXED_PRICE - COMMISSION).toFixed(2)}\n\nResponda ACEITAR para pegar`
-    );
+    const msgText = `Novo pedido! 🚀\n\n🛒 *Pedido:* ${orderDesc}${purchaseLocation ? `\n🏪 *Local:* ${purchaseLocation}` : ""}\n📍 *Entregar em:* ${fullAddress}\n🏠 *Referência:* ${houseRef}\n🗺️ *Mapa:* ${mapsLink}\n👤 *Cliente:* ${customerName}\n📞 *Telefone:* ${customerPhone}\n💰 *Ganho:* R$${(FIXED_PRICE - COMMISSION).toFixed(2)}\n\nResponda ACEITAR para pegar`;
 
     setTimeout(() => {
       setStep("found");
@@ -143,7 +142,7 @@ const RequestRide = () => {
     }, 2000);
 
     // Store WhatsApp link for the confirmed view
-    localStorage.setItem("pending_wpp_msg", `https://wa.me/${GILBERTO_PHONE}?text=${msg}`);
+    localStorage.setItem("pending_wpp_msg", whatsappUrl(GILBERTO_PHONE, msgText));
   };
 
   return (
@@ -277,7 +276,7 @@ const RequestRide = () => {
 };
 
 const ConfirmedView = ({ motoboyName }: { motoboyName: string }) => {
-  const wppLink = localStorage.getItem("pending_wpp_msg") || `https://wa.me/${GILBERTO_PHONE}`;
+  const wppLink = localStorage.getItem("pending_wpp_msg") || whatsappUrl(GILBERTO_PHONE);
 
   return (
     <div className="flex flex-col items-center justify-center py-12 space-y-6 animate-fade-in-up">
