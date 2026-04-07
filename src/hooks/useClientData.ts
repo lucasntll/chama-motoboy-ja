@@ -39,8 +39,31 @@ function load<T>(key: string, fallback: T): T {
 
 const emptyClient: ClientData = { name: "", phone: "", addresses: [] };
 
+/** Merge legacy profile keys into client_data on first load */
+function loadClientWithFallbacks(): ClientData {
+  const saved = load(CLIENT_KEY, emptyClient);
+  // Fallback: read from legacy "user_profile" or "profile_name"/"profile_phone"
+  if (!saved.name) {
+    const legacy = load<{ name?: string; phone?: string }>("user_profile", {});
+    if (legacy.name) saved.name = legacy.name;
+    else {
+      const pn = localStorage.getItem("profile_name");
+      if (pn) saved.name = pn;
+    }
+  }
+  if (!saved.phone) {
+    const legacy = load<{ name?: string; phone?: string }>("user_profile", {});
+    if (legacy.phone) saved.phone = legacy.phone;
+    else {
+      const pp = localStorage.getItem("profile_phone");
+      if (pp) saved.phone = pp;
+    }
+  }
+  return saved;
+}
+
 export function useClientData() {
-  const [data, setData] = useState<ClientData>(() => load(CLIENT_KEY, emptyClient));
+  const [data, setData] = useState<ClientData>(() => loadClientWithFallbacks());
   const [lastOrder, setLastOrder] = useState<LastOrder | null>(() => load(LAST_ORDER_KEY, null));
 
   const hasSavedData = !!(data.name || data.phone || data.addresses.length);
@@ -48,6 +71,15 @@ export function useClientData() {
   const persist = useCallback((next: ClientData) => {
     setData(next);
     localStorage.setItem(CLIENT_KEY, JSON.stringify(next));
+    // Keep legacy keys in sync so other pages (Profile, RequestRide) work
+    if (next.name) localStorage.setItem("profile_name", next.name);
+    if (next.phone) localStorage.setItem("profile_phone", next.phone);
+    try {
+      const profile = load<{ name?: string; phone?: string; photo?: string }>("user_profile", {});
+      profile.name = next.name;
+      profile.phone = next.phone;
+      localStorage.setItem("user_profile", JSON.stringify(profile));
+    } catch {}
   }, []);
 
   const saveAfterOrder = useCallback(
