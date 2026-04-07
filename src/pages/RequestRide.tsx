@@ -112,6 +112,18 @@ const RequestRide = () => {
     const history = JSON.parse(localStorage.getItem("ride_history") || "[]");
     localStorage.setItem("ride_history", JSON.stringify([ride, ...history]));
 
+    // Save client data for auto-fill on next order
+    saveAfterOrder({
+      category: "",
+      orderDesc,
+      purchaseLocation,
+      deliveryAddress,
+      deliveryCoords,
+      houseRef,
+      customerName,
+      customerPhone,
+    });
+
     setMotoboyName(GILBERTO_NAME);
 
     // Build Google Maps link
