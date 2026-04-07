@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ShoppingBag, Bell, Hash, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentLocation } from "@/hooks/useGeocoding";
+import { useClientData } from "@/hooks/useClientData";
 import AddressInput from "@/components/AddressInput";
 import PlaceSuggestionInput, { savePopularPlace } from "@/components/PlaceSuggestionInput";
 import SearchingMotoboy from "@/components/SearchingMotoboy";
@@ -18,6 +19,7 @@ type FlowStep = "form" | "searching" | "found" | "confirmed";
 const RequestRide = () => {
   const navigate = useNavigate();
   const { getLocation, loading: locLoading } = useCurrentLocation();
+  const { data: clientData, hasSavedData, saveAfterOrder } = useClientData();
 
   const [orderDesc, setOrderDesc] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
@@ -27,11 +29,21 @@ const RequestRide = () => {
   const [step, setStep] = useState<FlowStep>("form");
   const [motoboyName, setMotoboyName] = useState("");
 
-  const customerName = localStorage.getItem("profile_name") || "";
-  const customerPhone = localStorage.getItem("profile_phone") || "";
+  const customerName = clientData.name || "";
+  const customerPhone = clientData.phone || "";
 
+  // Auto-fill address from saved data
   useEffect(() => {
-    handleUseLocation();
+    if (hasSavedData) {
+      const defaultAddr = clientData.addresses.find((a) => a.isDefault) || clientData.addresses[0];
+      if (defaultAddr) {
+        setDeliveryAddress(defaultAddr.address);
+        setHouseRef(defaultAddr.houseRef);
+        if (defaultAddr.coords) setDeliveryCoords(defaultAddr.coords);
+      }
+    } else {
+      handleUseLocation();
+    }
   }, []);
 
   const handleUseLocation = async () => {

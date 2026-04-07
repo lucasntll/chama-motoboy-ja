@@ -1,21 +1,41 @@
 import { useState, useEffect } from "react";
 import { Camera, Save } from "lucide-react";
 import { DEFAULT_PROFILE, type UserProfile } from "@/lib/data";
+import { useClientData } from "@/hooks/useClientData";
 import BottomNav from "@/components/BottomNav";
 import { useToast } from "@/hooks/use-toast";
 
 const Profile = () => {
   const { toast } = useToast();
+  const { data: clientData, saveAfterOrder } = useClientData();
   const [editing, setEditing] = useState(false);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
 
   useEffect(() => {
     const stored = localStorage.getItem("user_profile");
-    if (stored) setProfile(JSON.parse(stored));
+    const parsed = stored ? JSON.parse(stored) : DEFAULT_PROFILE;
+    // Merge clientData into profile if available
+    if (clientData.name && !parsed.name) parsed.name = clientData.name;
+    if (clientData.phone && !parsed.phone) parsed.phone = clientData.phone;
+    setProfile(parsed);
   }, []);
 
   const handleSave = () => {
     localStorage.setItem("user_profile", JSON.stringify(profile));
+    // Sync to clientData system
+    localStorage.setItem("profile_name", profile.name);
+    localStorage.setItem("profile_phone", profile.phone);
+    const clientRaw = localStorage.getItem("client_data");
+    if (clientRaw) {
+      try {
+        const cd = JSON.parse(clientRaw);
+        cd.name = profile.name;
+        cd.phone = profile.phone;
+        localStorage.setItem("client_data", JSON.stringify(cd));
+      } catch {}
+    } else {
+      localStorage.setItem("client_data", JSON.stringify({ name: profile.name, phone: profile.phone, addresses: [] }));
+    }
     setEditing(false);
     toast({ title: "Perfil atualizado!", description: "Suas informações foram salvas." });
   };
