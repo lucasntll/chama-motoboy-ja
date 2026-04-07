@@ -132,9 +132,7 @@ const RequestRide = () => {
       ? `https://www.google.com/maps?q=${deliveryCoords[0]},${deliveryCoords[1]}`
       : "";
 
-    const msg = encodeURIComponent(
-      `Novo pedido! 🚀\n\n🛒 *Pedido:* ${orderDesc}${purchaseLocation ? `\n🏪 *Local:* ${purchaseLocation}` : ""}\n📍 *Entregar em:* ${fullAddress}\n🏠 *Referência:* ${houseRef}\n🗺️ *Mapa:* ${mapsLink}\n👤 *Cliente:* ${customerName}\n📞 *Telefone:* ${customerPhone}\n💰 *Ganho:* R$${(FIXED_PRICE - COMMISSION).toFixed(2)}\n\nResponda ACEITAR para pegar`
-    );
+    const msgText = `Novo pedido! 🚀\n\n🛒 *Pedido:* ${orderDesc}${purchaseLocation ? `\n🏪 *Local:* ${purchaseLocation}` : ""}\n📍 *Entregar em:* ${fullAddress}\n🏠 *Referência:* ${houseRef}\n🗺️ *Mapa:* ${mapsLink}\n👤 *Cliente:* ${customerName}\n📞 *Telefone:* ${customerPhone}\n💰 *Ganho:* R$${(FIXED_PRICE - COMMISSION).toFixed(2)}\n\nResponda ACEITAR para pegar`;
 
     setTimeout(() => {
       setStep("found");
@@ -144,7 +142,7 @@ const RequestRide = () => {
     }, 2000);
 
     // Store WhatsApp link for the confirmed view
-    localStorage.setItem("pending_wpp_msg", `https://wa.me/${GILBERTO_PHONE}?text=${msg}`);
+    localStorage.setItem("pending_wpp_msg", whatsappUrl(GILBERTO_PHONE, msgText));
   };
 
   return (
