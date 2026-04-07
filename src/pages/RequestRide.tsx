@@ -276,7 +276,7 @@ const RequestRide = () => {
 };
 
 const ConfirmedView = ({ motoboyName }: { motoboyName: string }) => {
-  const wppLink = localStorage.getItem("pending_wpp_msg") || `https://wa.me/${GILBERTO_PHONE}`;
+  const wppLink = localStorage.getItem("pending_wpp_msg") || whatsappUrl(GILBERTO_PHONE);
 
   return (
     <div className="flex flex-col items-center justify-center py-12 space-y-6 animate-fade-in-up">
