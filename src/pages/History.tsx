@@ -53,7 +53,7 @@ const History = () => {
                       </p>
                     </div>
                     <a
-                      href={`https://wa.me/${ride.motoboyPhone}`}
+                      href={`https://api.whatsapp.com/send?phone=${(ride.motoboyPhone || "").replace(/\D/g, "")}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-90 transition-transform"

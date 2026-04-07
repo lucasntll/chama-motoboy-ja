@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ShoppingBag, Bell, Hash, Loader2 } from "lucide-react";
+import { whatsappUrl } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentLocation } from "@/hooks/useGeocoding";
 import { useClientData } from "@/hooks/useClientData";

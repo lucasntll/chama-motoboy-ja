@@ -1,11 +1,11 @@
 import { MessageCircle } from "lucide-react";
+import { openWhatsApp } from "@/lib/whatsapp";
 
 const WHATSAPP_NUMBER = "5535997570009";
 
 const WhatsAppFAB = () => {
   const handleClick = () => {
-    const msg = encodeURIComponent("Olá! Gostaria de fazer um pedido. Podem me ajudar?");
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`, "_blank");
+    openWhatsApp(WHATSAPP_NUMBER, "Olá! Gostaria de fazer um pedido. Podem me ajudar?");
   };
 
   return (

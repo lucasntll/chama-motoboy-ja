@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { openWhatsApp } from "@/lib/whatsapp";
 
 const MotoboyDashboard = () => {
   const navigate = useNavigate();
@@ -157,9 +158,8 @@ const MotoboyDashboard = () => {
     fetchAll();
   };
 
-  const openWhatsApp = (phone: string, name: string) => {
-    const msg = encodeURIComponent(`Olá ${name}, sou o motoboy da sua entrega pelo ChamaMoto!`);
-    window.open(`https://wa.me/${phone.replace(/\D/g, "")}?text=${msg}`, "_blank");
+  const handleWhatsApp = (phone: string, name: string) => {
+    openWhatsApp(phone, `Olá ${name}, sou o motoboy da sua entrega pelo ChamaMoto!`);
   };
 
   const openMap = (lat: number | null, lng: number | null) => {
@@ -241,7 +241,7 @@ const MotoboyDashboard = () => {
                 )}
                 {activeOrder.customer_phone && (
                   <button
-                    onClick={() => openWhatsApp(activeOrder.customer_phone, activeOrder.customer_name)}
+                    onClick={() => handleWhatsApp(activeOrder.customer_phone, activeOrder.customer_name)}
                     className="flex items-center gap-1 rounded-lg bg-green-600 text-white px-3 py-2 text-xs font-medium"
                   >
                     <MessageCircle className="h-3 w-3" /> WhatsApp
