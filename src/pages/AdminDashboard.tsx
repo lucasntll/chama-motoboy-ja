@@ -41,10 +41,10 @@ const AdminDashboard = () => {
   const getMotoboyStats = (motoboyId: string) => {
     const motoboyOrders = orders.filter((o) => o.motoboy_id === motoboyId && o.status === "completed");
     const totalRides = motoboyOrders.length;
-    const totalEarned = totalRides * 6; // R$7 - R$1 commission = R$6 net
-    const totalCommission = totalRides * 1;
+    const totalEarned = totalRides * 5; // R$7 - R$2 commission = R$5 net
+    const totalCommission = totalRides * 2;
     const paidOrders = motoboyOrders.filter((o: any) => o.is_paid);
-    const totalPaid = paidOrders.length * 1;
+    const totalPaid = paidOrders.length * 2;
     const owed = totalCommission - totalPaid;
     return { totalRides, totalEarned, totalCommission, owed };
   };

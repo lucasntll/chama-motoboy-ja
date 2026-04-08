@@ -208,8 +208,14 @@ const MotoboyDashboard = () => {
 
         <div className="grid grid-cols-3 gap-2">
           <StatCard label="Corridas hoje" value={todayCompleted.length.toString()} />
-          <StatCard label="Acumulado" value={`R$${totalAccumulated}`} highlight />
-          <StatCard label="Comissão" value={`R$${totalAccumulated}`} />
+          <StatCard label="Total corridas" value={totalAccumulated.toString()} />
+          <StatCard label="A pagar" value={`R$${totalAccumulated * 2}`} highlight />
+        </div>
+
+        <div className="rounded-lg border bg-card px-4 py-2">
+          <p className="text-xs text-muted-foreground text-center">
+            💡 Você paga apenas pelas corridas concluídas (R$2 por entrega)
+          </p>
         </div>
 
         {activeOrder && (
