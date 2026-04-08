@@ -1,9 +1,16 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink } from "lucide-react";
+import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/whatsapp";
+
+interface DayGroup {
+  date: string;
+  label: string;
+  rides: number;
+  amount: number;
+}
 
 const MotoboyDashboard = () => {
   const navigate = useNavigate();
@@ -17,6 +24,7 @@ const MotoboyDashboard = () => {
   const [isOnline, setIsOnline] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [confirmOrderId, setConfirmOrderId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     if (!motoboyId) {
@@ -28,13 +36,11 @@ const MotoboyDashboard = () => {
 
   const fetchAll = useCallback(async () => {
     if (!motoboyId) return;
-
     const [motoboyRes, myOrdersRes, pendingRes] = await Promise.all([
       supabase.from("motoboys").select("*").eq("id", motoboyId).maybeSingle(),
       supabase.from("orders").select("*").eq("motoboy_id", motoboyId).order("created_at", { ascending: false }),
       supabase.from("orders").select("*").eq("status", "pending").is("motoboy_id", null).order("created_at", { ascending: false }),
     ]);
-
     if (motoboyRes.data) {
       setMotoboyData(motoboyRes.data);
       setIsOnline(motoboyRes.data.is_available);
@@ -55,30 +61,24 @@ const MotoboyDashboard = () => {
     return () => { supabase.removeChannel(channel); };
   }, [motoboyId, fetchAll]);
 
+  const hasActiveRide = orders.some((o) => ["accepted", "picking_up", "delivering"].includes(o.status));
+
   useEffect(() => {
     if (allPending.length > prevPendingCount.current && prevPendingCount.current >= 0 && isOnline && !hasActiveRide) {
       try {
         const ctx = new AudioContext();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = 880;
-        osc.type = "sine";
-        gain.gain.value = 0.3;
-        osc.start();
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880; osc.type = "sine"; gain.gain.value = 0.3;
+        osc.start(); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
         osc.stop(ctx.currentTime + 0.5);
         setTimeout(() => {
           const osc2 = ctx.createOscillator();
           const gain2 = ctx.createGain();
-          osc2.connect(gain2);
-          gain2.connect(ctx.destination);
-          osc2.frequency.value = 1100;
-          osc2.type = "sine";
-          gain2.gain.value = 0.3;
-          osc2.start();
-          gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+          osc2.connect(gain2); gain2.connect(ctx.destination);
+          osc2.frequency.value = 1100; osc2.type = "sine"; gain2.gain.value = 0.3;
+          osc2.start(); gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
           osc2.stop(ctx.currentTime + 0.5);
         }, 200);
       } catch (_) {}
@@ -87,75 +87,58 @@ const MotoboyDashboard = () => {
     prevPendingCount.current = allPending.length;
   }, [allPending.length, isOnline]);
 
-  const todayCompleted = orders.filter(
-    (o) => o.status === "completed" && new Date(o.created_at).toDateString() === new Date().toDateString()
+  const completedOrders = useMemo(() => orders.filter((o) => o.status === "completed"), [orders]);
+
+  const todayStr = new Date().toLocaleDateString("pt-BR");
+  const todayCompleted = completedOrders.filter(
+    (o) => new Date(o.completed_at || o.created_at).toLocaleDateString("pt-BR") === todayStr
   );
-  const totalAccumulated = orders.filter((o) => o.status === "completed").length;
-  const hasActiveRide = orders.some((o) => ["accepted", "picking_up", "delivering"].includes(o.status));
+
+  const dailyHistory: DayGroup[] = useMemo(() => {
+    const groups: Record<string, DayGroup> = {};
+    completedOrders.forEach((o) => {
+      const d = new Date(o.completed_at || o.created_at);
+      const key = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString("pt-BR");
+      if (!groups[key]) groups[key] = { date: key, label, rides: 0, amount: 0 };
+      groups[key].rides++;
+      groups[key].amount += 2;
+    });
+    return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date));
+  }, [completedOrders]);
+
+  const totalAccumulated = completedOrders.length;
   const activeOrder = orders.find((o) => ["accepted", "picking_up", "delivering"].includes(o.status));
 
   const toggleOnline = async () => {
     if (!motoboyId) return;
     setToggling(true);
     const newStatus = !isOnline;
-    await supabase
-      .from("motoboys")
-      .update({
-        is_available: newStatus,
-        status: newStatus ? "available" : "inactive",
-        last_activity: new Date().toISOString(),
-      })
-      .eq("id", motoboyId);
+    await supabase.from("motoboys").update({
+      is_available: newStatus,
+      status: newStatus ? "available" : "inactive",
+      last_activity: new Date().toISOString(),
+    }).eq("id", motoboyId);
     setIsOnline(newStatus);
     setToggling(false);
     toast(newStatus ? "Você está online! 🟢" : "Você está offline ⚪");
   };
 
   const acceptOrder = async (orderId: string) => {
-    if (hasActiveRide) {
-      toast.error("Você já tem uma corrida ativa!");
-      return;
-    }
-
-    const { data: check } = await supabase
-      .from("orders")
-      .select("status, motoboy_id")
-      .eq("id", orderId)
-      .maybeSingle();
-
+    if (hasActiveRide) { toast.error("Você já tem uma corrida ativa!"); return; }
+    const { data: check } = await supabase.from("orders").select("status, motoboy_id").eq("id", orderId).maybeSingle();
     if (!check || check.motoboy_id || check.status !== "pending") {
-      toast.error("Corrida já aceita por outro motoboy");
-      fetchAll();
-      return;
+      toast.error("Corrida já aceita por outro motoboy"); fetchAll(); return;
     }
-
-    await supabase.from("orders").update({
-      status: "accepted",
-      motoboy_id: motoboyId,
-    } as any).eq("id", orderId);
-
-    await supabase.from("motoboys").update({
-      status: "busy",
-      last_activity: new Date().toISOString(),
-    }).eq("id", motoboyId);
-
-    toast.success("Corrida aceita! 🚀");
-    fetchAll();
+    await supabase.from("orders").update({ status: "accepted", motoboy_id: motoboyId } as any).eq("id", orderId);
+    await supabase.from("motoboys").update({ status: "busy", last_activity: new Date().toISOString() }).eq("id", motoboyId);
+    toast.success("Corrida aceita! 🚀"); fetchAll();
   };
 
   const finalizeOrder = async (orderId: string) => {
-    await supabase.from("orders").update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
-    } as any).eq("id", orderId);
-
-    await supabase.from("motoboys").update({
-      status: "available",
-      last_activity: new Date().toISOString(),
-    }).eq("id", motoboyId!);
-
-    toast.success("Entrega finalizada! ✅");
-    fetchAll();
+    await supabase.from("orders").update({ status: "completed", completed_at: new Date().toISOString() } as any).eq("id", orderId);
+    await supabase.from("motoboys").update({ status: "available", last_activity: new Date().toISOString() }).eq("id", motoboyId!);
+    toast.success("Entrega finalizada! ✅"); fetchAll();
   };
 
   const handleWhatsApp = (phone: string, name: string) => {
@@ -193,23 +176,23 @@ const MotoboyDashboard = () => {
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4">
+        {/* Online toggle */}
         <button
           onClick={toggleOnline}
           disabled={toggling}
           className={`flex w-full items-center justify-center gap-3 rounded-xl py-4 text-base font-bold transition-all active:scale-[0.97] ${
-            isOnline
-              ? "bg-primary text-primary-foreground shadow-lg"
-              : "bg-muted text-muted-foreground border"
+            isOnline ? "bg-primary text-primary-foreground shadow-lg" : "bg-muted text-muted-foreground border"
           }`}
         >
           {toggling ? <Loader2 className="h-5 w-5 animate-spin" /> : <Power className="h-5 w-5" />}
           {isOnline ? "ONLINE ✓" : "FICAR ONLINE"}
         </button>
 
+        {/* Today stats */}
         <div className="grid grid-cols-3 gap-2">
-          <StatCard label="Corridas hoje" value={todayCompleted.length.toString()} />
-          <StatCard label="Total corridas" value={totalAccumulated.toString()} />
-          <StatCard label="A pagar" value={`R$${totalAccumulated * 2}`} highlight />
+          <StatCard label="Hoje" value={todayCompleted.length.toString()} />
+          <StatCard label="Hoje (R$)" value={`R$${todayCompleted.length * 2}`} highlight />
+          <StatCard label="Total geral" value={`R$${totalAccumulated * 2}`} />
         </div>
 
         <div className="rounded-lg border bg-card px-4 py-2">
@@ -218,101 +201,63 @@ const MotoboyDashboard = () => {
           </p>
         </div>
 
-        {activeOrder && (
+        {/* Daily history */}
+        {dailyHistory.length > 0 && (
           <div className="space-y-2">
-            <h2 className="text-sm font-bold uppercase text-muted-foreground">Corrida em andamento</h2>
-            <div className="rounded-xl border-2 border-primary bg-card p-4 space-y-3">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="flex w-full items-center justify-between text-sm font-bold uppercase text-muted-foreground"
+            >
+              <span>📊 Histórico por dia</span>
+              {showHistory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+            {showHistory && (
               <div className="space-y-1.5">
-                <p className="text-sm font-bold">🛒 {activeOrder.item_description}</p>
-                {activeOrder.purchase_location && <p className="text-xs text-muted-foreground">🏪 {activeOrder.purchase_location}</p>}
-                <p className="text-xs text-muted-foreground">📍 {activeOrder.delivery_address}</p>
-                <p className="text-xs text-muted-foreground">👤 {activeOrder.customer_name} • 📞 {activeOrder.customer_phone}</p>
+                {dailyHistory.map((d) => (
+                  <div key={d.date} className="flex items-center justify-between rounded-lg border bg-card px-4 py-2.5">
+                    <span className="text-sm font-medium">{d.label}</span>
+                    <span className="text-sm font-bold text-primary">
+                      {d.rides} {d.rides === 1 ? "corrida" : "corridas"} — R${d.amount}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {activeOrder.delivery_lat && (
-                  <button
-                    onClick={() => openMap(activeOrder.delivery_lat, activeOrder.delivery_lng)}
-                    className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium"
-                  >
-                    <MapPin className="h-3 w-3" /> Mapa
-                  </button>
-                )}
-                {activeOrder.customer_phone && (
-                  <a
-                    href={`tel:${activeOrder.customer_phone}`}
-                    className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium"
-                  >
-                    <Phone className="h-3 w-3" /> Ligar
-                  </a>
-                )}
-                {activeOrder.customer_phone && (
-                  <button
-                    onClick={() => handleWhatsApp(activeOrder.customer_phone, activeOrder.customer_name)}
-                    className="flex items-center gap-1 rounded-lg bg-green-600 text-white px-3 py-2 text-xs font-medium"
-                  >
-                    <MessageCircle className="h-3 w-3" /> WhatsApp
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => finalizeOrder(activeOrder.id)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground active:scale-[0.97] shadow-lg"
-              >
-                FINALIZAR CORRIDA ✅
-              </button>
-            </div>
+            )}
           </div>
         )}
 
+        {/* Active order */}
+        {activeOrder && (
+          <ActiveOrderCard
+            order={activeOrder}
+            onFinalize={finalizeOrder}
+            onMap={openMap}
+            onWhatsApp={handleWhatsApp}
+          />
+        )}
+
+        {/* Pending orders */}
         {isOnline && !hasActiveRide && allPending.length > 0 && (
           <div className="space-y-2">
             <h2 className="text-sm font-bold uppercase text-muted-foreground">
               Corridas disponíveis ({allPending.length})
             </h2>
             {allPending.map((order) => (
-              <div key={order.id} className="rounded-xl border bg-card p-4 space-y-3">
-                <div className="space-y-1.5">
-                  <p className="text-sm font-bold">🛒 {order.item_description}</p>
-                  {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
-                  <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
-                  <p className="text-xs text-muted-foreground">👤 {order.customer_name} • 📞 {order.customer_phone}</p>
-                </div>
-                {order.delivery_lat && (
-                  <button
-                    onClick={() => openMap(order.delivery_lat, order.delivery_lng)}
-                    className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium"
-                  >
-                    <ExternalLink className="h-3 w-3" /> Ver no mapa
-                  </button>
-                )}
-                <button
-                  onClick={() => setConfirmOrderId(order.id)}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-base font-bold text-primary-foreground active:scale-[0.97]"
-                >
-                  ACEITAR CORRIDA
-                </button>
-              </div>
+              <PendingOrderCard key={order.id} order={order} onAccept={() => setConfirmOrderId(order.id)} onMap={openMap} />
             ))}
           </div>
         )}
 
         {isOnline && !hasActiveRide && allPending.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <span className="text-4xl mb-3">🏍️</span>
-            <p className="text-sm font-semibold text-muted-foreground">Nenhuma corrida disponível</p>
-            <p className="text-xs text-muted-foreground mt-1">Aguarde novos pedidos...</p>
-          </div>
+          <EmptyState emoji="🏍️" title="Nenhuma corrida disponível" subtitle="Aguarde novos pedidos..." />
         )}
 
         {!isOnline && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <span className="text-4xl mb-3">😴</span>
-            <p className="text-sm font-semibold text-muted-foreground">Você está offline</p>
-            <p className="text-xs text-muted-foreground mt-1">Fique online para receber corridas</p>
-          </div>
+          <EmptyState emoji="😴" title="Você está offline" subtitle="Fique online para receber corridas" />
         )}
       </main>
 
+      {/* Confirm modal */}
       {confirmOrderId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
           <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
@@ -321,21 +266,8 @@ const MotoboyDashboard = () => {
               Ao confirmar, você se compromete a realizar esta entrega.
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmOrderId(null)}
-                className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => {
-                  acceptOrder(confirmOrderId);
-                  setConfirmOrderId(null);
-                }}
-                className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground active:scale-[0.97]"
-              >
-                Confirmar ✓
-              </button>
+              <button onClick={() => setConfirmOrderId(null)} className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">Cancelar</button>
+              <button onClick={() => { acceptOrder(confirmOrderId); setConfirmOrderId(null); }} className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground active:scale-[0.97]">Confirmar ✓</button>
             </div>
           </div>
         </div>
@@ -348,6 +280,67 @@ const StatCard = ({ label, value, highlight }: { label: string; value: string; h
   <div className="rounded-lg border bg-card p-3 text-center">
     <p className={`text-lg font-bold ${highlight ? "text-primary" : ""}`}>{value}</p>
     <p className="text-[10px] text-muted-foreground">{label}</p>
+  </div>
+);
+
+const EmptyState = ({ emoji, title, subtitle }: { emoji: string; title: string; subtitle: string }) => (
+  <div className="flex flex-col items-center justify-center py-12 text-center">
+    <span className="text-4xl mb-3">{emoji}</span>
+    <p className="text-sm font-semibold text-muted-foreground">{title}</p>
+    <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+  </div>
+);
+
+const ActiveOrderCard = ({ order, onFinalize, onMap, onWhatsApp }: any) => (
+  <div className="space-y-2">
+    <h2 className="text-sm font-bold uppercase text-muted-foreground">Corrida em andamento</h2>
+    <div className="rounded-xl border-2 border-primary bg-card p-4 space-y-3">
+      <div className="space-y-1.5">
+        <p className="text-sm font-bold">🛒 {order.item_description}</p>
+        {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
+        <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
+        <p className="text-xs text-muted-foreground">👤 {order.customer_name} • 📞 {order.customer_phone}</p>
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        {order.delivery_lat && (
+          <button onClick={() => onMap(order.delivery_lat, order.delivery_lng)} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
+            <MapPin className="h-3 w-3" /> Mapa
+          </button>
+        )}
+        {order.customer_phone && (
+          <a href={`tel:${order.customer_phone}`} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
+            <Phone className="h-3 w-3" /> Ligar
+          </a>
+        )}
+        {order.customer_phone && (
+          <button onClick={() => onWhatsApp(order.customer_phone, order.customer_name)} className="flex items-center gap-1 rounded-lg bg-green-600 text-white px-3 py-2 text-xs font-medium">
+            <MessageCircle className="h-3 w-3" /> WhatsApp
+          </button>
+        )}
+      </div>
+      <button onClick={() => onFinalize(order.id)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground active:scale-[0.97] shadow-lg">
+        FINALIZAR CORRIDA ✅
+      </button>
+    </div>
+  </div>
+);
+
+const PendingOrderCard = ({ order, onAccept, onMap }: any) => (
+  <div className="rounded-xl border bg-card p-4 space-y-3">
+    <div className="space-y-1.5">
+      <p className="text-sm font-bold">🛒 {order.item_description}</p>
+      {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
+      <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
+      <p className="text-xs text-muted-foreground">👤 {order.customer_name} • 📞 {order.customer_phone}</p>
+    </div>
+    {order.delivery_lat && (
+      <button onClick={() => onMap(order.delivery_lat, order.delivery_lng)} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
+        <ExternalLink className="h-3 w-3" /> Ver no mapa
+      </button>
+    )}
+    <button onClick={onAccept} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-base font-bold text-primary-foreground active:scale-[0.97]">
+      ACEITAR CORRIDA
+    </button>
   </div>
 );
 

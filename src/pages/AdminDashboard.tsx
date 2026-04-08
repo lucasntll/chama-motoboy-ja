@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package } from "lucide-react";
+import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -19,14 +19,15 @@ const AdminDashboard = () => {
     sessionStorage.removeItem("admin_auth");
     navigate("/login", { replace: true });
   };
+
   const [tab, setTab] = useState<Tab>("motoboys");
   const [motoboys, setMotoboys] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState("");
+  const [expandedMotoboy, setExpandedMotoboy] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     const [m, o] = await Promise.all([
@@ -38,34 +39,50 @@ const AdminDashboard = () => {
     setLoading(false);
   };
 
+  const filteredOrders = useMemo(() => {
+    if (!dateFilter) return orders;
+    return orders.filter((o) => {
+      const d = new Date(o.completed_at || o.created_at).toISOString().slice(0, 10);
+      return d === dateFilter;
+    });
+  }, [orders, dateFilter]);
+
   const getMotoboyStats = (motoboyId: string) => {
-    const motoboyOrders = orders.filter((o) => o.motoboy_id === motoboyId && o.status === "completed");
+    const motoboyOrders = filteredOrders.filter((o) => o.motoboy_id === motoboyId && o.status === "completed");
     const totalRides = motoboyOrders.length;
-    const totalEarned = totalRides * 5; // R$7 - R$2 commission = R$5 net
     const totalCommission = totalRides * 2;
     const paidOrders = motoboyOrders.filter((o: any) => o.is_paid);
     const totalPaid = paidOrders.length * 2;
     const owed = totalCommission - totalPaid;
-    return { totalRides, totalEarned, totalCommission, owed };
+    return { totalRides, totalCommission, owed };
+  };
+
+  const getMotoboyDailyBreakdown = (motoboyId: string) => {
+    const completed = orders.filter((o) => o.motoboy_id === motoboyId && o.status === "completed");
+    const groups: Record<string, { label: string; rides: number; amount: number }> = {};
+    completed.forEach((o) => {
+      const d = new Date(o.completed_at || o.created_at);
+      const key = d.toISOString().slice(0, 10);
+      const label = d.toLocaleDateString("pt-BR");
+      if (!groups[key]) groups[key] = { label, rides: 0, amount: 0 };
+      groups[key].rides++;
+      groups[key].amount += 2;
+    });
+    return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a)).map(([, v]) => v);
   };
 
   const toggleBlock = async (motoboy: any) => {
     const newAvailable = !motoboy.is_available;
-    await supabase
-      .from("motoboys")
-      .update({
-        is_available: newAvailable,
-        status: newAvailable ? "available" : "inactive",
-      })
-      .eq("id", motoboy.id);
+    await supabase.from("motoboys").update({
+      is_available: newAvailable,
+      status: newAvailable ? "available" : "inactive",
+    }).eq("id", motoboy.id);
     toast({ title: newAvailable ? "Motoboy desbloqueado" : "Motoboy bloqueado" });
     fetchData();
   };
 
   const markAsPaid = async (motoboyId: string) => {
-    const unpaid = orders.filter(
-      (o) => o.motoboy_id === motoboyId && o.status === "completed" && !o.is_paid
-    );
+    const unpaid = orders.filter((o) => o.motoboy_id === motoboyId && o.status === "completed" && !o.is_paid);
     for (const order of unpaid) {
       await supabase.from("orders").update({ is_paid: true } as any).eq("id", order.id);
     }
@@ -92,10 +109,6 @@ const AdminDashboard = () => {
     fetchData();
   };
 
-  const handleSignOut = () => {
-    handleLogout();
-  };
-
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -105,7 +118,7 @@ const AdminDashboard = () => {
   }
 
   const totalCompletedOrders = orders.filter((o) => o.status === "completed").length;
-  const totalRevenue = totalCompletedOrders * 2; // R$2 commission per ride
+  const totalRevenue = totalCompletedOrders * 2;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -114,12 +127,12 @@ const AdminDashboard = () => {
           <h1 className="text-lg font-bold">Painel Admin</h1>
           <p className="text-xs text-muted-foreground">ChamaMotoboy</p>
         </div>
-        <button onClick={handleSignOut} className="p-2 rounded-lg hover:bg-secondary">
+        <button onClick={handleLogout} className="p-2 rounded-lg hover:bg-secondary">
           <LogOut className="h-5 w-5 text-muted-foreground" />
         </button>
       </header>
 
-      {/* Summary cards */}
+      {/* Summary */}
       <div className="grid grid-cols-3 gap-2 px-4 py-3">
         <div className="rounded-lg border bg-card p-3 text-center">
           <p className="text-lg font-bold">{motoboys.length}</p>
@@ -133,6 +146,22 @@ const AdminDashboard = () => {
           <p className="text-lg font-bold text-primary">R${totalRevenue}</p>
           <p className="text-[10px] text-muted-foreground">Comissões</p>
         </div>
+      </div>
+
+      {/* Date filter */}
+      <div className="px-4 pb-2 flex items-center gap-2">
+        <Calendar className="h-4 w-4 text-muted-foreground" />
+        <input
+          type="date"
+          value={dateFilter}
+          onChange={(e) => setDateFilter(e.target.value)}
+          className="flex-1 rounded-lg border bg-card px-3 py-2 text-sm"
+        />
+        {dateFilter && (
+          <button onClick={() => setDateFilter("")} className="text-xs text-primary font-medium">
+            Limpar
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -158,6 +187,8 @@ const AdminDashboard = () => {
       <main className="flex-1 px-4 py-3 space-y-3 overflow-y-auto pb-6">
         {tab === "motoboys" && motoboys.map((m) => {
           const stats = getMotoboyStats(m.id);
+          const isExpanded = expandedMotoboy === m.id;
+          const dailyBreakdown = isExpanded ? getMotoboyDailyBreakdown(m.id) : [];
           return (
             <div key={m.id} className="rounded-xl border bg-card p-4 space-y-2">
               <div className="flex items-center justify-between">
@@ -173,14 +204,10 @@ const AdminDashboard = () => {
                   {m.status === "available" ? "Disponível" : m.status === "busy" ? "Ocupado" : "Inativo"}
                 </span>
               </div>
-              <div className="grid grid-cols-4 gap-1 text-center">
+              <div className="grid grid-cols-3 gap-1 text-center">
                 <div>
                   <p className="text-xs font-bold">{stats.totalRides}</p>
                   <p className="text-[9px] text-muted-foreground">Corridas</p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-primary">R${stats.totalEarned}</p>
-                  <p className="text-[9px] text-muted-foreground">Ganho</p>
                 </div>
                 <div>
                   <p className="text-xs font-bold">R${stats.totalCommission}</p>
@@ -193,6 +220,27 @@ const AdminDashboard = () => {
                   <p className="text-[9px] text-muted-foreground">Deve</p>
                 </div>
               </div>
+
+              {/* Daily breakdown toggle */}
+              <button
+                onClick={() => setExpandedMotoboy(isExpanded ? null : m.id)}
+                className="flex w-full items-center justify-center gap-1 text-xs text-muted-foreground py-1"
+              >
+                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                {isExpanded ? "Ocultar detalhes" : "Ver por dia"}
+              </button>
+
+              {isExpanded && dailyBreakdown.length > 0 && (
+                <div className="space-y-1 border-t pt-2">
+                  {dailyBreakdown.map((d, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs px-1">
+                      <span className="text-muted-foreground">{d.label}</span>
+                      <span className="font-medium">{d.rides} corridas — R${d.amount}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => markAsPaid(m.id)}
@@ -214,22 +262,21 @@ const AdminDashboard = () => {
           );
         })}
 
-        {tab === "orders" && orders.map((o) => {
+        {tab === "orders" && filteredOrders.map((o) => {
           const motoboy = motoboys.find((m) => m.id === o.motoboy_id);
+          const d = new Date(o.created_at);
           return (
             <div key={o.id} className="rounded-xl border bg-card p-3 space-y-1">
               <div className="flex items-start justify-between">
                 <p className="text-sm font-bold">{o.item_description}</p>
                 <span className="text-xs text-muted-foreground">
-                  {new Date(o.created_at).toLocaleDateString("pt-BR")}
+                  {d.toLocaleDateString("pt-BR")} {d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">📍 {o.delivery_address}</p>
               <p className="text-xs text-muted-foreground">👤 {o.customer_name} • {o.customer_phone}</p>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium">
-                  🏍️ {motoboy?.name || "—"}
-                </span>
+                <span className="text-xs font-medium">🏍️ {motoboy?.name || "—"}</span>
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                   o.status === "completed" ? "bg-green-100 text-green-700" :
                   o.status === "pending" ? "bg-yellow-100 text-yellow-700" :
@@ -254,9 +301,7 @@ const AdminDashboard = () => {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Valor devido:</span>
-                <span className={`font-bold ${stats.owed > 0 ? "text-destructive" : "text-primary"}`}>
-                  R${stats.owed}
-                </span>
+                <span className={`font-bold ${stats.owed > 0 ? "text-destructive" : "text-primary"}`}>R${stats.owed}</span>
               </div>
               {stats.owed > 0 && (
                 <button
@@ -270,7 +315,7 @@ const AdminDashboard = () => {
           );
         })}
 
-        {/* Cleanup button */}
+        {/* Cleanup */}
         <div className="pt-4 border-t">
           <button
             onClick={() => setShowCleanupConfirm(true)}
@@ -281,7 +326,6 @@ const AdminDashboard = () => {
         </div>
       </main>
 
-      {/* Cleanup confirmation modal */}
       {showCleanupConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
           <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
@@ -293,17 +337,8 @@ const AdminDashboard = () => {
               Corridas em andamento ou pendentes serão mantidas.
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowCleanupConfirm(false)}
-                className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={cleanupHistory}
-                disabled={cleaning}
-                className="flex-1 rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97] disabled:opacity-50"
-              >
+              <button onClick={() => setShowCleanupConfirm(false)} className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">Cancelar</button>
+              <button onClick={cleanupHistory} disabled={cleaning} className="flex-1 rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97] disabled:opacity-50">
                 {cleaning ? "Apagando..." : "Confirmar"}
               </button>
             </div>
