@@ -41,10 +41,10 @@ const AdminDashboard = () => {
   const getMotoboyStats = (motoboyId: string) => {
     const motoboyOrders = orders.filter((o) => o.motoboy_id === motoboyId && o.status === "completed");
     const totalRides = motoboyOrders.length;
-    const totalEarned = totalRides * 6; // R$7 - R$1 commission = R$6 net
-    const totalCommission = totalRides * 1;
+    const totalEarned = totalRides * 5; // R$7 - R$2 commission = R$5 net
+    const totalCommission = totalRides * 2;
     const paidOrders = motoboyOrders.filter((o: any) => o.is_paid);
-    const totalPaid = paidOrders.length * 1;
+    const totalPaid = paidOrders.length * 2;
     const owed = totalCommission - totalPaid;
     return { totalRides, totalEarned, totalCommission, owed };
   };
@@ -72,11 +72,23 @@ const AdminDashboard = () => {
     if (unpaid.length > 0) {
       await supabase.from("payments" as any).insert({
         motoboy_id: motoboyId,
-        amount: unpaid.length * 1,
+        amount: unpaid.length * 2,
         admin_note: `Pagamento de ${unpaid.length} corridas`,
       });
     }
     toast({ title: `Pagamento registrado! ${unpaid.length} corridas` });
+    fetchData();
+  };
+
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
+
+  const cleanupHistory = async () => {
+    setCleaning(true);
+    await supabase.from("orders").delete().eq("status", "completed");
+    toast({ title: "Histórico de corridas finalizadas apagado com sucesso!" });
+    setShowCleanupConfirm(false);
+    setCleaning(false);
     fetchData();
   };
 
@@ -93,7 +105,7 @@ const AdminDashboard = () => {
   }
 
   const totalCompletedOrders = orders.filter((o) => o.status === "completed").length;
-  const totalRevenue = totalCompletedOrders * 1; // R$1 commission per ride
+  const totalRevenue = totalCompletedOrders * 2; // R$2 commission per ride
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -257,7 +269,47 @@ const AdminDashboard = () => {
             </div>
           );
         })}
+
+        {/* Cleanup button */}
+        <div className="pt-4 border-t">
+          <button
+            onClick={() => setShowCleanupConfirm(true)}
+            className="w-full rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97]"
+          >
+            🗑️ Limpar histórico de corridas
+          </button>
+        </div>
       </main>
+
+      {/* Cleanup confirmation modal */}
+      {showCleanupConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
+            <h3 className="text-lg font-bold text-center">⚠️ Limpar histórico?</h3>
+            <p className="text-sm text-muted-foreground text-center">
+              Tem certeza que deseja apagar todo o histórico de corridas finalizadas? Essa ação não pode ser desfeita.
+            </p>
+            <p className="text-xs text-muted-foreground text-center">
+              Corridas em andamento ou pendentes serão mantidas.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCleanupConfirm(false)}
+                className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={cleanupHistory}
+                disabled={cleaning}
+                className="flex-1 rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97] disabled:opacity-50"
+              >
+                {cleaning ? "Apagando..." : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
