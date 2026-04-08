@@ -269,7 +269,47 @@ const AdminDashboard = () => {
             </div>
           );
         })}
+
+        {/* Cleanup button */}
+        <div className="pt-4 border-t">
+          <button
+            onClick={() => setShowCleanupConfirm(true)}
+            className="w-full rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97]"
+          >
+            🗑️ Limpar histórico de corridas
+          </button>
+        </div>
       </main>
+
+      {/* Cleanup confirmation modal */}
+      {showCleanupConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
+            <h3 className="text-lg font-bold text-center">⚠️ Limpar histórico?</h3>
+            <p className="text-sm text-muted-foreground text-center">
+              Tem certeza que deseja apagar todo o histórico de corridas finalizadas? Essa ação não pode ser desfeita.
+            </p>
+            <p className="text-xs text-muted-foreground text-center">
+              Corridas em andamento ou pendentes serão mantidas.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCleanupConfirm(false)}
+                className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={cleanupHistory}
+                disabled={cleaning}
+                className="flex-1 rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97] disabled:opacity-50"
+              >
+                {cleaning ? "Apagando..." : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
