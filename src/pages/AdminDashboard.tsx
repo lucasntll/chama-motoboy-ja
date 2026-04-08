@@ -72,11 +72,23 @@ const AdminDashboard = () => {
     if (unpaid.length > 0) {
       await supabase.from("payments" as any).insert({
         motoboy_id: motoboyId,
-        amount: unpaid.length * 1,
+        amount: unpaid.length * 2,
         admin_note: `Pagamento de ${unpaid.length} corridas`,
       });
     }
     toast({ title: `Pagamento registrado! ${unpaid.length} corridas` });
+    fetchData();
+  };
+
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
+
+  const cleanupHistory = async () => {
+    setCleaning(true);
+    await supabase.from("orders").delete().eq("status", "completed");
+    toast({ title: "Histórico de corridas finalizadas apagado com sucesso!" });
+    setShowCleanupConfirm(false);
+    setCleaning(false);
     fetchData();
   };
 
@@ -93,7 +105,7 @@ const AdminDashboard = () => {
   }
 
   const totalCompletedOrders = orders.filter((o) => o.status === "completed").length;
-  const totalRevenue = totalCompletedOrders * 1; // R$1 commission per ride
+  const totalRevenue = totalCompletedOrders * 2; // R$2 commission per ride
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
