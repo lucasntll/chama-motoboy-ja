@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      motoboy_applications: {
+        Row: {
+          address: string
+          admin_note: string | null
+          city: string
+          created_at: string
+          experience: string | null
+          face_photo_url: string | null
+          full_name: string
+          id: string
+          phone: string
+          status: string
+          vehicle_photo_url: string | null
+          vehicle_type: string
+        }
+        Insert: {
+          address: string
+          admin_note?: string | null
+          city: string
+          created_at?: string
+          experience?: string | null
+          face_photo_url?: string | null
+          full_name: string
+          id?: string
+          phone: string
+          status?: string
+          vehicle_photo_url?: string | null
+          vehicle_type: string
+        }
+        Update: {
+          address?: string
+          admin_note?: string | null
+          city?: string
+          created_at?: string
+          experience?: string | null
+          face_photo_url?: string | null
+          full_name?: string
+          id?: string
+          phone?: string
+          status?: string
+          vehicle_photo_url?: string | null
+          vehicle_type?: string
+        }
+        Relationships: []
+      }
       motoboys: {
         Row: {
           access_code: string | null
