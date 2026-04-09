@@ -201,6 +201,33 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          motoboy_id: string
+          order_id: string
+          rating: number
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          motoboy_id: string
+          order_id: string
+          rating: number
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          motoboy_id?: string
+          order_id?: string
+          rating?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
