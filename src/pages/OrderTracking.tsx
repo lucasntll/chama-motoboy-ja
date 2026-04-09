@@ -156,7 +156,30 @@ const [queuePosition, setQueuePosition] = useState(0);
         <h1 className="text-lg font-bold">Acompanhar Pedido</h1>
       </header>
 
-      <main className="flex-1 px-4 py-6 space-y-5">
+      <main className="flex-1 px-4 py-6 space-y-5 relative">
+        {/* Big accepted notification banner */}
+        {showAcceptedBanner && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in px-6">
+            <div className="w-full max-w-sm rounded-2xl bg-card border-2 border-primary shadow-2xl p-8 text-center space-y-4 animate-scale-in">
+              <span className="text-6xl block">🏍️</span>
+              <h2 className="text-2xl font-extrabold text-primary">
+                Motoboy encontrado!
+              </h2>
+              <p className="text-base text-foreground font-medium leading-relaxed">
+                Um motoboy acabou de aceitar seu pedido e já está a caminho! 🎉
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Fique tranquilo, sua entrega está sendo cuidada.
+              </p>
+              <button
+                onClick={() => setShowAcceptedBanner(false)}
+                className="mt-2 w-full rounded-xl bg-primary py-3 text-base font-bold text-primary-foreground active:scale-[0.97]"
+              >
+                Entendi! 👍
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex flex-col items-center text-center py-6">
           <span className="text-5xl mb-4">{status.emoji}</span>
           <h2 className={`text-xl font-bold ${status.color}`}>{status.label}</h2>
