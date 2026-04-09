@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-type Tab = "motoboys" | "orders" | "payments";
+type Tab = "motoboys" | "orders" | "payments" | "feedback";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -23,6 +23,7 @@ const AdminDashboard = () => {
   const [tab, setTab] = useState<Tab>("motoboys");
   const [motoboys, setMotoboys] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("");
   const [expandedMotoboy, setExpandedMotoboy] = useState<string | null>(null);
@@ -30,12 +31,14 @@ const AdminDashboard = () => {
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
-    const [m, o] = await Promise.all([
+    const [m, o, r] = await Promise.all([
       supabase.from("motoboys").select("*").order("name"),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
+      supabase.from("reviews" as any).select("*").order("created_at", { ascending: false }),
     ]);
     setMotoboys(m.data || []);
     setOrders(o.data || []);
+    setReviews(r.data || []);
     setLoading(false);
   };
 
@@ -54,7 +57,11 @@ const AdminDashboard = () => {
     const paidOrders = motoboyOrders.filter((o: any) => o.is_paid);
     const totalPaid = paidOrders.length * 2;
     const owed = totalCommission - totalPaid;
-    return { totalRides, totalCommission, owed };
+    const motoboyReviews = reviews.filter((r: any) => r.motoboy_id === motoboyId);
+    const avgRating = motoboyReviews.length > 0
+      ? (motoboyReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / motoboyReviews.length).toFixed(1)
+      : "—";
+    return { totalRides, totalCommission, owed, avgRating, reviewCount: motoboyReviews.length };
   };
 
   const getMotoboyDailyBreakdown = (motoboyId: string) => {
@@ -132,7 +139,6 @@ const AdminDashboard = () => {
         </button>
       </header>
 
-      {/* Summary */}
       <div className="grid grid-cols-3 gap-2 px-4 py-3">
         <div className="rounded-lg border bg-card p-3 text-center">
           <p className="text-lg font-bold">{motoboys.length}</p>
@@ -148,7 +154,6 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Date filter */}
       <div className="px-4 pb-2 flex items-center gap-2">
         <Calendar className="h-4 w-4 text-muted-foreground" />
         <input
@@ -164,17 +169,17 @@ const AdminDashboard = () => {
         )}
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b px-4">
+      <div className="flex border-b px-4 overflow-x-auto">
         {([
           { key: "motoboys" as Tab, label: "Motoboys", icon: Users },
           { key: "orders" as Tab, label: "Corridas", icon: Package },
           { key: "payments" as Tab, label: "Pagamentos", icon: DollarSign },
+          { key: "feedback" as Tab, label: "Feedback", icon: Star },
         ]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               tab === key ? "border-primary text-primary" : "border-transparent text-muted-foreground"
             }`}
           >
@@ -204,7 +209,7 @@ const AdminDashboard = () => {
                   {m.status === "available" ? "Disponível" : m.status === "busy" ? "Ocupado" : "Inativo"}
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-1 text-center">
+              <div className="grid grid-cols-4 gap-1 text-center">
                 <div>
                   <p className="text-xs font-bold">{stats.totalRides}</p>
                   <p className="text-[9px] text-muted-foreground">Corridas</p>
@@ -219,9 +224,12 @@ const AdminDashboard = () => {
                   </p>
                   <p className="text-[9px] text-muted-foreground">Deve</p>
                 </div>
+                <div>
+                  <p className="text-xs font-bold">⭐ {stats.avgRating}</p>
+                  <p className="text-[9px] text-muted-foreground">{stats.reviewCount} aval.</p>
+                </div>
               </div>
 
-              {/* Daily breakdown toggle */}
               <button
                 onClick={() => setExpandedMotoboy(isExpanded ? null : m.id)}
                 className="flex w-full items-center justify-center gap-1 text-xs text-muted-foreground py-1"
@@ -315,7 +323,44 @@ const AdminDashboard = () => {
           );
         })}
 
-        {/* Cleanup */}
+        {tab === "feedback" && (
+          <div className="space-y-3">
+            {reviews.length === 0 ? (
+              <div className="flex flex-col items-center py-12 text-center">
+                <span className="text-4xl mb-3">⭐</span>
+                <p className="text-sm text-muted-foreground">Nenhuma avaliação ainda.</p>
+              </div>
+            ) : (
+              reviews.map((r: any) => {
+                const m = motoboys.find((mb) => mb.id === r.motoboy_id);
+                const d = new Date(r.created_at);
+                return (
+                  <div key={r.id} className="rounded-xl border bg-card p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold">🏍️ {m?.name || "—"}</p>
+                      <span className="text-xs text-muted-foreground">
+                        {d.toLocaleDateString("pt-BR")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          className={`h-4 w-4 ${s <= r.rating ? "fill-yellow-400 text-yellow-400" : "text-muted"}`}
+                        />
+                      ))}
+                      <span className="text-sm font-bold ml-1">{r.rating}/5</span>
+                    </div>
+                    {r.comment && (
+                      <p className="text-sm text-muted-foreground italic">"{r.comment}"</p>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
         <div className="pt-4 border-t">
           <button
             onClick={() => setShowCleanupConfirm(true)}

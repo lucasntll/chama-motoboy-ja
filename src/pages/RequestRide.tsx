@@ -10,7 +10,6 @@ import PlaceSuggestionInput, { savePopularPlace } from "@/components/PlaceSugges
 import SearchingMotoboy from "@/components/SearchingMotoboy";
 import BottomNav from "@/components/BottomNav";
 
-const FIXED_PRICE = 7;
 const COMMISSION = 2;
 const GILBERTO_PHONE = "5535999198318";
 const GILBERTO_NAME = "Gilberto";
@@ -33,7 +32,6 @@ const RequestRide = () => {
   const customerName = clientData.name || "";
   const customerPhone = clientData.phone || "";
 
-  // Auto-fill address from saved data
   useEffect(() => {
     if (hasSavedData) {
       const defaultAddr = clientData.addresses.find((a) => a.isDefault) || clientData.addresses[0];
@@ -68,12 +66,10 @@ const RequestRide = () => {
 
     const fullAddress = `${deliveryAddress} - ${houseRef}`;
 
-    // Save purchase location to popular places
     if (purchaseLocation.trim()) {
       savePopularPlace(purchaseLocation);
     }
 
-    // Use Gilberto as primary motoboy
     const { data: gilbertoRow } = await supabase
       .from("motoboys")
       .select("id")
@@ -92,28 +88,24 @@ const RequestRide = () => {
       service_type: "compra_entrega",
       delivery_lat: deliveryCoords?.[0],
       delivery_lng: deliveryCoords?.[1],
-      estimated_price: FIXED_PRICE,
       estimated_time_min: 25,
       commission_amount: COMMISSION,
       motoboy_id: motoboyDbId,
       status: "pending",
     } as any);
 
-    // Save to localStorage for client history
     const ride = {
       id: Date.now().toString(),
       motoboyName: GILBERTO_NAME,
       motoboyPhone: GILBERTO_PHONE,
       orderDesc,
       deliveryAddress: fullAddress,
-      price: FIXED_PRICE,
       date: new Date().toISOString(),
       status: "pending",
     };
     const history = JSON.parse(localStorage.getItem("ride_history") || "[]");
     localStorage.setItem("ride_history", JSON.stringify([ride, ...history]));
 
-    // Save client data for auto-fill on next order
     saveAfterOrder({
       category: "",
       orderDesc,
@@ -127,12 +119,11 @@ const RequestRide = () => {
 
     setMotoboyName(GILBERTO_NAME);
 
-    // Build Google Maps link
     const mapsLink = deliveryCoords
       ? `https://www.google.com/maps?q=${deliveryCoords[0]},${deliveryCoords[1]}`
       : "";
 
-    const msgText = `Novo pedido! 🚀\n\n🛒 *Pedido:* ${orderDesc}${purchaseLocation ? `\n🏪 *Local:* ${purchaseLocation}` : ""}\n📍 *Entregar em:* ${fullAddress}\n🏠 *Referência:* ${houseRef}\n🗺️ *Mapa:* ${mapsLink}\n👤 *Cliente:* ${customerName}\n📞 *Telefone:* ${customerPhone}\n💰 *Ganho:* R$${(FIXED_PRICE - COMMISSION).toFixed(2)}\n\nResponda ACEITAR para pegar`;
+    const msgText = `Novo pedido! 🚀\n\n🛒 *Pedido:* ${orderDesc}${purchaseLocation ? `\n🏪 *Local:* ${purchaseLocation}` : ""}\n📍 *Entregar em:* ${fullAddress}\n🏠 *Referência:* ${houseRef}\n🗺️ *Mapa:* ${mapsLink}\n👤 *Cliente:* ${customerName}\n📞 *Telefone:* ${customerPhone}\n\nResponda ACEITAR para pegar`;
 
     setTimeout(() => {
       setStep("found");
@@ -141,7 +132,6 @@ const RequestRide = () => {
       }, 1500);
     }, 2000);
 
-    // Store WhatsApp link for the confirmed view
     localStorage.setItem("pending_wpp_msg", whatsappUrl(GILBERTO_PHONE, msgText));
   };
 
@@ -159,7 +149,6 @@ const RequestRide = () => {
           <ConfirmedView motoboyName={motoboyName} />
         ) : (
           <>
-            {/* What do you want? */}
             <div className="animate-fade-in-up">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 O que você quer?
@@ -173,7 +162,6 @@ const RequestRide = () => {
               />
             </div>
 
-            {/* Delivery address */}
             <div className="animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Entregar onde?
@@ -190,7 +178,6 @@ const RequestRide = () => {
               </div>
             </div>
 
-            {/* House number / reference (required) */}
             <div className="animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Número da casa / referência *
@@ -207,7 +194,6 @@ const RequestRide = () => {
               </div>
             </div>
 
-            {/* Purchase location (optional) */}
             <div className="animate-fade-in-up" style={{ animationDelay: "0.15s" }}>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 De onde vai sair? <span className="text-muted-foreground/60">(opcional)</span>
@@ -221,17 +207,6 @@ const RequestRide = () => {
               </div>
             </div>
 
-            {/* Price display */}
-            {canOrder && (
-              <div className="animate-fade-in-up rounded-xl border bg-card p-4" style={{ animationDelay: "0.2s" }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">💰 Valor da entrega</span>
-                  <span className="text-xl font-bold text-primary">R$ {FIXED_PRICE.toFixed(2)}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Searching status */}
             {(step === "searching" || step === "found") && (
               <SearchingMotoboy
                 status={step === "found" ? "found" : "searching"}
@@ -290,7 +265,6 @@ const ConfirmedView = ({ motoboyName }: { motoboyName: string }) => {
         </p>
       </div>
 
-      {/* Motoboy info card */}
       <div className="w-full rounded-xl border bg-card p-5 space-y-3">
         <div className="flex items-center gap-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary text-secondary-foreground font-bold text-lg">
@@ -303,7 +277,6 @@ const ConfirmedView = ({ motoboyName }: { motoboyName: string }) => {
         </div>
       </div>
 
-      {/* Send to Gilberto button */}
       <a
         href={wppLink}
         target="_blank"
@@ -321,6 +294,7 @@ const ConfirmedView = ({ motoboyName }: { motoboyName: string }) => {
     </div>
   );
 };
+
 
 const StatusStep = ({ label, active, done }: { label: string; active: boolean; done: boolean }) => (
   <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
