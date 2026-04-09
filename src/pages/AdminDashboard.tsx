@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star } from "lucide-react";
+import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -24,21 +24,25 @@ const AdminDashboard = () => {
   const [motoboys, setMotoboys] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("");
   const [expandedMotoboy, setExpandedMotoboy] = useState<string | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
-    const [m, o, r] = await Promise.all([
+    const [m, o, r, a] = await Promise.all([
       supabase.from("motoboys").select("*").order("name"),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
       supabase.from("reviews" as any).select("*").order("created_at", { ascending: false }),
+      supabase.from("motoboy_applications" as any).select("*").order("created_at", { ascending: false }),
     ]);
     setMotoboys(m.data || []);
     setOrders(o.data || []);
     setReviews(r.data || []);
+    setApplications(a.data || []);
     setLoading(false);
   };
 
@@ -175,6 +179,7 @@ const AdminDashboard = () => {
           { key: "orders" as Tab, label: "Corridas", icon: Package },
           { key: "payments" as Tab, label: "Pagamentos", icon: DollarSign },
           { key: "feedback" as Tab, label: "Feedback", icon: Star },
+          { key: "applications" as Tab, label: "Solicitações", icon: UserPlus },
         ]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -361,6 +366,90 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {tab === "applications" && (
+          <div className="space-y-3">
+            {applications.filter((a: any) => a.status === "pending").length === 0 && (
+              <div className="flex flex-col items-center py-12 text-center">
+                <UserPlus className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">Nenhuma solicitação pendente.</p>
+              </div>
+            )}
+            {applications.map((app: any) => {
+              const d = new Date(app.created_at);
+              return (
+                <div key={app.id} className="rounded-xl border bg-card p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-bold">{app.full_name}</p>
+                      <p className="text-xs text-muted-foreground">{app.phone}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                        app.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                        app.status === "approved" ? "bg-green-100 text-green-700" :
+                        "bg-red-100 text-red-700"
+                      }`}>
+                        {app.status === "pending" ? "Pendente" : app.status === "approved" ? "Aprovado" : "Recusado"}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground mt-1">{d.toLocaleDateString("pt-BR")}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-xs">
+                    <p><span className="text-muted-foreground">Cidade:</span> {app.city}</p>
+                    <p><span className="text-muted-foreground">Veículo:</span> {app.vehicle_type}</p>
+                    <p className="col-span-2"><span className="text-muted-foreground">Endereço:</span> {app.address}</p>
+                    {app.experience && <p className="col-span-2"><span className="text-muted-foreground">Experiência:</span> {app.experience}</p>}
+                  </div>
+                  <div className="flex gap-2">
+                    {app.face_photo_url && (
+                      <button onClick={() => setViewingPhoto(app.face_photo_url)} className="flex items-center gap-1 text-xs text-primary font-medium">
+                        <Eye className="h-3 w-3" /> Foto rosto
+                      </button>
+                    )}
+                    {app.vehicle_photo_url && (
+                      <button onClick={() => setViewingPhoto(app.vehicle_photo_url)} className="flex items-center gap-1 text-xs text-primary font-medium">
+                        <Eye className="h-3 w-3" /> Foto veículo
+                      </button>
+                    )}
+                  </div>
+                  {app.status === "pending" && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          await supabase.from("motoboys").insert({
+                            name: app.full_name,
+                            phone: app.phone,
+                            region: app.city,
+                            vehicle: app.vehicle_type,
+                            photo: app.face_photo_url || "",
+                            access_code: app.phone.slice(-4),
+                          });
+                          await supabase.from("motoboy_applications" as any).update({ status: "approved" }).eq("id", app.id);
+                          toast({ title: `${app.full_name} aprovado! Código: ${app.phone.slice(-4)}` });
+                          fetchData();
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground active:scale-[0.97]"
+                      >
+                        <CheckCircle className="h-3 w-3" /> Aprovar
+                      </button>
+                      <button
+                        onClick={async () => {
+                          await supabase.from("motoboy_applications" as any).update({ status: "rejected" }).eq("id", app.id);
+                          toast({ title: `${app.full_name} recusado` });
+                          fetchData();
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-destructive py-2 text-xs font-bold text-destructive-foreground active:scale-[0.97]"
+                      >
+                        <X className="h-3 w-3" /> Recusar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div className="pt-4 border-t">
           <button
             onClick={() => setShowCleanupConfirm(true)}
@@ -388,6 +477,12 @@ const AdminDashboard = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {viewingPhoto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6" onClick={() => setViewingPhoto(null)}>
+          <img src={viewingPhoto} alt="Foto" className="max-h-[80vh] max-w-full rounded-xl shadow-xl" />
         </div>
       )}
     </div>
