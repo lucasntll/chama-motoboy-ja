@@ -9,6 +9,7 @@ import OrderTracking from "./pages/OrderTracking";
 import MotoboyAccess from "./pages/MotoboyAccess";
 import MotoboyDashboard from "./pages/MotoboyDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import MotoboyRegistration from "./pages/MotoboyRegistration";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/acompanhar/:orderId" element={<OrderTracking />} />
           <Route path="/motoboy-acesso" element={<MotoboyAccess />} />
           <Route path="/motoboy" element={<MotoboyDashboard />} />
+          <Route path="/cadastro-motoboy" element={<MotoboyRegistration />} />
 
           {/* Admin (login-based) */}
           <Route path="/login" element={<Login />} />
