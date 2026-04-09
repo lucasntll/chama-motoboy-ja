@@ -4,7 +4,7 @@ import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-type Tab = "motoboys" | "orders" | "payments" | "feedback";
+type Tab = "motoboys" | "orders" | "payments" | "feedback" | "applications";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
