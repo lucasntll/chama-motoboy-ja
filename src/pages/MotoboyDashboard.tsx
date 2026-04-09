@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/whatsapp";
@@ -11,6 +11,28 @@ interface DayGroup {
   rides: number;
   amount: number;
 }
+
+const formatTime = (dateStr: string) => {
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+};
+
+const getMinutesAgo = (dateStr: string) => {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+};
+
+const getUrgencyLevel = (dateStr: string): "normal" | "warning" | "urgent" => {
+  const mins = getMinutesAgo(dateStr);
+  if (mins >= 10) return "urgent";
+  if (mins >= 5) return "warning";
+  return "normal";
+};
+
+const urgencyStyles: Record<string, string> = {
+  normal: "border-border",
+  warning: "border-yellow-400 bg-yellow-50/50 dark:bg-yellow-900/10",
+  urgent: "border-red-500 bg-red-50/50 dark:bg-red-900/10",
+};
 
 const MotoboyDashboard = () => {
   const navigate = useNavigate();
@@ -25,6 +47,13 @@ const MotoboyDashboard = () => {
   const [toggling, setToggling] = useState(false);
   const [confirmOrderId, setConfirmOrderId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [, setTick] = useState(0);
+
+  // Tick every 30s to update "há X min"
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!motoboyId) {
@@ -39,7 +68,7 @@ const MotoboyDashboard = () => {
     const [motoboyRes, myOrdersRes, pendingRes] = await Promise.all([
       supabase.from("motoboys").select("*").eq("id", motoboyId).maybeSingle(),
       supabase.from("orders").select("*").eq("motoboy_id", motoboyId).order("created_at", { ascending: false }),
-      supabase.from("orders").select("*").eq("status", "pending").is("motoboy_id", null).order("created_at", { ascending: false }),
+      supabase.from("orders").select("*").eq("status", "pending").is("motoboy_id", null).order("created_at", { ascending: true }),
     ]);
     if (motoboyRes.data) {
       setMotoboyData(motoboyRes.data);
@@ -139,7 +168,6 @@ const MotoboyDashboard = () => {
     await supabase.from("orders").update({ status: "completed", completed_at: new Date().toISOString() } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "available", last_activity: new Date().toISOString() }).eq("id", motoboyId!);
 
-    // Auto-dispatch: move oldest queued order to pending
     const { data: nextQueued } = await supabase
       .from("orders")
       .select("id")
@@ -192,7 +220,6 @@ const MotoboyDashboard = () => {
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4">
-        {/* Online toggle */}
         <button
           onClick={toggleOnline}
           disabled={toggling}
@@ -204,7 +231,6 @@ const MotoboyDashboard = () => {
           {isOnline ? "ONLINE ✓" : "FICAR ONLINE"}
         </button>
 
-        {/* Today stats */}
         <div className="grid grid-cols-3 gap-2">
           <StatCard label="Hoje" value={todayCompleted.length.toString()} />
           <StatCard label="Hoje (R$)" value={`R$${todayCompleted.length * 2}`} highlight />
@@ -217,7 +243,6 @@ const MotoboyDashboard = () => {
           </p>
         </div>
 
-        {/* Daily history */}
         {dailyHistory.length > 0 && (
           <div className="space-y-2">
             <button
@@ -242,7 +267,6 @@ const MotoboyDashboard = () => {
           </div>
         )}
 
-        {/* Active order */}
         {activeOrder && (
           <ActiveOrderCard
             order={activeOrder}
@@ -252,7 +276,6 @@ const MotoboyDashboard = () => {
           />
         )}
 
-        {/* Pending orders */}
         {isOnline && !hasActiveRide && allPending.length > 0 && (
           <div className="space-y-2">
             <h2 className="text-sm font-bold uppercase text-muted-foreground">
@@ -273,7 +296,6 @@ const MotoboyDashboard = () => {
         )}
       </main>
 
-      {/* Confirm modal */}
       {confirmOrderId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
           <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
@@ -316,6 +338,7 @@ const ActiveOrderCard = ({ order, onFinalize, onMap, onWhatsApp }: any) => (
         {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
         <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
         <p className="text-xs text-muted-foreground">👤 {order.customer_name} • 📞 {order.customer_phone}</p>
+        <OrderTimeInfo createdAt={order.created_at} />
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         {order.delivery_lat && (
@@ -341,23 +364,59 @@ const ActiveOrderCard = ({ order, onFinalize, onMap, onWhatsApp }: any) => (
   </div>
 );
 
-const PendingOrderCard = ({ order, onAccept, onMap }: any) => (
-  <div className="rounded-xl border bg-card p-4 space-y-3">
-    <div className="space-y-1.5">
-      <p className="text-sm font-bold">🛒 {order.item_description}</p>
-      {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
-      <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
-      <p className="text-xs text-muted-foreground">👤 {order.customer_name} • 📞 {order.customer_phone}</p>
+const OrderTimeInfo = ({ createdAt }: { createdAt: string }) => {
+  const mins = getMinutesAgo(createdAt);
+  const time = formatTime(createdAt);
+  const urgency = getUrgencyLevel(createdAt);
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span className="text-xs text-muted-foreground">
+        🕒 Pedido feito às {time} (há {mins} min)
+      </span>
+      {urgency === "urgent" && (
+        <span className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400">
+          <AlertTriangle className="h-3 w-3" /> Aguardando há mais tempo
+        </span>
+      )}
     </div>
-    {order.delivery_lat && (
-      <button onClick={() => onMap(order.delivery_lat, order.delivery_lng)} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
-        <ExternalLink className="h-3 w-3" /> Ver no mapa
+  );
+};
+
+const PendingOrderCard = ({ order, onAccept, onMap }: any) => {
+  const urgency = getUrgencyLevel(order.created_at);
+
+  return (
+    <div className={`rounded-xl border-2 bg-card p-4 space-y-3 transition-colors ${urgencyStyles[urgency]}`}>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-bold">🛒 {order.item_description}</p>
+          {urgency === "urgent" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400 animate-pulse">
+              <AlertTriangle className="h-3 w-3" /> URGENTE
+            </span>
+          )}
+          {urgency === "warning" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-[10px] font-bold text-yellow-700 dark:text-yellow-400">
+              ⚠️ Atenção
+            </span>
+          )}
+        </div>
+        {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
+        <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
+        <p className="text-xs text-muted-foreground">👤 {order.customer_name} • 📞 {order.customer_phone}</p>
+        <OrderTimeInfo createdAt={order.created_at} />
+      </div>
+      {order.delivery_lat && (
+        <button onClick={() => onMap(order.delivery_lat, order.delivery_lng)} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
+          <ExternalLink className="h-3 w-3" /> Ver no mapa
+        </button>
+      )}
+      <button onClick={onAccept} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-base font-bold text-primary-foreground active:scale-[0.97]">
+        ACEITAR CORRIDA
       </button>
-    )}
-    <button onClick={onAccept} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-base font-bold text-primary-foreground active:scale-[0.97]">
-      ACEITAR CORRIDA
-    </button>
-  </div>
-);
+    </div>
+  );
+};
 
 export default MotoboyDashboard;
