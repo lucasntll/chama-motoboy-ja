@@ -35,6 +35,7 @@ const ClientOrder = () => {
   const [customerPhone, setCustomerPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const descRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (hasSavedData) {
@@ -90,9 +91,14 @@ const ClientOrder = () => {
   };
 
   const fullDescription = category ? `${category}: ${orderDesc}`.trim() : orderDesc;
-  const canOrder = fullDescription.trim() && deliveryAddress.trim() && houseRef.trim() && customerName.trim() && customerPhone.trim();
+  const canOrder = orderDesc.trim() && deliveryAddress.trim() && houseRef.trim() && customerName.trim() && customerPhone.trim();
 
   const handleSubmit = async () => {
+    if (!orderDesc.trim()) {
+      toast.error("Descreva o que você precisa 👊");
+      descRef.current?.focus();
+      return;
+    }
     if (!canOrder || submitting) return;
     setSubmitting(true);
 
@@ -164,6 +170,12 @@ const ClientOrder = () => {
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-6">
+        {customerName.trim() && (
+          <div className="rounded-2xl bg-primary/5 border border-primary/20 px-4 py-3">
+            <p className="text-base font-bold text-foreground">Olá, {customerName.trim()} 👋</p>
+            <p className="text-sm text-muted-foreground">O que vamos pedir hoje?</p>
+          </div>
+        )}
         {(hasSavedData || lastOrder) && (
           <div className="flex gap-2">
             {hasSavedData && (
@@ -212,15 +224,21 @@ const ClientOrder = () => {
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">O que você quer?</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">O que você precisa hoje?</label>
           <div className="mt-2 flex flex-wrap gap-2">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.value}
-                onClick={() => setCategory(category === cat.value ? "" : cat.value)}
+                onClick={() => {
+                  const newCat = category === cat.value ? "" : cat.value;
+                  setCategory(newCat);
+                  if (newCat === "Outros") {
+                    setTimeout(() => descRef.current?.focus(), 100);
+                  }
+                }}
                 className={`rounded-full px-4 py-2.5 text-sm font-semibold transition-all active:scale-95 ${
                   category === cat.value
-                    ? "bg-primary text-primary-foreground shadow-md"
+                    ? "bg-primary text-primary-foreground shadow-md ring-2 ring-primary/30"
                     : "bg-card border text-foreground hover:bg-secondary"
                 }`}
               >
@@ -229,9 +247,10 @@ const ClientOrder = () => {
             ))}
           </div>
           <textarea
+            ref={descRef}
             value={orderDesc}
             onChange={(e) => setOrderDesc(e.target.value)}
-            placeholder="Descreva o que precisa (ex: 2 marmitas do restaurante X)"
+            placeholder={category === "Outros" ? "Descreva exatamente o que você precisa" : "Descreva o que precisa (ex: 2 marmitas do restaurante X)"}
             rows={2}
             className="mt-3 w-full rounded-xl border bg-card py-3 px-4 text-sm font-medium placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring resize-none"
           />
