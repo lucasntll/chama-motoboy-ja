@@ -295,7 +295,6 @@ const ConfirmedView = ({ motoboyName }: { motoboyName: string }) => {
   );
 };
 
-const GILBERTO_PHONE = "5535999198318";
 
 const StatusStep = ({ label, active, done }: { label: string; active: boolean; done: boolean }) => (
   <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
