@@ -326,10 +326,12 @@ const AdminDashboard = () => {
                 <span className="text-xs font-medium">🏍️ {motoboy?.name || "—"}</span>
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                   o.status === "completed" ? "bg-green-100 text-green-700" :
+                  o.status === "queued" ? "bg-orange-100 text-orange-700" :
                   o.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                  o.status === "cancelled" ? "bg-red-100 text-red-700" :
                   "bg-blue-100 text-blue-700"
                 }`}>
-                  {o.status}
+                  {o.status === "queued" ? "Na fila" : o.status === "pending" ? "Aguardando" : o.status}
                 </span>
               </div>
             </div>
