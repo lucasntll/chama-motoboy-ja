@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Hash, Loader2, CheckCircle, RotateCcw, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,7 @@ const CATEGORIES = [
   { label: "🛒 Mercado", value: "Mercado" },
   { label: "🍺 Bebida", value: "Bebida" },
   { label: "📄 Documento", value: "Documento" },
+  { label: "🧩 Outros", value: "Outros" },
 ];
 
 const ClientOrder = () => {
