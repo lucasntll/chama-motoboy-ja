@@ -25,8 +25,10 @@ const OrderTracking = () => {
   const [cancelling, setCancelling] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
-  const [queuePosition, setQueuePosition] = useState(0);
+const [queuePosition, setQueuePosition] = useState(0);
   const [queueTotal, setQueueTotal] = useState(0);
+  const [showAcceptedBanner, setShowAcceptedBanner] = useState(false);
+  const [previousStatus, setPreviousStatus] = useState<string | null>(null);
   const fetchOrder = async () => {
     if (!orderId) return;
     const { data } = await supabase
@@ -36,6 +38,28 @@ const OrderTracking = () => {
       .maybeSingle();
 
     if (data) {
+      // Detect transition to "accepted" from queue/pending
+      if (
+        previousStatus &&
+        (previousStatus === "queued" || previousStatus === "pending") &&
+        data.status === "accepted"
+      ) {
+        setShowAcceptedBanner(true);
+        // Play a notification sound
+        try {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 880;
+          gain.gain.value = 0.3;
+          osc.start();
+          osc.stop(ctx.currentTime + 0.5);
+        } catch {}
+        setTimeout(() => setShowAcceptedBanner(false), 12000);
+      }
+      setPreviousStatus(data.status);
       setOrder(data);
       if (data.motoboy_id) {
         const { data: m } = await supabase
@@ -132,7 +156,30 @@ const OrderTracking = () => {
         <h1 className="text-lg font-bold">Acompanhar Pedido</h1>
       </header>
 
-      <main className="flex-1 px-4 py-6 space-y-5">
+      <main className="flex-1 px-4 py-6 space-y-5 relative">
+        {/* Big accepted notification banner */}
+        {showAcceptedBanner && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in px-6">
+            <div className="w-full max-w-sm rounded-2xl bg-card border-2 border-primary shadow-2xl p-8 text-center space-y-4 animate-scale-in">
+              <span className="text-6xl block">🏍️</span>
+              <h2 className="text-2xl font-extrabold text-primary">
+                Motoboy encontrado!
+              </h2>
+              <p className="text-base text-foreground font-medium leading-relaxed">
+                Um motoboy acabou de aceitar seu pedido e já está a caminho! 🎉
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Fique tranquilo, sua entrega está sendo cuidada.
+              </p>
+              <button
+                onClick={() => setShowAcceptedBanner(false)}
+                className="mt-2 w-full rounded-xl bg-primary py-3 text-base font-bold text-primary-foreground active:scale-[0.97]"
+              >
+                Entendi! 👍
+              </button>
+            </div>
+          </div>
+        )}
         <div className="flex flex-col items-center text-center py-6">
           <span className="text-5xl mb-4">{status.emoji}</span>
           <h2 className={`text-xl font-bold ${status.color}`}>{status.label}</h2>
