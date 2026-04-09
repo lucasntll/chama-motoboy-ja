@@ -38,6 +38,28 @@ const [queuePosition, setQueuePosition] = useState(0);
       .maybeSingle();
 
     if (data) {
+      // Detect transition to "accepted" from queue/pending
+      if (
+        previousStatus &&
+        (previousStatus === "queued" || previousStatus === "pending") &&
+        data.status === "accepted"
+      ) {
+        setShowAcceptedBanner(true);
+        // Play a notification sound
+        try {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 880;
+          gain.gain.value = 0.3;
+          osc.start();
+          osc.stop(ctx.currentTime + 0.5);
+        } catch {}
+        setTimeout(() => setShowAcceptedBanner(false), 12000);
+      }
+      setPreviousStatus(data.status);
       setOrder(data);
       if (data.motoboy_id) {
         const { data: m } = await supabase
