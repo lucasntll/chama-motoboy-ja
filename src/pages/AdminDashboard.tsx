@@ -143,20 +143,54 @@ const AdminDashboard = () => {
         </button>
       </header>
 
-      <div className="grid grid-cols-3 gap-2 px-4 py-3">
-        <div className="rounded-lg border bg-card p-3 text-center">
-          <p className="text-lg font-bold">{motoboys.length}</p>
-          <p className="text-[10px] text-muted-foreground">Motoboys</p>
-        </div>
-        <div className="rounded-lg border bg-card p-3 text-center">
-          <p className="text-lg font-bold">{totalCompletedOrders}</p>
-          <p className="text-[10px] text-muted-foreground">Corridas</p>
-        </div>
-        <div className="rounded-lg border bg-card p-3 text-center">
-          <p className="text-lg font-bold text-primary">R${totalRevenue}</p>
-          <p className="text-[10px] text-muted-foreground">Comissões</p>
-        </div>
-      </div>
+      {(() => {
+        const availableCount = motoboys.filter((m) => m.status === "available" && m.is_available).length;
+        const busyCount = motoboys.filter((m) => m.status === "busy").length;
+        const activeOrders = orders.filter((o) => ["accepted", "picking_up", "delivering"].includes(o.status)).length;
+        const queuedOrders = orders.filter((o) => o.status === "queued").length;
+        const pendingOrders = orders.filter((o) => o.status === "pending").length;
+        return (
+          <div className="px-4 py-3 space-y-2">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-lg border bg-card p-3 text-center">
+                <p className="text-lg font-bold">{totalCompletedOrders}</p>
+                <p className="text-[10px] text-muted-foreground">Corridas</p>
+              </div>
+              <div className="rounded-lg border bg-card p-3 text-center">
+                <p className="text-lg font-bold text-primary">R${totalRevenue}</p>
+                <p className="text-[10px] text-muted-foreground">Comissões</p>
+              </div>
+              <div className="rounded-lg border bg-card p-3 text-center">
+                <p className="text-lg font-bold">{motoboys.length}</p>
+                <p className="text-[10px] text-muted-foreground">Motoboys</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              <div className="rounded-lg border bg-card p-2 text-center">
+                <p className="text-sm font-bold text-green-600">🟢 {availableCount}</p>
+                <p className="text-[9px] text-muted-foreground">Disponíveis</p>
+              </div>
+              <div className="rounded-lg border bg-card p-2 text-center">
+                <p className="text-sm font-bold text-red-500">🔴 {busyCount}</p>
+                <p className="text-[9px] text-muted-foreground">Em corrida</p>
+              </div>
+              <div className="rounded-lg border bg-card p-2 text-center">
+                <p className="text-sm font-bold text-blue-600">📦 {activeOrders + pendingOrders}</p>
+                <p className="text-[9px] text-muted-foreground">Andamento</p>
+              </div>
+              <div className="rounded-lg border bg-card p-2 text-center">
+                <p className={`text-sm font-bold ${queuedOrders > 0 ? "text-orange-600" : ""}`}>⏳ {queuedOrders}</p>
+                <p className="text-[9px] text-muted-foreground">Na fila</p>
+              </div>
+            </div>
+            {queuedOrders >= 3 && (
+              <div className="rounded-lg bg-orange-50 border border-orange-200 px-3 py-2">
+                <p className="text-xs font-semibold text-orange-700">⚠️ Alta demanda! {queuedOrders} pedidos aguardando na fila.</p>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="px-4 pb-2 flex items-center gap-2">
         <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -292,10 +326,12 @@ const AdminDashboard = () => {
                 <span className="text-xs font-medium">🏍️ {motoboy?.name || "—"}</span>
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                   o.status === "completed" ? "bg-green-100 text-green-700" :
+                  o.status === "queued" ? "bg-orange-100 text-orange-700" :
                   o.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                  o.status === "cancelled" ? "bg-red-100 text-red-700" :
                   "bg-blue-100 text-blue-700"
                 }`}>
-                  {o.status}
+                  {o.status === "queued" ? "Na fila" : o.status === "pending" ? "Aguardando" : o.status}
                 </span>
               </div>
             </div>

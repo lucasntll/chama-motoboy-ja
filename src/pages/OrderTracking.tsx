@@ -7,6 +7,7 @@ import { openWhatsApp } from "@/lib/whatsapp";
 import FeedbackModal from "@/components/FeedbackModal";
 
 const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }> = {
+  queued: { label: "Na fila de espera", emoji: "⏳", color: "text-orange-600" },
   pending: { label: "Procurando motoboy...", emoji: "🔍", color: "text-yellow-600" },
   accepted: { label: "Motoboy a caminho!", emoji: "🏍️", color: "text-blue-600" },
   picking_up: { label: "Buscando seu pedido", emoji: "🛒", color: "text-blue-600" },
@@ -24,7 +25,8 @@ const OrderTracking = () => {
   const [cancelling, setCancelling] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
-
+  const [queuePosition, setQueuePosition] = useState(0);
+  const [queueTotal, setQueueTotal] = useState(0);
   const fetchOrder = async () => {
     if (!orderId) return;
     const { data } = await supabase
@@ -42,6 +44,18 @@ const OrderTracking = () => {
           .eq("id", data.motoboy_id)
           .maybeSingle();
         setMotoboy(m);
+      }
+      // Queue position
+      if (data.status === "queued") {
+        const { data: queuedOrders } = await supabase
+          .from("orders")
+          .select("id, created_at")
+          .eq("status", "queued")
+          .order("created_at", { ascending: true });
+        const allQueued = queuedOrders || [];
+        setQueueTotal(allQueued.length);
+        const pos = allQueued.findIndex((q: any) => q.id === orderId) + 1;
+        setQueuePosition(pos > 0 ? pos : allQueued.length);
       }
       // Check if already reviewed
       if (data.status === "completed") {
@@ -107,7 +121,7 @@ const OrderTracking = () => {
   }
 
   const status = STATUS_MAP[order.status] || STATUS_MAP.pending;
-  const canCancel = order.status === "pending";
+  const canCancel = order.status === "pending" || order.status === "queued";
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -122,6 +136,29 @@ const OrderTracking = () => {
         <div className="flex flex-col items-center text-center py-6">
           <span className="text-5xl mb-4">{status.emoji}</span>
           <h2 className={`text-xl font-bold ${status.color}`}>{status.label}</h2>
+          {order.status === "queued" && (
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+                <p className="text-sm text-muted-foreground">
+                  Todos os motoboys estão em entrega no momento. Seu pedido entrou na fila e será atendido em breve 👊
+                </p>
+              </div>
+              <p className="text-sm font-semibold">
+                Posição na fila: {queuePosition}º de {queueTotal}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Tempo estimado: {5 + (queuePosition - 1) * 5} a {15 + (queuePosition - 1) * 5} minutos
+              </p>
+              {queueTotal >= 3 && (
+                <div className="rounded-lg bg-orange-50 border border-orange-200 px-3 py-2 mt-2">
+                  <p className="text-xs font-semibold text-orange-700">
+                    ⚠️ Alta demanda no momento. Pode haver demora no atendimento.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
           {order.status === "pending" && (
             <div className="mt-3 flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
@@ -169,6 +206,11 @@ const OrderTracking = () => {
         <div className="rounded-xl border bg-card p-4 space-y-3">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase">Status</h3>
           <StatusStep label="Pedido criado" done />
+          <StatusStep
+            label="Na fila de espera"
+            done={["pending", "accepted", "picking_up", "delivering", "completed"].includes(order.status)}
+            active={order.status === "queued"}
+          />
           <StatusStep
             label="Motoboy aceitou"
             done={["accepted", "picking_up", "delivering", "completed"].includes(order.status)}

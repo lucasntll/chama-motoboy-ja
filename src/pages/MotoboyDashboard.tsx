@@ -138,7 +138,23 @@ const MotoboyDashboard = () => {
   const finalizeOrder = async (orderId: string) => {
     await supabase.from("orders").update({ status: "completed", completed_at: new Date().toISOString() } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "available", last_activity: new Date().toISOString() }).eq("id", motoboyId!);
-    toast.success("Entrega finalizada! ✅"); fetchAll();
+
+    // Auto-dispatch: move oldest queued order to pending
+    const { data: nextQueued } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("status", "queued")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (nextQueued) {
+      await supabase.from("orders").update({ status: "pending" } as any).eq("id", nextQueued.id);
+      toast.success("Entrega finalizada! ✅ Próximo pedido da fila liberado!");
+    } else {
+      toast.success("Entrega finalizada! ✅");
+    }
+    fetchAll();
   };
 
   const handleWhatsApp = (phone: string, name: string) => {
