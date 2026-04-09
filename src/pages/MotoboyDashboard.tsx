@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink, ChevronDown, ChevronUp, AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/whatsapp";
@@ -46,6 +46,8 @@ const MotoboyDashboard = () => {
   const [isOnline, setIsOnline] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [confirmOrderId, setConfirmOrderId] = useState<string | null>(null);
+  const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
+  const [declinedOrders, setDeclinedOrders] = useState<Record<string, number>>({});
   const [showHistory, setShowHistory] = useState(false);
   const [, setTick] = useState(0);
 
@@ -161,7 +163,10 @@ const MotoboyDashboard = () => {
     }
     await supabase.from("orders").update({ status: "accepted", motoboy_id: motoboyId } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "busy", last_activity: new Date().toISOString() }).eq("id", motoboyId);
-    toast.success("Corrida aceita! 🚀"); fetchAll();
+    toast.success("Corrida aceita! 🚀");
+    // Clear declined status for this order
+    setDeclinedOrders((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
+    fetchAll();
   };
 
   const finalizeOrder = async (orderId: string) => {
@@ -182,6 +187,20 @@ const MotoboyDashboard = () => {
     } else {
       toast.success("Entrega finalizada! ✅");
     }
+    fetchAll();
+  };
+
+  const declineOrder = (orderId: string) => {
+    // Hide this order for 5 minutes
+    setDeclinedOrders((prev) => ({ ...prev, [orderId]: Date.now() + 5 * 60 * 1000 }));
+    toast("Corrida recusada. Ela continua disponível para outros motoboys.");
+  };
+
+  const cancelAcceptedOrder = async (orderId: string) => {
+    await supabase.from("orders").update({ status: "pending", motoboy_id: null } as any).eq("id", orderId);
+    await supabase.from("motoboys").update({ status: "available", last_activity: new Date().toISOString() }).eq("id", motoboyId!);
+    toast.success("Corrida cancelada. Ela voltou para a lista.");
+    setCancelOrderId(null);
     fetchAll();
   };
 
