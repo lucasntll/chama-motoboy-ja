@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink, ChevronDown, ChevronUp, AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/whatsapp";
@@ -46,6 +46,8 @@ const MotoboyDashboard = () => {
   const [isOnline, setIsOnline] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [confirmOrderId, setConfirmOrderId] = useState<string | null>(null);
+  const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
+  const [declinedOrders, setDeclinedOrders] = useState<Record<string, number>>({});
   const [showHistory, setShowHistory] = useState(false);
   const [, setTick] = useState(0);
 
@@ -91,6 +93,14 @@ const MotoboyDashboard = () => {
   }, [motoboyId, fetchAll]);
 
   const hasActiveRide = orders.some((o) => ["accepted", "picking_up", "delivering"].includes(o.status));
+
+  const visiblePending = useMemo(() => {
+    const now = Date.now();
+    return allPending.filter((o) => {
+      const expiry = declinedOrders[o.id];
+      return !expiry || now >= expiry;
+    });
+  }, [allPending, declinedOrders]);
 
   useEffect(() => {
     if (allPending.length > prevPendingCount.current && prevPendingCount.current >= 0 && isOnline && !hasActiveRide) {
@@ -161,7 +171,10 @@ const MotoboyDashboard = () => {
     }
     await supabase.from("orders").update({ status: "accepted", motoboy_id: motoboyId } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "busy", last_activity: new Date().toISOString() }).eq("id", motoboyId);
-    toast.success("Corrida aceita! 🚀"); fetchAll();
+    toast.success("Corrida aceita! 🚀");
+    // Clear declined status for this order
+    setDeclinedOrders((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
+    fetchAll();
   };
 
   const finalizeOrder = async (orderId: string) => {
@@ -182,6 +195,20 @@ const MotoboyDashboard = () => {
     } else {
       toast.success("Entrega finalizada! ✅");
     }
+    fetchAll();
+  };
+
+  const declineOrder = (orderId: string) => {
+    // Hide this order for 5 minutes
+    setDeclinedOrders((prev) => ({ ...prev, [orderId]: Date.now() + 5 * 60 * 1000 }));
+    toast("Corrida recusada. Ela continua disponível para outros motoboys.");
+  };
+
+  const cancelAcceptedOrder = async (orderId: string) => {
+    await supabase.from("orders").update({ status: "pending", motoboy_id: null } as any).eq("id", orderId);
+    await supabase.from("motoboys").update({ status: "available", last_activity: new Date().toISOString() }).eq("id", motoboyId!);
+    toast.success("Corrida cancelada. Ela voltou para a lista.");
+    setCancelOrderId(null);
     fetchAll();
   };
 
@@ -267,27 +294,28 @@ const MotoboyDashboard = () => {
           </div>
         )}
 
-        {activeOrder && (
+         {activeOrder && (
           <ActiveOrderCard
             order={activeOrder}
             onFinalize={finalizeOrder}
+            onCancel={() => setCancelOrderId(activeOrder.id)}
             onMap={openMap}
             onWhatsApp={handleWhatsApp}
           />
         )}
 
-        {isOnline && !hasActiveRide && allPending.length > 0 && (
+        {isOnline && !hasActiveRide && visiblePending.length > 0 && (
           <div className="space-y-2">
             <h2 className="text-sm font-bold uppercase text-muted-foreground">
-              Corridas disponíveis ({allPending.length})
+              Corridas disponíveis ({visiblePending.length})
             </h2>
-            {allPending.map((order) => (
-              <PendingOrderCard key={order.id} order={order} onAccept={() => setConfirmOrderId(order.id)} onMap={openMap} />
+            {visiblePending.map((order) => (
+              <PendingOrderCard key={order.id} order={order} onAccept={() => setConfirmOrderId(order.id)} onDecline={() => declineOrder(order.id)} onMap={openMap} />
             ))}
           </div>
         )}
 
-        {isOnline && !hasActiveRide && allPending.length === 0 && (
+        {isOnline && !hasActiveRide && visiblePending.length === 0 && (
           <EmptyState emoji="🏍️" title="Nenhuma corrida disponível" subtitle="Aguarde novos pedidos..." />
         )}
 
@@ -306,6 +334,21 @@ const MotoboyDashboard = () => {
             <div className="flex gap-3">
               <button onClick={() => setConfirmOrderId(null)} className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">Cancelar</button>
               <button onClick={() => { acceptOrder(confirmOrderId); setConfirmOrderId(null); }} className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground active:scale-[0.97]">Confirmar ✓</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelOrderId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
+            <h3 className="text-lg font-bold text-center">Cancelar corrida?</h3>
+            <p className="text-sm text-muted-foreground text-center">
+              Tem certeza que deseja cancelar esta corrida? Ela voltará para a lista de corridas disponíveis.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setCancelOrderId(null)} className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">Não</button>
+              <button onClick={() => cancelAcceptedOrder(cancelOrderId)} className="flex-1 rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97]">Sim, cancelar</button>
             </div>
           </div>
         </div>
@@ -329,7 +372,7 @@ const EmptyState = ({ emoji, title, subtitle }: { emoji: string; title: string; 
   </div>
 );
 
-const ActiveOrderCard = ({ order, onFinalize, onMap, onWhatsApp }: any) => (
+const ActiveOrderCard = ({ order, onFinalize, onCancel, onMap, onWhatsApp }: any) => (
   <div className="space-y-2">
     <h2 className="text-sm font-bold uppercase text-muted-foreground">Corrida em andamento</h2>
     <div className="rounded-xl border-2 border-primary bg-card p-4 space-y-3">
@@ -360,6 +403,11 @@ const ActiveOrderCard = ({ order, onFinalize, onMap, onWhatsApp }: any) => (
       <button onClick={() => onFinalize(order.id)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground active:scale-[0.97] shadow-lg">
         FINALIZAR CORRIDA ✅
       </button>
+      {order.status === "accepted" && (
+        <button onClick={onCancel} className="flex w-full items-center justify-center gap-2 rounded-xl border border-destructive py-3 text-sm font-bold text-destructive active:scale-[0.97]">
+          <X className="h-4 w-4" /> Cancelar corrida
+        </button>
+      )}
     </div>
   </div>
 );
@@ -383,7 +431,7 @@ const OrderTimeInfo = ({ createdAt }: { createdAt: string }) => {
   );
 };
 
-const PendingOrderCard = ({ order, onAccept, onMap }: any) => {
+const PendingOrderCard = ({ order, onAccept, onDecline, onMap }: any) => {
   const urgency = getUrgencyLevel(order.created_at);
 
   return (
@@ -412,9 +460,14 @@ const PendingOrderCard = ({ order, onAccept, onMap }: any) => {
           <ExternalLink className="h-3 w-3" /> Ver no mapa
         </button>
       )}
-      <button onClick={onAccept} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-base font-bold text-primary-foreground active:scale-[0.97]">
-        ACEITAR CORRIDA
-      </button>
+      <div className="flex gap-2">
+        <button onClick={onDecline} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-muted-foreground/30 py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">
+          RECUSAR
+        </button>
+        <button onClick={onAccept} className="flex flex-[2] items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-base font-bold text-primary-foreground active:scale-[0.97]">
+          ACEITAR CORRIDA
+        </button>
+      </div>
     </div>
   );
 };
