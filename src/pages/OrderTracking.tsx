@@ -25,8 +25,10 @@ const OrderTracking = () => {
   const [cancelling, setCancelling] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
-  const [queuePosition, setQueuePosition] = useState(0);
+const [queuePosition, setQueuePosition] = useState(0);
   const [queueTotal, setQueueTotal] = useState(0);
+  const [showAcceptedBanner, setShowAcceptedBanner] = useState(false);
+  const [previousStatus, setPreviousStatus] = useState<string | null>(null);
   const fetchOrder = async () => {
     if (!orderId) return;
     const { data } = await supabase
