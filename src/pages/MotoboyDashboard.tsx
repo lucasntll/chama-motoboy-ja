@@ -94,6 +94,14 @@ const MotoboyDashboard = () => {
 
   const hasActiveRide = orders.some((o) => ["accepted", "picking_up", "delivering"].includes(o.status));
 
+  const visiblePending = useMemo(() => {
+    const now = Date.now();
+    return allPending.filter((o) => {
+      const expiry = declinedOrders[o.id];
+      return !expiry || now >= expiry;
+    });
+  }, [allPending, declinedOrders]);
+
   useEffect(() => {
     if (allPending.length > prevPendingCount.current && prevPendingCount.current >= 0 && isOnline && !hasActiveRide) {
       try {
