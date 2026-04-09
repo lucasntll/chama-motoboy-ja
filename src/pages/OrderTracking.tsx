@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, Phone, MessageCircle, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { openWhatsApp } from "@/lib/whatsapp";
+import FeedbackModal from "@/components/FeedbackModal";
 
 const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }> = {
   pending: { label: "Procurando motoboy...", emoji: "🔍", color: "text-yellow-600" },
@@ -21,6 +22,8 @@ const OrderTracking = () => {
   const [motoboy, setMotoboy] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(false);
 
   const fetchOrder = async () => {
     if (!orderId) return;
@@ -40,18 +43,24 @@ const OrderTracking = () => {
           .maybeSingle();
         setMotoboy(m);
       }
+      // Check if already reviewed
+      if (data.status === "completed") {
+        const { data: review } = await supabase
+          .from("reviews" as any)
+          .select("id")
+          .eq("order_id", orderId)
+          .maybeSingle();
+        if (review) setHasReviewed(true);
+        else setShowFeedback(true);
+      }
     }
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchOrder();
-  }, [orderId]);
+  useEffect(() => { fetchOrder(); }, [orderId]);
 
-  // Realtime updates
   useEffect(() => {
     if (!orderId) return;
-
     const channel = supabase
       .channel(`order-${orderId}`)
       .on("postgres_changes", {
@@ -61,7 +70,6 @@ const OrderTracking = () => {
         filter: `id=eq.${orderId}`,
       }, () => fetchOrder())
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [orderId]);
 
@@ -111,7 +119,6 @@ const OrderTracking = () => {
       </header>
 
       <main className="flex-1 px-4 py-6 space-y-5">
-        {/* Status principal */}
         <div className="flex flex-col items-center text-center py-6">
           <span className="text-5xl mb-4">{status.emoji}</span>
           <h2 className={`text-xl font-bold ${status.color}`}>{status.label}</h2>
@@ -123,7 +130,6 @@ const OrderTracking = () => {
           )}
         </div>
 
-        {/* Motoboy info (após aceitação) */}
         {motoboy && order.status !== "pending" && order.status !== "cancelled" && (
           <div className="rounded-xl border bg-card p-4 space-y-3">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase">Seu motoboy</h3>
@@ -153,7 +159,6 @@ const OrderTracking = () => {
           </div>
         )}
 
-        {/* Order details */}
         <div className="rounded-xl border bg-card p-4 space-y-2">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase">Detalhes do pedido</h3>
           <p className="text-sm font-bold">🛒 {order.item_description}</p>
@@ -161,7 +166,6 @@ const OrderTracking = () => {
           <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
         </div>
 
-        {/* Status timeline */}
         <div className="rounded-xl border bg-card p-4 space-y-3">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase">Status</h3>
           <StatusStep label="Pedido criado" done />
@@ -182,7 +186,6 @@ const OrderTracking = () => {
           />
         </div>
 
-        {/* Cancel button */}
         {canCancel && (
           <button
             onClick={handleCancel}
@@ -195,14 +198,39 @@ const OrderTracking = () => {
         )}
 
         {order.status === "completed" && (
-          <button
-            onClick={() => navigate("/cliente")}
-            className="flex w-full items-center justify-center rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground active:scale-[0.97]"
-          >
-            Fazer Novo Pedido
-          </button>
+          <div className="space-y-3">
+            {!hasReviewed && (
+              <button
+                onClick={() => setShowFeedback(true)}
+                className="flex w-full items-center justify-center rounded-xl border border-primary py-3 text-sm font-bold text-primary active:scale-[0.97]"
+              >
+                ⭐ Avaliar entrega
+              </button>
+            )}
+            {hasReviewed && (
+              <p className="text-center text-sm text-muted-foreground">✅ Avaliação enviada! Obrigado.</p>
+            )}
+            <button
+              onClick={() => navigate("/cliente")}
+              className="flex w-full items-center justify-center rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground active:scale-[0.97]"
+            >
+              Fazer Novo Pedido
+            </button>
+          </div>
         )}
       </main>
+
+      {showFeedback && order.motoboy_id && motoboy && (
+        <FeedbackModal
+          orderId={order.id}
+          motoboyId={order.motoboy_id}
+          motoboyName={motoboy.name}
+          onClose={() => {
+            setShowFeedback(false);
+            setHasReviewed(true);
+          }}
+        />
+      )}
     </div>
   );
 };

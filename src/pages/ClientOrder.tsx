@@ -9,6 +9,8 @@ import AddressInput from "@/components/AddressInput";
 import SavedAddressPicker from "@/components/SavedAddressPicker";
 import { toast } from "sonner";
 
+const COMMISSION = 2;
+
 const CATEGORIES = [
   { label: "🍔 Lanche", value: "Lanche" },
   { label: "💊 Remédio", value: "Remédio" },
@@ -33,12 +35,10 @@ const ClientOrder = () => {
   const [submitting, setSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
-  // Auto-fill on mount with saved data
   useEffect(() => {
     if (hasSavedData) {
       if (clientData.name) setCustomerName(clientData.name);
       if (clientData.phone) setCustomerPhone(clientData.phone);
-
       const defaultAddr = clientData.addresses.find((a) => a.isDefault) || clientData.addresses[0];
       if (defaultAddr) {
         setDeliveryAddress(defaultAddr.address);
@@ -120,13 +120,11 @@ const ClientOrder = () => {
       service_type: "compra_entrega",
       delivery_lat: deliveryCoords?.[0],
       delivery_lng: deliveryCoords?.[1],
-      estimated_price: 7,
       estimated_time_min: 25,
-      commission_amount: 1,
+      commission_amount: COMMISSION,
       status: "pending",
     } as any).select("id").single();
 
-    // Save data for future auto-fill
     saveAfterOrder(orderData);
     toast.success("Seus dados foram salvos para agilizar seus próximos pedidos.");
 
@@ -165,7 +163,6 @@ const ClientOrder = () => {
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-6">
-        {/* Quick action buttons */}
         {(hasSavedData || lastOrder) && (
           <div className="flex gap-2">
             {hasSavedData && (
@@ -191,7 +188,6 @@ const ClientOrder = () => {
           </div>
         )}
 
-        {/* Customer info */}
         <div className="space-y-3">
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Seu nome</label>
@@ -214,7 +210,6 @@ const ClientOrder = () => {
           </div>
         </div>
 
-        {/* Category buttons */}
         <div>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">O que você quer?</label>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -241,7 +236,6 @@ const ClientOrder = () => {
           />
         </div>
 
-        {/* Purchase location */}
         <div>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             De onde vai sair? <span className="text-muted-foreground/60">(opcional)</span>
@@ -251,7 +245,6 @@ const ClientOrder = () => {
           </div>
         </div>
 
-        {/* Saved addresses */}
         {clientData.addresses.length > 0 && (
           <SavedAddressPicker
             addresses={clientData.addresses}
@@ -266,7 +259,6 @@ const ClientOrder = () => {
           />
         )}
 
-        {/* Delivery address */}
         <div>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Onde entregar?</label>
           <div className="mt-1.5">
@@ -281,7 +273,6 @@ const ClientOrder = () => {
           </div>
         </div>
 
-        {/* House number */}
         <div>
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Número da casa / referência *</label>
           <div className="mt-1.5 flex items-center gap-2 rounded-xl border bg-card px-4 py-3">
@@ -295,7 +286,6 @@ const ClientOrder = () => {
           </div>
         </div>
 
-        {/* Submit */}
         <button
           onClick={handleSubmit}
           disabled={!canOrder || submitting}
