@@ -93,6 +93,8 @@ const ClientOrder = () => {
   const fullDescription = category ? `${category}: ${orderDesc}`.trim() : orderDesc;
   const canOrder = orderDesc.trim() && deliveryAddress.trim() && houseRef.trim() && customerName.trim() && customerPhone.trim();
 
+  const [queueInfo, setQueueInfo] = useState<{ position: number; estimatedMin: string } | null>(null);
+
   const handleSubmit = async () => {
     if (!orderDesc.trim()) {
       toast.error("Descreva o que você precisa 👊");
@@ -105,6 +107,23 @@ const ClientOrder = () => {
     if (purchaseLocation.trim()) savePopularPlace(purchaseLocation);
 
     const fullAddress = `${deliveryAddress} - ${houseRef}`;
+
+    // Check available motoboys
+    const { data: availableMotoboys } = await supabase
+      .from("motoboys")
+      .select("id")
+      .eq("status", "available")
+      .eq("is_available", true);
+
+    const hasAvailable = (availableMotoboys?.length || 0) > 0;
+
+    // Check queue size
+    const { count: queueSize } = await supabase
+      .from("orders")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "queued");
+
+    const orderStatus = hasAvailable ? "pending" : "queued";
 
     const orderData: LastOrder = {
       category,
@@ -129,11 +148,20 @@ const ClientOrder = () => {
       delivery_lng: deliveryCoords?.[1],
       estimated_time_min: 25,
       commission_amount: COMMISSION,
-      status: "pending",
+      status: orderStatus,
     } as any).select("id").single();
 
     saveAfterOrder(orderData);
-    toast.success("Seus dados foram salvos para agilizar seus próximos pedidos.");
+
+    if (!hasAvailable) {
+      const position = (queueSize || 0) + 1;
+      const minTime = 5 + (position - 1) * 5;
+      const maxTime = 15 + (position - 1) * 5;
+      setQueueInfo({ position, estimatedMin: `${minTime} a ${maxTime} minutos` });
+      toast("Todos os motoboys estão em entrega. Seu pedido entrou na fila! 👊", { duration: 5000 });
+    } else {
+      toast.success("Seus dados foram salvos para agilizar seus próximos pedidos.");
+    }
 
     setSubmitting(false);
 
