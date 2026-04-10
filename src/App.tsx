@@ -12,6 +12,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import MotoboyRegistration from "./pages/MotoboyRegistration";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
+import MyOrders from "./pages/MyOrders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/motoboy-acesso" element={<MotoboyAccess />} />
           <Route path="/motoboy" element={<MotoboyDashboard />} />
           <Route path="/cadastro-motoboy" element={<MotoboyRegistration />} />
+          <Route path="/meus-pedidos" element={<MyOrders />} />
 
           {/* Admin (login-based) */}
           <Route path="/login" element={<Login />} />

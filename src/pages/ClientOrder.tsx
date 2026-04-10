@@ -152,6 +152,7 @@ const ClientOrder = () => {
     } as any).select("id").single();
 
     saveAfterOrder(orderData);
+    localStorage.setItem("client_phone", customerPhone.replace(/\D/g, ""));
 
     if (!hasAvailable) {
       const position = (queueSize || 0) + 1;

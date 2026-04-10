@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, Phone, MessageCircle, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { openWhatsApp } from "@/lib/whatsapp";
+import { playIPhoneDing } from "@/lib/notifications";
 import FeedbackModal from "@/components/FeedbackModal";
 
 const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }> = {
@@ -39,25 +40,19 @@ const [queuePosition, setQueuePosition] = useState(0);
 
     if (data) {
       // Detect transition to "accepted" from queue/pending
-      if (
-        previousStatus &&
-        (previousStatus === "queued" || previousStatus === "pending") &&
-        data.status === "accepted"
-      ) {
-        setShowAcceptedBanner(true);
-        // Play a notification sound
-        try {
-          const ctx = new AudioContext();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.frequency.value = 880;
-          gain.gain.value = 0.3;
-          osc.start();
-          osc.stop(ctx.currentTime + 0.5);
-        } catch {}
-        setTimeout(() => setShowAcceptedBanner(false), 12000);
+      if (previousStatus && previousStatus !== data.status) {
+        if (
+          (previousStatus === "queued" || previousStatus === "pending") &&
+          data.status === "accepted"
+        ) {
+          setShowAcceptedBanner(true);
+          playIPhoneDing();
+          toast("🚀 Seu pedido foi aceito por um motoboy!", { duration: 6000 });
+          setTimeout(() => setShowAcceptedBanner(false), 12000);
+        } else if (data.status === "delivering") {
+          playIPhoneDing();
+          toast("🛵 Seu pedido saiu para entrega!", { duration: 6000 });
+        }
       }
       setPreviousStatus(data.status);
       setOrder(data);
