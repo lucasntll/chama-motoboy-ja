@@ -312,7 +312,8 @@ const MotoboyDashboard = () => {
             order={activeOrder}
             onFinalize={finalizeOrder}
             onCancel={() => setCancelOrderId(activeOrder.id)}
-            onMap={openMap}
+            onGoogleMaps={openGoogleMaps}
+            onWaze={openWaze}
             onWhatsApp={handleWhatsApp}
           />
         )}
