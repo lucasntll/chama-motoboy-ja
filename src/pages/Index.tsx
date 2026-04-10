@@ -46,8 +46,15 @@ const Index = () => {
       </div>
 
       <button
+        onClick={() => navigate("/cadastro-motoboy")}
+        className="mt-4 text-sm font-semibold text-primary-foreground/70 hover:text-primary-foreground transition-colors underline underline-offset-4"
+      >
+        🏍️ Seja um motoboy parceiro
+      </button>
+
+      <button
         onClick={() => navigate("/login")}
-        className="mt-6 flex items-center gap-1.5 text-xs text-primary-foreground/40 hover:text-primary-foreground/70 transition-colors"
+        className="mt-3 flex items-center gap-1.5 text-xs text-primary-foreground/40 hover:text-primary-foreground/70 transition-colors"
       >
         <Settings className="h-3 w-3" />
         Admin
