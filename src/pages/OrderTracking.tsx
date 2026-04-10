@@ -327,6 +327,16 @@ const OrderTracking = () => {
           }}
         />
       )}
+
+      {pwa.canShow && !pwa.isInstalled && (
+        <PWAInstallPrompt
+          variant="client"
+          isIOS={pwa.isIOS}
+          hasNativePrompt={pwa.hasNativePrompt}
+          onInstall={pwa.installNative}
+          onDismiss={pwa.dismiss}
+        />
+      )}
     </div>
   );
 };

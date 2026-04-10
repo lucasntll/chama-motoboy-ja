@@ -4,6 +4,8 @@ import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink, Che
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/whatsapp";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 interface DayGroup {
   date: string;
