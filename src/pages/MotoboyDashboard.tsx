@@ -216,8 +216,21 @@ const MotoboyDashboard = () => {
     openWhatsApp(phone, `Olá ${name}, sou o motoboy da sua entrega pelo ChamaMoto!`);
   };
 
-  const openMap = (lat: number | null, lng: number | null) => {
-    if (lat && lng) window.open(`https://www.google.com/maps?q=${lat},${lng}`, "_blank");
+  const openGoogleMaps = (order: any) => {
+    const dest = order.delivery_address
+      ? encodeURIComponent(order.delivery_address)
+      : order.delivery_lat && order.delivery_lng
+        ? `${order.delivery_lat},${order.delivery_lng}`
+        : null;
+    if (dest) window.open(`https://www.google.com/maps/dir/?api=1&destination=${dest}`, "_blank");
+  };
+
+  const openWaze = (order: any) => {
+    if (order.delivery_lat && order.delivery_lng) {
+      window.open(`https://waze.com/ul?ll=${order.delivery_lat},${order.delivery_lng}&navigate=yes`, "_blank");
+    } else if (order.delivery_address) {
+      window.open(`https://waze.com/ul?q=${encodeURIComponent(order.delivery_address)}&navigate=yes`, "_blank");
+    }
   };
 
   const handleLogout = () => {
@@ -299,7 +312,8 @@ const MotoboyDashboard = () => {
             order={activeOrder}
             onFinalize={finalizeOrder}
             onCancel={() => setCancelOrderId(activeOrder.id)}
-            onMap={openMap}
+            onGoogleMaps={openGoogleMaps}
+            onWaze={openWaze}
             onWhatsApp={handleWhatsApp}
           />
         )}
@@ -310,7 +324,7 @@ const MotoboyDashboard = () => {
               Corridas disponíveis ({visiblePending.length})
             </h2>
             {visiblePending.map((order) => (
-              <PendingOrderCard key={order.id} order={order} onAccept={() => setConfirmOrderId(order.id)} onDecline={() => declineOrder(order.id)} onMap={openMap} />
+              <PendingOrderCard key={order.id} order={order} onAccept={() => setConfirmOrderId(order.id)} onDecline={() => declineOrder(order.id)} onGoogleMaps={openGoogleMaps} onWaze={openWaze} />
             ))}
           </div>
         )}
@@ -372,7 +386,7 @@ const EmptyState = ({ emoji, title, subtitle }: { emoji: string; title: string; 
   </div>
 );
 
-const ActiveOrderCard = ({ order, onFinalize, onCancel, onMap, onWhatsApp }: any) => (
+const ActiveOrderCard = ({ order, onFinalize, onCancel, onGoogleMaps, onWaze, onWhatsApp }: any) => (
   <div className="space-y-2">
     <h2 className="text-sm font-bold uppercase text-muted-foreground">Corrida em andamento</h2>
     <div className="rounded-xl border-2 border-primary bg-card p-4 space-y-3">
@@ -384,11 +398,12 @@ const ActiveOrderCard = ({ order, onFinalize, onCancel, onMap, onWhatsApp }: any
         <OrderTimeInfo createdAt={order.created_at} />
       </div>
       <div className="flex items-center gap-2 flex-wrap">
-        {order.delivery_lat && (
-          <button onClick={() => onMap(order.delivery_lat, order.delivery_lng)} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
-            <MapPin className="h-3 w-3" /> Mapa
-          </button>
-        )}
+        <button onClick={() => onGoogleMaps(order)} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
+          <MapPin className="h-3 w-3" /> Google Maps
+        </button>
+        <button onClick={() => onWaze(order)} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
+          <ExternalLink className="h-3 w-3" /> Waze
+        </button>
         {order.customer_phone && (
           <a href={`tel:${order.customer_phone}`} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
             <Phone className="h-3 w-3" /> Ligar
@@ -431,7 +446,7 @@ const OrderTimeInfo = ({ createdAt }: { createdAt: string }) => {
   );
 };
 
-const PendingOrderCard = ({ order, onAccept, onDecline, onMap }: any) => {
+const PendingOrderCard = ({ order, onAccept, onDecline, onGoogleMaps, onWaze }: any) => {
   const urgency = getUrgencyLevel(order.created_at);
 
   return (
@@ -455,11 +470,14 @@ const PendingOrderCard = ({ order, onAccept, onDecline, onMap }: any) => {
         <p className="text-xs text-muted-foreground">👤 {order.customer_name} • 📞 {order.customer_phone}</p>
         <OrderTimeInfo createdAt={order.created_at} />
       </div>
-      {order.delivery_lat && (
-        <button onClick={() => onMap(order.delivery_lat, order.delivery_lng)} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
-          <ExternalLink className="h-3 w-3" /> Ver no mapa
+      <div className="flex items-center gap-2">
+        <button onClick={() => onGoogleMaps(order)} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
+          <MapPin className="h-3 w-3" /> Google Maps
         </button>
-      )}
+        <button onClick={() => onWaze(order)} className="flex items-center gap-1 rounded-lg bg-secondary px-3 py-2 text-xs font-medium">
+          <ExternalLink className="h-3 w-3" /> Waze
+        </button>
+      </div>
       <div className="flex gap-2">
         <button onClick={onDecline} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-muted-foreground/30 py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">
           RECUSAR
