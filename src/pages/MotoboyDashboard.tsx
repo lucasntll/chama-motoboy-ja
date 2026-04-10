@@ -4,6 +4,8 @@ import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink, Che
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/whatsapp";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 interface DayGroup {
   date: string;
@@ -38,6 +40,7 @@ const MotoboyDashboard = () => {
   const navigate = useNavigate();
   const motoboyId = localStorage.getItem("motoboy_id");
   const motoboyName = localStorage.getItem("motoboy_name") || "Motoboy";
+  const pwa = usePWAInstall();
 
   const [motoboyData, setMotoboyData] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
@@ -63,6 +66,7 @@ const MotoboyDashboard = () => {
       return;
     }
     fetchAll();
+    pwa.triggerShow("visit");
   }, [motoboyId]);
 
   const fetchAll = useCallback(async () => {
@@ -367,6 +371,16 @@ const MotoboyDashboard = () => {
           </div>
         </div>
       )}
+
+      {pwa.canShow && !pwa.isInstalled && (
+        <PWAInstallPrompt
+          variant="motoboy"
+          isIOS={pwa.isIOS}
+          hasNativePrompt={pwa.hasNativePrompt}
+          onInstall={pwa.installNative}
+          onDismiss={pwa.dismiss}
+        />
+      )}
     </div>
   );
 };
@@ -491,3 +505,5 @@ const PendingOrderCard = ({ order, onAccept, onDecline, onGoogleMaps, onWaze }: 
 };
 
 export default MotoboyDashboard;
+
+// PWA prompt is rendered inside MotoboyDashboard

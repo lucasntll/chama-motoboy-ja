@@ -1,10 +1,18 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bike, ShoppingBag, Settings } from "lucide-react";
 import logo from "@/assets/logo-chamamoto.png";
 import ActiveOrderBanner from "@/components/ActiveOrderBanner";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 const Index = () => {
   const navigate = useNavigate();
+  const pwa = usePWAInstall();
+
+  useEffect(() => {
+    pwa.triggerShow("visit");
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-primary px-6 py-10">
@@ -48,6 +56,16 @@ const Index = () => {
       <p className="mt-4 text-xs text-primary-foreground/50">
         ChamaMoto © {new Date().getFullYear()}
       </p>
+
+      {pwa.canShow && !pwa.isInstalled && (
+        <PWAInstallPrompt
+          variant="client"
+          isIOS={pwa.isIOS}
+          hasNativePrompt={pwa.hasNativePrompt}
+          onInstall={pwa.installNative}
+          onDismiss={pwa.dismiss}
+        />
+      )}
     </div>
   );
 };
