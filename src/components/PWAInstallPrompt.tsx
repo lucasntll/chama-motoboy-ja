@@ -100,4 +100,24 @@ const Step = ({ number, icon, text }: { number: number; icon: React.ReactNode; t
   </div>
 );
 
+
+const AndroidFallbackInstructions = ({ onDismiss }: { onDismiss: () => void }) => (
+  <div className="space-y-4">
+    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">
+      Como instalar no Android
+    </p>
+    <div className="space-y-3">
+      <Step number={1} icon={<MoreVertical className="h-4 w-4" />} text='Toque nos 3 pontinhos do navegador' />
+      <Step number={2} icon={<Download className="h-4 w-4" />} text='"Instalar app" ou "Adicionar à tela inicial"' />
+      <Step number={3} icon={<Smartphone className="h-4 w-4" />} text="Confirme a instalação" />
+    </div>
+    <button
+      onClick={onDismiss}
+      className="flex w-full items-center justify-center rounded-2xl py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+    >
+      Entendi
+    </button>
+  </div>
+);
+
 export default PWAInstallPrompt;
