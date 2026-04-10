@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Camera, Upload, CheckCircle, Bike, Zap, MapPin, Clock, DollarSign } from "lucide-react";
+import { Camera, Upload, CheckCircle, Bike, Zap, MapPin, Clock, DollarSign, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -85,13 +85,35 @@ const MotoboyRegistration = () => {
   if (submitted) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center">
-        <div className="animate-scale-in">
+        <div className="animate-scale-in space-y-4 max-w-sm">
           <CheckCircle className="mx-auto h-16 w-16 text-primary mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Cadastro enviado com sucesso!</h1>
-          <p className="text-muted-foreground">Em breve entraremos em contato.</p>
-          <p className="mt-4 text-sm text-muted-foreground rounded-lg bg-secondary p-3">
+          <h1 className="text-2xl font-bold">Cadastro enviado com sucesso! 👊</h1>
+          <p className="text-muted-foreground">
+            Agora fale com a gente no WhatsApp para agilizar sua aprovação
+          </p>
+          <p className="text-sm text-muted-foreground rounded-lg bg-secondary p-3">
             Status: <span className="font-bold text-foreground">Pendente de aprovação</span>
           </p>
+          <div className="space-y-2 pt-2">
+            <a
+              href="https://wa.me/5535998309121?text=Ol%C3%A1%2C%20acabei%20de%20me%20cadastrar%20como%20motoboy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(142,70%,45%)] py-3.5 text-sm font-bold text-white active:scale-[0.97] transition-transform"
+            >
+              <MessageCircle className="h-5 w-5" />
+              Falar com suporte 1
+            </a>
+            <a
+              href="https://wa.me/5535997238628?text=Ol%C3%A1%2C%20acabei%20de%20me%20cadastrar%20como%20motoboy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[hsl(142,70%,45%)] py-3.5 text-sm font-bold text-[hsl(142,70%,45%)] active:scale-[0.97] transition-transform"
+            >
+              <MessageCircle className="h-5 w-5" />
+              Falar com suporte 2
+            </a>
+          </div>
         </div>
       </div>
     );

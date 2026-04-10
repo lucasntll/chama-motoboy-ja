@@ -19,10 +19,10 @@ const Index = () => {
       <img src={logo} alt="ChamaMoto" className="h-24 w-24 rounded-2xl shadow-lg mb-6 drop-shadow-lg" />
 
       <h1 className="text-2xl font-bold text-primary-foreground text-center mb-2">
-        Peça qualquer coisa.<br />A gente entrega.
+        Peça qualquer coisa<br />sem sair de casa 🛵⚡
       </h1>
       <p className="text-primary-foreground/80 text-center text-sm mb-8">
-        Rápido, fácil e sem complicação.
+        Entrega rápida na sua cidade 👊
       </p>
 
       <ActiveOrderBanner />

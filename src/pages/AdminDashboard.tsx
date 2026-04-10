@@ -452,16 +452,25 @@ const AdminDashboard = () => {
                     <div className="flex gap-2">
                       <button
                         onClick={async () => {
+                          // Check duplicate phone
+                          const { data: existing } = await supabase.from("motoboys").select("id").eq("phone", app.phone).maybeSingle();
+                          if (existing) {
+                            toast({ title: "Motoboy com este telefone já existe!", variant: "destructive" });
+                            return;
+                          }
+                          // Generate access code: firstName + 123
+                          const firstName = app.full_name.split(" ")[0];
+                          const accessCode = `${firstName}123`;
                           await supabase.from("motoboys").insert({
                             name: app.full_name,
                             phone: app.phone,
                             region: app.city,
                             vehicle: app.vehicle_type,
                             photo: app.face_photo_url || "",
-                            access_code: app.phone.slice(-4),
+                            access_code: accessCode,
                           });
                           await supabase.from("motoboy_applications" as any).update({ status: "approved" }).eq("id", app.id);
-                          toast({ title: `${app.full_name} aprovado! Código: ${app.phone.slice(-4)}` });
+                          toast({ title: `${app.full_name} aprovado! Código: ${accessCode}` });
                           fetchData();
                         }}
                         className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground active:scale-[0.97]"

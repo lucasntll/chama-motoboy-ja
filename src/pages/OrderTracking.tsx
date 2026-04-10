@@ -214,9 +214,25 @@ const OrderTracking = () => {
             </div>
           )}
           {order.status === "pending" && (
-            <div className="mt-3 flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
-              <p className="text-sm text-muted-foreground">Aguardando um motoboy aceitar...</p>
+            <div className="mt-3 space-y-2 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
+                <p className="text-sm text-muted-foreground">Procurando motoboy mais próximo...</p>
+              </div>
+              <p className="text-xs text-muted-foreground">Quase lá... 👊</p>
+              <p className="text-sm font-medium text-foreground">⏱️ Entrega em ~20 a 30 minutos</p>
+            </div>
+          )}
+          {(order.status === "accepted" || order.status === "picking_up") && (
+            <div className="mt-3 space-y-2 text-center">
+              <p className="text-lg font-bold text-primary animate-pulse">🛵 Motoboy a caminho!</p>
+              <p className="text-sm font-medium text-foreground">⏱️ Entrega em ~15 a 25 minutos</p>
+            </div>
+          )}
+          {order.status === "delivering" && (
+            <div className="mt-3 space-y-2 text-center">
+              <p className="text-lg font-bold text-primary animate-pulse">📦 Seu pedido está chegando!</p>
+              <p className="text-sm font-medium text-foreground">⏱️ Faltam poucos minutos!</p>
             </div>
           )}
         </div>
