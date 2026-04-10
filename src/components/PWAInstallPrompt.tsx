@@ -45,7 +45,7 @@ const PWAInstallPrompt = ({ variant, isIOS, hasNativePrompt, onInstall, onDismis
 
         {isIOS ? (
           <IOSInstructions />
-        ) : (
+        ) : hasNativePrompt ? (
           <div className="space-y-3">
             <button
               onClick={onInstall}
@@ -61,6 +61,8 @@ const PWAInstallPrompt = ({ variant, isIOS, hasNativePrompt, onInstall, onDismis
               Depois
             </button>
           </div>
+        ) : (
+          <AndroidFallbackInstructions onDismiss={onDismiss} />
         )}
       </div>
     </div>
