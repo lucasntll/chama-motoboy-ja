@@ -166,6 +166,12 @@ const ClientOrder = () => {
 
     setSubmitting(false);
 
+    // Trigger PWA install prompt after order
+    try {
+      const pwaEvent = new CustomEvent("pwa-trigger-install", { detail: "order" });
+      window.dispatchEvent(pwaEvent);
+    } catch {}
+
     if (inserted?.id) {
       navigate(`/acompanhar/${inserted.id}`);
     } else {
