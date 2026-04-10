@@ -1,4 +1,4 @@
-import { X, Download, Share, Plus, Zap, Smartphone, BellRing } from "lucide-react";
+import { X, Download, Share, Plus, Zap, Smartphone, BellRing, MoreVertical } from "lucide-react";
 import logo from "@/assets/logo-chamamoto.png";
 
 interface PWAInstallPromptProps {
