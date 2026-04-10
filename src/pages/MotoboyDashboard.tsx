@@ -371,6 +371,16 @@ const MotoboyDashboard = () => {
           </div>
         </div>
       )}
+
+      {pwa.canShow && !pwa.isInstalled && (
+        <PWAInstallPrompt
+          variant="motoboy"
+          isIOS={pwa.isIOS}
+          hasNativePrompt={pwa.hasNativePrompt}
+          onInstall={pwa.installNative}
+          onDismiss={pwa.dismiss}
+        />
+      )}
     </div>
   );
 };
