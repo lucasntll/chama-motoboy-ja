@@ -40,6 +40,7 @@ const MotoboyDashboard = () => {
   const navigate = useNavigate();
   const motoboyId = localStorage.getItem("motoboy_id");
   const motoboyName = localStorage.getItem("motoboy_name") || "Motoboy";
+  const pwa = usePWAInstall();
 
   const [motoboyData, setMotoboyData] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
@@ -65,6 +66,7 @@ const MotoboyDashboard = () => {
       return;
     }
     fetchAll();
+    pwa.triggerShow("visit");
   }, [motoboyId]);
 
   const fetchAll = useCallback(async () => {
@@ -493,3 +495,5 @@ const PendingOrderCard = ({ order, onAccept, onDecline, onGoogleMaps, onWaze }: 
 };
 
 export default MotoboyDashboard;
+
+// PWA prompt is rendered inside MotoboyDashboard
