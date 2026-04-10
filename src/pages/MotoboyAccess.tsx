@@ -106,6 +106,13 @@ const MotoboyAccess = () => {
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "ENTRAR"}
             </button>
+
+            <button
+              onClick={() => navigate("/cadastro-motoboy")}
+              className="w-full text-center text-sm font-semibold text-primary hover:underline"
+            >
+              Ainda não tem conta? Cadastre-se aqui
+            </button>
           </div>
         </div>
       </main>
