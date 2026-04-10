@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { playIPhoneDing } from "@/lib/notifications";
 import FeedbackModal from "@/components/FeedbackModal";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }> = {
   queued: { label: "Na fila de espera", emoji: "⏳", color: "text-orange-600" },
@@ -20,16 +22,26 @@ const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }
 const OrderTracking = () => {
   const navigate = useNavigate();
   const { orderId } = useParams<{ orderId: string }>();
+  const pwa = usePWAInstall();
   const [order, setOrder] = useState<any>(null);
   const [motoboy, setMotoboy] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
-const [queuePosition, setQueuePosition] = useState(0);
+  const [queuePosition, setQueuePosition] = useState(0);
   const [queueTotal, setQueueTotal] = useState(0);
   const [showAcceptedBanner, setShowAcceptedBanner] = useState(false);
   const [previousStatus, setPreviousStatus] = useState<string | null>(null);
+
+  // Listen for PWA install trigger from order creation
+  useEffect(() => {
+    const handler = () => pwa.triggerShow("order");
+    window.addEventListener("pwa-trigger-install", handler);
+    // Also trigger on mount (user just placed an order)
+    pwa.triggerShow("order");
+    return () => window.removeEventListener("pwa-trigger-install", handler);
+  }, []);
   const fetchOrder = async () => {
     if (!orderId) return;
     const { data } = await supabase
@@ -329,3 +341,5 @@ const StatusStep = ({ label, done, active }: { label: string; done: boolean; act
 );
 
 export default OrderTracking;
+
+// Note: PWAInstallPrompt is rendered inside OrderTracking's return
