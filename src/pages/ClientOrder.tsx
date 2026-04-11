@@ -16,6 +16,9 @@ const CATEGORIES = [
   { label: "💊 Remédio", value: "Remédio" },
   { label: "🛒 Mercado", value: "Mercado" },
   { label: "🍺 Bebida", value: "Bebida" },
+  { label: "🥖 Padaria", value: "Padaria" },
+  { label: "🥩 Açougue", value: "Açougue" },
+  { label: "🏪 Loja", value: "Loja" },
   { label: "📄 Documento", value: "Documento" },
   { label: "🧩 Outros", value: "Outros" },
 ];
