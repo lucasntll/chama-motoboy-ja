@@ -8,6 +8,7 @@ import { playIPhoneDing } from "@/lib/notifications";
 import FeedbackModal from "@/components/FeedbackModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
+import TrackingMap from "@/components/TrackingMap";
 
 const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }> = {
   queued: { label: "Na fila de espera", emoji: "⏳", color: "text-orange-600" },
@@ -33,6 +34,8 @@ const OrderTracking = () => {
   const [queueTotal, setQueueTotal] = useState(0);
   const [showAcceptedBanner, setShowAcceptedBanner] = useState(false);
   const [previousStatus, setPreviousStatus] = useState<string | null>(null);
+  const [motoboyCoords, setMotoboyCoords] = useState<[number, number] | null>(null);
+  const [deliveryCoords, setDeliveryCoords] = useState<[number, number] | null>(null);
 
   // Listen for PWA install trigger from order creation
   useEffect(() => {
@@ -68,13 +71,22 @@ const OrderTracking = () => {
       }
       setPreviousStatus(data.status);
       setOrder(data);
+
+      // Set delivery coordinates
+      if (data.delivery_lat && data.delivery_lng) {
+        setDeliveryCoords([data.delivery_lat, data.delivery_lng]);
+      }
+
       if (data.motoboy_id) {
         const { data: m } = await supabase
           .from("motoboys")
-          .select("name, phone")
+          .select("name, phone, latitude, longitude")
           .eq("id", data.motoboy_id)
           .maybeSingle();
         setMotoboy(m);
+        if (m?.latitude && m?.longitude) {
+          setMotoboyCoords([m.latitude, m.longitude]);
+        }
       }
       // Queue position
       if (data.status === "queued") {
@@ -117,6 +129,27 @@ const OrderTracking = () => {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [orderId]);
+
+  // Poll motoboy location every 5s for active deliveries
+  useEffect(() => {
+    if (!order?.motoboy_id) return;
+    const isActive = ["accepted", "picking_up", "delivering"].includes(order.status);
+    if (!isActive) return;
+
+    const pollLocation = async () => {
+      const { data: m } = await supabase
+        .from("motoboys")
+        .select("latitude, longitude")
+        .eq("id", order.motoboy_id)
+        .maybeSingle();
+      if (m?.latitude && m?.longitude) {
+        setMotoboyCoords([m.latitude, m.longitude]);
+      }
+    };
+
+    const interval = setInterval(pollLocation, 5000);
+    return () => clearInterval(interval);
+  }, [order?.motoboy_id, order?.status]);
 
   const handleCancel = async () => {
     if (!orderId || !order) return;
@@ -236,6 +269,13 @@ const OrderTracking = () => {
             </div>
           )}
         </div>
+
+        {/* Real-time tracking map */}
+        <TrackingMap
+          motoboyCoords={motoboyCoords}
+          deliveryCoords={deliveryCoords}
+          status={order.status}
+        />
 
         {motoboy && order.status !== "pending" && order.status !== "cancelled" && (
           <div className="rounded-xl border bg-card p-4 space-y-3">
