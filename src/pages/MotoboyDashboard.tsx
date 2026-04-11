@@ -474,24 +474,40 @@ const OrderTimeInfo = ({ createdAt }: { createdAt: string }) => {
   );
 };
 
+const OrderTypeBadge = ({ orderType }: { orderType: string }) => {
+  const isPartner = orderType === "partner";
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+      isPartner
+        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+        : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+    }`}>
+      {isPartner ? "🟢 Retirada rápida" : "🔴 Compra no local"}
+    </span>
+  );
+};
+
 const PendingOrderCard = ({ order, onAccept, onDecline, onGoogleMaps, onWaze }: any) => {
   const urgency = getUrgencyLevel(order.created_at);
 
   return (
     <div className={`rounded-xl border-2 bg-card p-4 space-y-3 transition-colors ${urgencyStyles[urgency]}`}>
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-1">
           <p className="text-sm font-bold">🛒 {order.item_description}</p>
-          {urgency === "urgent" && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400 animate-pulse">
-              <AlertTriangle className="h-3 w-3" /> URGENTE
-            </span>
-          )}
-          {urgency === "warning" && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-[10px] font-bold text-yellow-700 dark:text-yellow-400">
-              ⚠️ Atenção
-            </span>
-          )}
+          <div className="flex items-center gap-1.5">
+            <OrderTypeBadge orderType={order.order_type} />
+            {urgency === "urgent" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400 animate-pulse">
+                <AlertTriangle className="h-3 w-3" /> URGENTE
+              </span>
+            )}
+            {urgency === "warning" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-[10px] font-bold text-yellow-700 dark:text-yellow-400">
+                ⚠️ Atenção
+              </span>
+            )}
+          </div>
         </div>
         {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
         <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
