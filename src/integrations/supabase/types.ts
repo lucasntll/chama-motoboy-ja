@@ -14,6 +14,134 @@ export type Database = {
   }
   public: {
     Tables: {
+      cities: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          state: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          state?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          state?: string
+        }
+        Relationships: []
+      }
+      establishment_applications: {
+        Row: {
+          address: string
+          admin_note: string | null
+          category: string
+          city: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_name: string
+          phone: string
+          status: string
+        }
+        Insert: {
+          address: string
+          admin_note?: string | null
+          category?: string
+          city: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_name: string
+          phone: string
+          status?: string
+        }
+        Update: {
+          address?: string
+          admin_note?: string | null
+          category?: string
+          city?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_name?: string
+          phone?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      establishments: {
+        Row: {
+          access_code: string | null
+          address: string
+          auto_schedule: boolean
+          category: string
+          city_id: string
+          close_time: string | null
+          commission_per_order: number
+          created_at: string
+          id: string
+          is_open: boolean
+          name: string
+          open_time: string | null
+          phone: string
+          photo_url: string | null
+          status: string
+        }
+        Insert: {
+          access_code?: string | null
+          address: string
+          auto_schedule?: boolean
+          category?: string
+          city_id: string
+          close_time?: string | null
+          commission_per_order?: number
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          name: string
+          open_time?: string | null
+          phone: string
+          photo_url?: string | null
+          status?: string
+        }
+        Update: {
+          access_code?: string | null
+          address?: string
+          auto_schedule?: boolean
+          category?: string
+          city_id?: string
+          close_time?: string | null
+          commission_per_order?: number
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          name?: string
+          open_time?: string | null
+          phone?: string
+          photo_url?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "establishments_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       motoboy_applications: {
         Row: {
           address: string
@@ -62,6 +190,7 @@ export type Database = {
       motoboys: {
         Row: {
           access_code: string | null
+          city_id: string | null
           created_at: string
           id: string
           is_available: boolean
@@ -81,6 +210,7 @@ export type Database = {
         }
         Insert: {
           access_code?: string | null
+          city_id?: string | null
           created_at?: string
           id?: string
           is_available?: boolean
@@ -100,6 +230,7 @@ export type Database = {
         }
         Update: {
           access_code?: string | null
+          city_id?: string | null
           created_at?: string
           id?: string
           is_available?: boolean
@@ -117,10 +248,19 @@ export type Database = {
           user_id?: string | null
           vehicle?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "motoboys_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       orders: {
         Row: {
+          city_id: string | null
           commission_amount: number | null
           completed_at: string | null
           created_at: string
@@ -130,6 +270,8 @@ export type Database = {
           delivery_lat: number | null
           delivery_lng: number | null
           distance_km: number | null
+          establishment_commission: number | null
+          establishment_id: string | null
           estimated_price: number | null
           estimated_time_min: number | null
           house_reference: string | null
@@ -137,11 +279,13 @@ export type Database = {
           is_paid: boolean | null
           item_description: string
           motoboy_id: string | null
+          order_type: string
           purchase_location: string | null
           service_type: string
           status: string
         }
         Insert: {
+          city_id?: string | null
           commission_amount?: number | null
           completed_at?: string | null
           created_at?: string
@@ -151,6 +295,8 @@ export type Database = {
           delivery_lat?: number | null
           delivery_lng?: number | null
           distance_km?: number | null
+          establishment_commission?: number | null
+          establishment_id?: string | null
           estimated_price?: number | null
           estimated_time_min?: number | null
           house_reference?: string | null
@@ -158,11 +304,13 @@ export type Database = {
           is_paid?: boolean | null
           item_description: string
           motoboy_id?: string | null
+          order_type?: string
           purchase_location?: string | null
           service_type?: string
           status?: string
         }
         Update: {
+          city_id?: string | null
           commission_amount?: number | null
           completed_at?: string | null
           created_at?: string
@@ -172,6 +320,8 @@ export type Database = {
           delivery_lat?: number | null
           delivery_lng?: number | null
           distance_km?: number | null
+          establishment_commission?: number | null
+          establishment_id?: string | null
           estimated_price?: number | null
           estimated_time_min?: number | null
           house_reference?: string | null
@@ -179,11 +329,26 @@ export type Database = {
           is_paid?: boolean | null
           item_description?: string
           motoboy_id?: string | null
+          order_type?: string
           purchase_location?: string | null
           service_type?: string
           status?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_motoboy_id_fkey"
             columns: ["motoboy_id"]
