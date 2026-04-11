@@ -10,6 +10,9 @@ import MotoboyAccess from "./pages/MotoboyAccess";
 import MotoboyDashboard from "./pages/MotoboyDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import MotoboyRegistration from "./pages/MotoboyRegistration";
+import EstablishmentAccess from "./pages/EstablishmentAccess";
+import EstablishmentDashboard from "./pages/EstablishmentDashboard";
+import EstablishmentRegistration from "./pages/EstablishmentRegistration";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import MyOrders from "./pages/MyOrders";
@@ -32,7 +35,12 @@ const App = () => (
           <Route path="/cadastro-motoboy" element={<MotoboyRegistration />} />
           <Route path="/meus-pedidos" element={<MyOrders />} />
 
-          {/* Admin (login-based) */}
+          {/* Estabelecimento */}
+          <Route path="/estabelecimento-acesso" element={<EstablishmentAccess />} />
+          <Route path="/estabelecimento" element={<EstablishmentDashboard />} />
+          <Route path="/cadastro-estabelecimento" element={<EstablishmentRegistration />} />
+
+          {/* Admin */}
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
 
