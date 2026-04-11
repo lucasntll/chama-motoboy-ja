@@ -184,13 +184,12 @@ const MotoboyDashboard = () => {
   const acceptOrder = async (orderId: string) => {
     if (hasActiveRide) { toast.error("Você já tem uma corrida ativa!"); return; }
     const { data: check } = await supabase.from("orders").select("status, motoboy_id").eq("id", orderId).maybeSingle();
-    if (!check || check.motoboy_id || check.status !== "pending") {
+    if (!check || check.motoboy_id || !["pending", "ready_for_pickup"].includes(check.status)) {
       toast.error("Corrida já aceita por outro motoboy"); fetchAll(); return;
     }
     await supabase.from("orders").update({ status: "accepted", motoboy_id: motoboyId } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "busy", last_activity: new Date().toISOString() }).eq("id", motoboyId);
     toast.success("Corrida aceita! 🚀");
-    // Clear declined status for this order
     setDeclinedOrders((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
     fetchAll();
   };
@@ -199,17 +198,23 @@ const MotoboyDashboard = () => {
     await supabase.from("orders").update({ status: "completed", completed_at: new Date().toISOString() } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "available", last_activity: new Date().toISOString() }).eq("id", motoboyId!);
 
-    const { data: nextQueued } = await supabase
+    // Auto-dispatch: promote next queued order to pending (filtered by city)
+    let nextQuery = supabase
       .from("orders")
       .select("id")
       .eq("status", "queued")
       .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+
+    if (motoboyData?.city_id) {
+      nextQuery = nextQuery.eq("city_id", motoboyData.city_id);
+    }
+
+    const { data: nextQueued } = await nextQuery.maybeSingle();
 
     if (nextQueued) {
       await supabase.from("orders").update({ status: "pending" } as any).eq("id", nextQueued.id);
-      toast.success("Entrega finalizada! ✅ Próximo pedido da fila liberado!");
+      toast.success("Entrega finalizada! ✅ Próximo pedido da fila liberado automaticamente!");
     } else {
       toast.success("Entrega finalizada! ✅");
     }
