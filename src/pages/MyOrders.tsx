@@ -143,27 +143,41 @@ const MyOrders = () => {
           filtered.map((order, i) => {
             const s = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
             const date = new Date(order.created_at);
+            const isFinished = order.status === "completed" || order.status === "cancelled";
             return (
-              <button
+              <div
                 key={order.id}
-                onClick={() => navigate(`/acompanhar/${order.id}`)}
-                className="flex w-full items-center gap-3 rounded-xl border bg-card p-4 text-left transition-all active:scale-[0.98] hover:shadow-md animate-fade-in-up"
+                className="flex items-center gap-2 animate-fade-in-up"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
-                <span className="text-2xl">{s.emoji}</span>
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm font-bold truncate">{order.item_description}</p>
-                  <p className="text-xs text-muted-foreground truncate">{order.delivery_address}</p>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>{s.label}</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {date.toLocaleDateString("pt-BR")} {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+                <button
+                  onClick={() => navigate(`/acompanhar/${order.id}`)}
+                  className="flex flex-1 items-center gap-3 rounded-xl border bg-card p-4 text-left transition-all active:scale-[0.98] hover:shadow-md"
+                >
+                  <span className="text-2xl">{s.emoji}</span>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-sm font-bold truncate">{order.item_description}</p>
+                    <p className="text-xs text-muted-foreground truncate">{order.delivery_address}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>{s.label}</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {date.toLocaleDateString("pt-BR")} {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground/40 shrink-0" />
-              </button>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground/40 shrink-0" />
+                </button>
+                {isFinished && (
+                  <button
+                    onClick={() => dismissOrder(order.id)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive/60 hover:bg-destructive/20 hover:text-destructive transition-all active:scale-90"
+                    title="Remover"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             );
           })
         )}
