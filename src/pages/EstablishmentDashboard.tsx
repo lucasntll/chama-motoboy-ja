@@ -126,7 +126,7 @@ const EstablishmentDashboard = () => {
   const activeOrders = orders.filter((o) => o.status !== "completed");
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className={`flex min-h-screen flex-col bg-background transition-all ${flashNew ? "animate-pulse ring-4 ring-orange-500" : ""}`}>
       <header className="flex items-center justify-between bg-card px-4 py-3 border-b">
         <div className="flex items-center gap-3">
           <Store className="h-5 w-5 text-primary" />
@@ -136,6 +136,19 @@ const EstablishmentDashboard = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {!notifEnabled && (
+            <button
+              onClick={async () => {
+                const ok = await requestNotificationPermission();
+                setNotifEnabled(ok);
+                if (ok) toast.success("Notificações ativadas!");
+                else toast.error("Permissão negada");
+              }}
+              className="flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1.5 text-xs font-bold text-white animate-pulse"
+            >
+              <Bell className="h-3 w-3" /> Ativar alertas
+            </button>
+          )}
           <button
             onClick={toggleOpen}
             className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
