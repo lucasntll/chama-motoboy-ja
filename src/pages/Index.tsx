@@ -47,9 +47,9 @@ const Index = () => {
 
       <button
         onClick={() => navigate("/cadastro-motoboy")}
-        className="mt-4 text-sm font-semibold text-primary-foreground/70 hover:text-primary-foreground transition-colors underline underline-offset-4"
+        className="mt-5 text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground transition-colors tracking-wide"
       >
-        🏍️ Seja um motoboy parceiro
+        Quer ser um parceiro? <span className="underline underline-offset-4 font-semibold">Cadastre-se aqui</span>
       </button>
 
       <button
