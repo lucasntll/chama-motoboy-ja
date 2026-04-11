@@ -34,6 +34,8 @@ const OrderTracking = () => {
   const [queueTotal, setQueueTotal] = useState(0);
   const [showAcceptedBanner, setShowAcceptedBanner] = useState(false);
   const [previousStatus, setPreviousStatus] = useState<string | null>(null);
+  const [motoboyCoords, setMotoboyCoords] = useState<[number, number] | null>(null);
+  const [deliveryCoords, setDeliveryCoords] = useState<[number, number] | null>(null);
 
   // Listen for PWA install trigger from order creation
   useEffect(() => {
