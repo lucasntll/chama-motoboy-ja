@@ -71,13 +71,22 @@ const OrderTracking = () => {
       }
       setPreviousStatus(data.status);
       setOrder(data);
+
+      // Set delivery coordinates
+      if (data.delivery_lat && data.delivery_lng) {
+        setDeliveryCoords([data.delivery_lat, data.delivery_lng]);
+      }
+
       if (data.motoboy_id) {
         const { data: m } = await supabase
           .from("motoboys")
-          .select("name, phone")
+          .select("name, phone, latitude, longitude")
           .eq("id", data.motoboy_id)
           .maybeSingle();
         setMotoboy(m);
+        if (m?.latitude && m?.longitude) {
+          setMotoboyCoords([m.latitude, m.longitude]);
+        }
       }
       // Queue position
       if (data.status === "queued") {
