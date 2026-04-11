@@ -71,17 +71,31 @@ const MotoboyDashboard = () => {
 
   const fetchAll = useCallback(async () => {
     if (!motoboyId) return;
-    const [motoboyRes, myOrdersRes, pendingRes] = await Promise.all([
+    const [motoboyRes, myOrdersRes] = await Promise.all([
       supabase.from("motoboys").select("*").eq("id", motoboyId).maybeSingle(),
       supabase.from("orders").select("*").eq("motoboy_id", motoboyId).order("created_at", { ascending: false }),
-      supabase.from("orders").select("*").eq("status", "pending").is("motoboy_id", null).order("created_at", { ascending: true }),
     ]);
-    if (motoboyRes.data) {
-      setMotoboyData(motoboyRes.data);
-      setIsOnline(motoboyRes.data.is_available);
+    const motoboy = motoboyRes.data;
+    if (motoboy) {
+      setMotoboyData(motoboy);
+      setIsOnline(motoboy.is_available);
     }
     setOrders(myOrdersRes.data || []);
-    setAllPending(pendingRes.data || []);
+
+    // Fetch available orders: pending (free) + ready_for_pickup (partner), filtered by motoboy's city
+    let pendingQuery = supabase
+      .from("orders")
+      .select("*")
+      .is("motoboy_id", null)
+      .in("status", ["pending", "ready_for_pickup"])
+      .order("created_at", { ascending: true });
+
+    if (motoboy?.city_id) {
+      pendingQuery = pendingQuery.eq("city_id", motoboy.city_id);
+    }
+
+    const { data: pendingData } = await pendingQuery;
+    setAllPending(pendingData || []);
     setLoading(false);
   }, [motoboyId]);
 
@@ -405,8 +419,10 @@ const ActiveOrderCard = ({ order, onFinalize, onCancel, onGoogleMaps, onWaze, on
     <h2 className="text-sm font-bold uppercase text-muted-foreground">Corrida em andamento</h2>
     <div className="rounded-xl border-2 border-primary bg-card p-4 space-y-3">
       <div className="space-y-1.5">
-        <p className="text-sm font-bold">🛒 {order.item_description}</p>
-        {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-bold">🛒 {order.item_description}</p>
+          <OrderTypeBadge orderType={order.order_type} />
+        </div>
         <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
         <p className="text-xs text-muted-foreground">👤 {order.customer_name} • 📞 {order.customer_phone}</p>
         <OrderTimeInfo createdAt={order.created_at} />
@@ -460,24 +476,40 @@ const OrderTimeInfo = ({ createdAt }: { createdAt: string }) => {
   );
 };
 
+const OrderTypeBadge = ({ orderType }: { orderType: string }) => {
+  const isPartner = orderType === "partner";
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+      isPartner
+        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+        : "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+    }`}>
+      {isPartner ? "🟢 Retirada rápida" : "🔴 Compra no local"}
+    </span>
+  );
+};
+
 const PendingOrderCard = ({ order, onAccept, onDecline, onGoogleMaps, onWaze }: any) => {
   const urgency = getUrgencyLevel(order.created_at);
 
   return (
     <div className={`rounded-xl border-2 bg-card p-4 space-y-3 transition-colors ${urgencyStyles[urgency]}`}>
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-1">
           <p className="text-sm font-bold">🛒 {order.item_description}</p>
-          {urgency === "urgent" && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400 animate-pulse">
-              <AlertTriangle className="h-3 w-3" /> URGENTE
-            </span>
-          )}
-          {urgency === "warning" && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-[10px] font-bold text-yellow-700 dark:text-yellow-400">
-              ⚠️ Atenção
-            </span>
-          )}
+          <div className="flex items-center gap-1.5">
+            <OrderTypeBadge orderType={order.order_type} />
+            {urgency === "urgent" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:text-red-400 animate-pulse">
+                <AlertTriangle className="h-3 w-3" /> URGENTE
+              </span>
+            )}
+            {urgency === "warning" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-[10px] font-bold text-yellow-700 dark:text-yellow-400">
+                ⚠️ Atenção
+              </span>
+            )}
+          </div>
         </div>
         {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
         <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
