@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, ChevronRight, Package } from "lucide-react";
+import { Loader2, ChevronRight, Package, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { playIPhoneDing } from "@/lib/notifications";
 import { toast } from "sonner";
