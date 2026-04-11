@@ -173,9 +173,9 @@ const FreeOrder = () => {
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-6">
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-          <p className="text-xs text-amber-800 font-medium">
+        <div className="rounded-xl border border-yellow-600/30 bg-yellow-500/10 p-3 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
+          <p className="text-xs text-foreground/80 font-medium">
             No pedido livre o motoboy vai até o local, compra e entrega. Pode levar mais tempo que um pedido de parceiro.
           </p>
         </div>
