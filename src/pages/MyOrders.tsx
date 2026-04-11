@@ -93,20 +93,32 @@ const MyOrders = () => {
         <h1 className="text-lg font-bold">Meus Pedidos</h1>
       </header>
 
-      <div className="flex gap-2 px-4 py-3">
-        {filters.map((f) => (
+      <div className="flex items-center gap-2 px-4 py-3">
+        <div className="flex flex-1 gap-2">
+          {filters.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`rounded-full px-4 py-2 text-xs font-semibold transition-all active:scale-95 ${
+                filter === f.key
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "bg-card border text-foreground hover:bg-secondary"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {hasFinished && (
           <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`rounded-full px-4 py-2 text-xs font-semibold transition-all active:scale-95 ${
-              filter === f.key
-                ? "bg-primary text-primary-foreground shadow-md"
-                : "bg-card border text-foreground hover:bg-secondary"
-            }`}
+            onClick={clearFinished}
+            className="flex items-center gap-1 rounded-full px-3 py-2 text-xs font-medium text-destructive bg-destructive/10 hover:bg-destructive/20 transition-all active:scale-95"
+            title="Limpar finalizados"
           >
-            {f.label}
+            <Trash2 className="h-3.5 w-3.5" />
+            Limpar
           </button>
-        ))}
+        )}
       </div>
 
       <main className="flex-1 px-4 py-2 space-y-3">
