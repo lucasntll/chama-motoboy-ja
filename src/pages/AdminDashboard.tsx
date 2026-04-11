@@ -704,6 +704,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        <div className="pt-4 border-t">
           <button
             onClick={() => setShowCleanupConfirm(true)}
             className="w-full rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97]"
