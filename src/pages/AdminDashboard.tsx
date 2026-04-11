@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2 } from "lucide-react";
+import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-type Tab = "motoboys" | "orders" | "payments" | "feedback" | "applications" | "cities" | "establishments";
+type Tab = "motoboys" | "orders" | "payments" | "feedback" | "applications" | "cities" | "establishments" | "financeiro";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -140,7 +140,10 @@ const AdminDashboard = () => {
   }
 
   const totalCompletedOrders = orders.filter((o) => o.status === "completed").length;
-  const totalRevenue = totalCompletedOrders * 2;
+  const motoboyRevenue = totalCompletedOrders * 2;
+  const partnerOrders = orders.filter((o) => o.status === "completed" && o.order_type === "partner");
+  const estRevenue = partnerOrders.length * 2;
+  const totalRevenue = motoboyRevenue + estRevenue;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -227,6 +230,7 @@ const AdminDashboard = () => {
           { key: "applications" as Tab, label: "Solicitações", icon: UserPlus },
           { key: "cities" as Tab, label: "Cidades", icon: MapPin },
           { key: "establishments" as Tab, label: "Parceiros", icon: Store },
+          { key: "financeiro" as Tab, label: "Financeiro", icon: TrendingUp },
         ]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -703,6 +707,182 @@ const AdminDashboard = () => {
             )}
           </div>
         )}
+
+        {tab === "financeiro" && (() => {
+          const completed = orders.filter((o) => o.status === "completed");
+          const partner = completed.filter((o) => o.order_type === "partner");
+
+          // Daily breakdown
+          const dailyMap: Record<string, { date: string; label: string; motoboy: number; est: number; total: number }> = {};
+          completed.forEach((o) => {
+            const d = new Date(o.completed_at || o.created_at);
+            const key = d.toISOString().slice(0, 10);
+            if (!dailyMap[key]) dailyMap[key] = { date: key, label: d.toLocaleDateString("pt-BR"), motoboy: 0, est: 0, total: 0 };
+            dailyMap[key].motoboy += 2;
+            dailyMap[key].total += 2;
+          });
+          partner.forEach((o) => {
+            const d = new Date(o.completed_at || o.created_at);
+            const key = d.toISOString().slice(0, 10);
+            if (dailyMap[key]) {
+              dailyMap[key].est += 2;
+              dailyMap[key].total += 2;
+            }
+          });
+          const daily = Object.values(dailyMap).sort((a, b) => b.date.localeCompare(a.date));
+
+          // By city
+          const cityMap: Record<string, { name: string; motoboy: number; est: number; total: number }> = {};
+          completed.forEach((o) => {
+            const city = cities.find((c: any) => c.id === o.city_id);
+            const name = city?.name || "Sem cidade";
+            if (!cityMap[name]) cityMap[name] = { name, motoboy: 0, est: 0, total: 0 };
+            cityMap[name].motoboy += 2;
+            cityMap[name].total += 2;
+          });
+          partner.forEach((o) => {
+            const city = cities.find((c: any) => c.id === o.city_id);
+            const name = city?.name || "Sem cidade";
+            if (cityMap[name]) {
+              cityMap[name].est += 2;
+              cityMap[name].total += 2;
+            }
+          });
+          const byCity = Object.values(cityMap).sort((a, b) => b.total - a.total);
+
+          // By establishment
+          const estMap: Record<string, { name: string; orders: number; commission: number }> = {};
+          partner.forEach((o) => {
+            const est = establishments.find((e: any) => e.id === o.establishment_id);
+            const name = est?.name || "Desconhecido";
+            if (!estMap[name]) estMap[name] = { name, orders: 0, commission: 0 };
+            estMap[name].orders++;
+            estMap[name].commission += 2;
+          });
+          const byEst = Object.values(estMap).sort((a, b) => b.commission - a.commission);
+
+          return (
+            <div className="space-y-4">
+              {/* Summary cards */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl border bg-card p-3 text-center">
+                  <p className="text-lg font-bold text-primary">R${motoboyRevenue + estRevenue}</p>
+                  <p className="text-[10px] text-muted-foreground">Receita Total</p>
+                </div>
+                <div className="rounded-xl border bg-card p-3 text-center">
+                  <p className="text-lg font-bold">R${motoboyRevenue}</p>
+                  <p className="text-[10px] text-muted-foreground">Motoboys</p>
+                </div>
+                <div className="rounded-xl border bg-card p-3 text-center">
+                  <p className="text-lg font-bold">R${estRevenue}</p>
+                  <p className="text-[10px] text-muted-foreground">Parceiros</p>
+                </div>
+              </div>
+
+              {/* Daily breakdown */}
+              <div className="rounded-xl border bg-card p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-bold">Receita por dia</h3>
+                </div>
+                {daily.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">Nenhuma corrida finalizada ainda.</p>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {daily.map((d) => (
+                      <div key={d.date} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                        <span className="text-muted-foreground text-xs">{d.label}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] text-muted-foreground">🏍️ R${d.motoboy}</span>
+                          {d.est > 0 && <span className="text-[10px] text-muted-foreground">🏪 R${d.est}</span>}
+                          <span className="font-bold text-xs text-primary">R${d.total}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* By city */}
+              {byCity.length > 0 && (
+                <div className="rounded-xl border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-bold">Receita por cidade</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {byCity.map((c) => (
+                      <div key={c.name} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                        <span className="text-xs font-medium">{c.name}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] text-muted-foreground">🏍️ R${c.motoboy}</span>
+                          {c.est > 0 && <span className="text-[10px] text-muted-foreground">🏪 R${c.est}</span>}
+                          <span className="font-bold text-xs text-primary">R${c.total}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* By establishment */}
+              {byEst.length > 0 && (
+                <div className="rounded-xl border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Store className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-bold">Comissão por estabelecimento</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {byEst.map((e) => (
+                      <div key={e.name} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                        <div>
+                          <p className="text-xs font-medium">{e.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{e.orders} pedidos</p>
+                        </div>
+                        <span className="font-bold text-xs text-primary">R${e.commission}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Motoboy breakdown */}
+              <div className="rounded-xl border bg-card p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-bold">Comissão por motoboy</h3>
+                </div>
+                <div className="space-y-2">
+                  {motoboys.filter((m) => {
+                    const stats = getMotoboyStats(m.id);
+                    return stats.totalRides > 0;
+                  }).map((m) => {
+                    const stats = getMotoboyStats(m.id);
+                    return (
+                      <div key={m.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                        <div>
+                          <p className="text-xs font-medium">{m.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{stats.totalRides} corridas • Deve: R${stats.owed}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-xs text-primary">R${stats.totalCommission}</span>
+                          {stats.owed > 0 && (
+                            <button
+                              onClick={() => markAsPaid(m.id)}
+                              className="block mt-1 text-[10px] font-bold text-primary underline"
+                            >
+                              Marcar pago
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="pt-4 border-t">
           <button
