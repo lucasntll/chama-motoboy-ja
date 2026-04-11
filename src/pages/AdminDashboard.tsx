@@ -25,10 +25,15 @@ const AdminDashboard = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [establishments, setEstablishments] = useState<any[]>([]);
+  const [estApplications, setEstApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState("");
   const [expandedMotoboy, setExpandedMotoboy] = useState<string | null>(null);
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
+  const [newCityName, setNewCityName] = useState("");
+  const [newCityState, setNewCityState] = useState("MG");
 
   useEffect(() => { fetchData(); }, []);
 
