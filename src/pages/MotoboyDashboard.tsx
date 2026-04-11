@@ -419,8 +419,10 @@ const ActiveOrderCard = ({ order, onFinalize, onCancel, onGoogleMaps, onWaze, on
     <h2 className="text-sm font-bold uppercase text-muted-foreground">Corrida em andamento</h2>
     <div className="rounded-xl border-2 border-primary bg-card p-4 space-y-3">
       <div className="space-y-1.5">
-        <p className="text-sm font-bold">🛒 {order.item_description}</p>
-        {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-bold">🛒 {order.item_description}</p>
+          <OrderTypeBadge orderType={order.order_type} />
+        </div>
         <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
         <p className="text-xs text-muted-foreground">👤 {order.customer_name} • 📞 {order.customer_phone}</p>
         <OrderTimeInfo createdAt={order.created_at} />
