@@ -230,6 +230,7 @@ const AdminDashboard = () => {
           { key: "applications" as Tab, label: "Solicitações", icon: UserPlus },
           { key: "cities" as Tab, label: "Cidades", icon: MapPin },
           { key: "establishments" as Tab, label: "Parceiros", icon: Store },
+          { key: "financeiro" as Tab, label: "Financeiro", icon: TrendingUp },
         ]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
