@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, ChevronRight, Package } from "lucide-react";
+import { Loader2, ChevronRight, Package, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { playIPhoneDing } from "@/lib/notifications";
 import { toast } from "sonner";
@@ -19,6 +19,24 @@ const ActiveOrderBanner = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [prevStatuses, setPrevStatuses] = useState<Record<string, string>>({});
+  const [dismissed, setDismissed] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("dismissed_orders") || "[]"); } catch { return []; }
+  });
+
+  const dismissOrder = useCallback((orderId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = [...dismissed, orderId];
+    setDismissed(next);
+    localStorage.setItem("dismissed_orders", JSON.stringify(next));
+  }, [dismissed]);
+
+  const dismissAllCompleted = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const completedIds = orders.filter(o => o.status === "completed" || o.status === "cancelled").map(o => o.id);
+    const next = [...new Set([...dismissed, ...completedIds])];
+    setDismissed(next);
+    localStorage.setItem("dismissed_orders", JSON.stringify(next));
+  }, [dismissed, orders]);
 
   const fetchOrders = async () => {
     const phone = localStorage.getItem("client_phone");
@@ -77,7 +95,9 @@ const ActiveOrderBanner = () => {
   const activeOrders = orders.filter((o) =>
     ["queued", "pending", "accepted", "picking_up", "delivering"].includes(o.status)
   );
-  const recentCompleted = orders.filter((o) => o.status === "completed").slice(0, 2);
+  const recentCompleted = orders
+    .filter((o) => o.status === "completed" && !dismissed.includes(o.id))
+    .slice(0, 2);
 
   if (activeOrders.length === 0 && recentCompleted.length === 0) return null;
 
@@ -115,21 +135,38 @@ const ActiveOrderBanner = () => {
       {recentCompleted.length > 0 && activeOrders.length === 0 && (
         <div className="space-y-2">
           {recentCompleted.map((order) => (
-            <button
-              key={order.id}
-              onClick={() => navigate(`/acompanhar/${order.id}`)}
-              className="flex w-full items-center gap-3 rounded-2xl bg-primary-foreground/10 border border-primary-foreground/10 px-4 py-3 text-left transition-all active:scale-[0.97]"
-            >
-              <span className="text-xl">✅</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-primary-foreground/80 truncate">
-                  {order.item_description}
-                </p>
-                <p className="text-xs text-primary-foreground/50">Entregue</p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-primary-foreground/30 shrink-0" />
-            </button>
+            <div key={order.id} className="flex items-center gap-2">
+              <button
+                onClick={() => navigate(`/acompanhar/${order.id}`)}
+                className="flex flex-1 items-center gap-3 rounded-2xl bg-primary-foreground/10 border border-primary-foreground/10 px-4 py-3 text-left transition-all active:scale-[0.97]"
+              >
+                <span className="text-xl">✅</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-primary-foreground/80 truncate">
+                    {order.item_description}
+                  </p>
+                  <p className="text-xs text-primary-foreground/50">Entregue</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-primary-foreground/30 shrink-0" />
+              </button>
+              <button
+                onClick={(e) => dismissOrder(order.id, e)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-foreground/10 text-primary-foreground/50 hover:bg-destructive/20 hover:text-destructive transition-all active:scale-90"
+                title="Remover"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           ))}
+          {recentCompleted.length > 1 && (
+            <button
+              onClick={dismissAllCompleted}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium text-primary-foreground/50 hover:text-primary-foreground/70 transition-colors"
+            >
+              <Trash2 className="h-3 w-3" />
+              Limpar entregues
+            </button>
+          )}
         </div>
       )}
 

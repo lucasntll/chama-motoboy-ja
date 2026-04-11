@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, Package, Filter, ChevronRight, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, Package, Filter, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "@/components/BottomNav";
 
@@ -21,7 +21,24 @@ const MyOrders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [dismissed, setDismissed] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("dismissed_orders") || "[]"); } catch { return []; }
+  });
 
+  const dismissOrder = (orderId: string) => {
+    const next = [...dismissed, orderId];
+    setDismissed(next);
+    localStorage.setItem("dismissed_orders", JSON.stringify(next));
+  };
+
+  const clearFinished = () => {
+    const finishedIds = orders
+      .filter(o => o.status === "completed" || o.status === "cancelled")
+      .map(o => o.id);
+    const next = [...new Set([...dismissed, ...finishedIds])];
+    setDismissed(next);
+    localStorage.setItem("dismissed_orders", JSON.stringify(next));
+  };
   const fetchOrders = async () => {
     const phone = localStorage.getItem("client_phone");
     if (!phone) {
@@ -48,12 +65,18 @@ const MyOrders = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const filtered = orders.filter((o) => {
-    if (filter === "all") return true;
-    const s = STATUS_LABELS[o.status];
-    if (!s) return filter === "active";
-    return s.group === (filter === "active" ? "active" : "completed");
-  });
+  const filtered = orders
+    .filter((o) => !dismissed.includes(o.id))
+    .filter((o) => {
+      if (filter === "all") return true;
+      const s = STATUS_LABELS[o.status];
+      if (!s) return filter === "active";
+      return s.group === (filter === "active" ? "active" : "completed");
+    });
+
+  const hasFinished = orders.some(o => 
+    (o.status === "completed" || o.status === "cancelled") && !dismissed.includes(o.id)
+  );
 
   const filters: { key: StatusFilter; label: string }[] = [
     { key: "all", label: "Todos" },
@@ -70,20 +93,32 @@ const MyOrders = () => {
         <h1 className="text-lg font-bold">Meus Pedidos</h1>
       </header>
 
-      <div className="flex gap-2 px-4 py-3">
-        {filters.map((f) => (
+      <div className="flex items-center gap-2 px-4 py-3">
+        <div className="flex flex-1 gap-2">
+          {filters.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`rounded-full px-4 py-2 text-xs font-semibold transition-all active:scale-95 ${
+                filter === f.key
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "bg-card border text-foreground hover:bg-secondary"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {hasFinished && (
           <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`rounded-full px-4 py-2 text-xs font-semibold transition-all active:scale-95 ${
-              filter === f.key
-                ? "bg-primary text-primary-foreground shadow-md"
-                : "bg-card border text-foreground hover:bg-secondary"
-            }`}
+            onClick={clearFinished}
+            className="flex items-center gap-1 rounded-full px-3 py-2 text-xs font-medium text-destructive bg-destructive/10 hover:bg-destructive/20 transition-all active:scale-95"
+            title="Limpar finalizados"
           >
-            {f.label}
+            <Trash2 className="h-3.5 w-3.5" />
+            Limpar
           </button>
-        ))}
+        )}
       </div>
 
       <main className="flex-1 px-4 py-2 space-y-3">
@@ -108,27 +143,41 @@ const MyOrders = () => {
           filtered.map((order, i) => {
             const s = STATUS_LABELS[order.status] || STATUS_LABELS.pending;
             const date = new Date(order.created_at);
+            const isFinished = order.status === "completed" || order.status === "cancelled";
             return (
-              <button
+              <div
                 key={order.id}
-                onClick={() => navigate(`/acompanhar/${order.id}`)}
-                className="flex w-full items-center gap-3 rounded-xl border bg-card p-4 text-left transition-all active:scale-[0.98] hover:shadow-md animate-fade-in-up"
+                className="flex items-center gap-2 animate-fade-in-up"
                 style={{ animationDelay: `${i * 0.04}s` }}
               >
-                <span className="text-2xl">{s.emoji}</span>
-                <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm font-bold truncate">{order.item_description}</p>
-                  <p className="text-xs text-muted-foreground truncate">{order.delivery_address}</p>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>{s.label}</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {date.toLocaleDateString("pt-BR")} {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+                <button
+                  onClick={() => navigate(`/acompanhar/${order.id}`)}
+                  className="flex flex-1 items-center gap-3 rounded-xl border bg-card p-4 text-left transition-all active:scale-[0.98] hover:shadow-md"
+                >
+                  <span className="text-2xl">{s.emoji}</span>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-sm font-bold truncate">{order.item_description}</p>
+                    <p className="text-xs text-muted-foreground truncate">{order.delivery_address}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>{s.label}</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {date.toLocaleDateString("pt-BR")} {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground/40 shrink-0" />
-              </button>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground/40 shrink-0" />
+                </button>
+                {isFinished && (
+                  <button
+                    onClick={() => dismissOrder(order.id)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive/60 hover:bg-destructive/20 hover:text-destructive transition-all active:scale-90"
+                    title="Remover"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             );
           })
         )}
