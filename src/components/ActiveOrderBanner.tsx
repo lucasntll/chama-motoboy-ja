@@ -19,6 +19,24 @@ const ActiveOrderBanner = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [prevStatuses, setPrevStatuses] = useState<Record<string, string>>({});
+  const [dismissed, setDismissed] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("dismissed_orders") || "[]"); } catch { return []; }
+  });
+
+  const dismissOrder = useCallback((orderId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = [...dismissed, orderId];
+    setDismissed(next);
+    localStorage.setItem("dismissed_orders", JSON.stringify(next));
+  }, [dismissed]);
+
+  const dismissAllCompleted = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const completedIds = orders.filter(o => o.status === "completed" || o.status === "cancelled").map(o => o.id);
+    const next = [...new Set([...dismissed, ...completedIds])];
+    setDismissed(next);
+    localStorage.setItem("dismissed_orders", JSON.stringify(next));
+  }, [dismissed, orders]);
 
   const fetchOrders = async () => {
     const phone = localStorage.getItem("client_phone");
