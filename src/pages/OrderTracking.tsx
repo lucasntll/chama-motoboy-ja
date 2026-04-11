@@ -8,6 +8,7 @@ import { playIPhoneDing } from "@/lib/notifications";
 import FeedbackModal from "@/components/FeedbackModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
+import TrackingMap from "@/components/TrackingMap";
 
 const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }> = {
   queued: { label: "Na fila de espera", emoji: "⏳", color: "text-orange-600" },
