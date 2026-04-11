@@ -38,16 +38,22 @@ const AdminDashboard = () => {
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
-    const [m, o, r, a] = await Promise.all([
+    const [m, o, r, a, c, e, ea] = await Promise.all([
       supabase.from("motoboys").select("*").order("name"),
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
       supabase.from("reviews" as any).select("*").order("created_at", { ascending: false }),
       supabase.from("motoboy_applications" as any).select("*").order("created_at", { ascending: false }),
+      supabase.from("cities").select("*").order("name"),
+      supabase.from("establishments").select("*").order("name"),
+      supabase.from("establishment_applications").select("*").order("created_at", { ascending: false }),
     ]);
     setMotoboys(m.data || []);
     setOrders(o.data || []);
     setReviews(r.data || []);
     setApplications(a.data || []);
+    setCities(c.data || []);
+    setEstablishments(e.data || []);
+    setEstApplications(ea.data || []);
     setLoading(false);
   };
 
