@@ -130,6 +130,27 @@ const OrderTracking = () => {
     return () => { supabase.removeChannel(channel); };
   }, [orderId]);
 
+  // Poll motoboy location every 5s for active deliveries
+  useEffect(() => {
+    if (!order?.motoboy_id) return;
+    const isActive = ["accepted", "picking_up", "delivering"].includes(order.status);
+    if (!isActive) return;
+
+    const pollLocation = async () => {
+      const { data: m } = await supabase
+        .from("motoboys")
+        .select("latitude, longitude")
+        .eq("id", order.motoboy_id)
+        .maybeSingle();
+      if (m?.latitude && m?.longitude) {
+        setMotoboyCoords([m.latitude, m.longitude]);
+      }
+    };
+
+    const interval = setInterval(pollLocation, 5000);
+    return () => clearInterval(interval);
+  }, [order?.motoboy_id, order?.status]);
+
   const handleCancel = async () => {
     if (!orderId || !order) return;
     setCancelling(true);
