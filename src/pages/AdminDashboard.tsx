@@ -508,7 +508,202 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        <div className="pt-4 border-t">
+        {tab === "cities" && (
+          <div className="space-y-3">
+            <div className="rounded-xl border bg-card p-4 space-y-3">
+              <h3 className="text-sm font-bold">Adicionar cidade</h3>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newCityName}
+                  onChange={(e) => setNewCityName(e.target.value)}
+                  placeholder="Nome da cidade"
+                  className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
+                />
+                <input
+                  type="text"
+                  value={newCityState}
+                  onChange={(e) => setNewCityState(e.target.value)}
+                  placeholder="UF"
+                  className="w-16 rounded-lg border bg-background px-3 py-2 text-sm text-center"
+                  maxLength={2}
+                />
+                <button
+                  onClick={async () => {
+                    if (!newCityName.trim()) return;
+                    await supabase.from("cities").insert({ name: newCityName.trim(), state: newCityState.trim().toUpperCase() || "MG" });
+                    setNewCityName("");
+                    toast({ title: `Cidade ${newCityName} adicionada!` });
+                    fetchData();
+                  }}
+                  className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground active:scale-[0.97]"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Adicionar
+                </button>
+              </div>
+            </div>
+            {cities.map((city: any) => (
+              <div key={city.id} className="flex items-center justify-between rounded-xl border bg-card p-4">
+                <div>
+                  <p className="text-sm font-bold">{city.name} - {city.state}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {establishments.filter((e: any) => e.city_id === city.id).length} estabelecimentos •{" "}
+                    {motoboys.filter((m: any) => m.city_id === city.id).length} motoboys
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={async () => {
+                      await supabase.from("cities").update({ is_active: !city.is_active }).eq("id", city.id);
+                      toast({ title: city.is_active ? "Cidade desativada" : "Cidade ativada" });
+                      fetchData();
+                    }}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      city.is_active ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {city.is_active ? "Ativa" : "Inativa"}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await supabase.from("cities").delete().eq("id", city.id);
+                      toast({ title: "Cidade removida" });
+                      fetchData();
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {cities.length === 0 && (
+              <div className="flex flex-col items-center py-12 text-center">
+                <MapPin className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">Nenhuma cidade cadastrada.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "establishments" && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold uppercase text-muted-foreground">Solicitações de parceiros</h3>
+            {estApplications.filter((a: any) => a.status === "pending").length === 0 && (
+              <div className="rounded-xl border bg-card p-4 text-center">
+                <p className="text-xs text-muted-foreground">Nenhuma solicitação pendente.</p>
+              </div>
+            )}
+            {estApplications.filter((a: any) => a.status === "pending").map((app: any) => {
+              const d = new Date(app.created_at);
+              return (
+                <div key={app.id} className="rounded-xl border bg-card p-4 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-bold">{app.name}</p>
+                      <p className="text-xs text-muted-foreground">{app.category} • {app.city}</p>
+                    </div>
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">Pendente</span>
+                  </div>
+                  <div className="text-xs space-y-0.5">
+                    <p><span className="text-muted-foreground">Responsável:</span> {app.owner_name}</p>
+                    <p><span className="text-muted-foreground">Telefone:</span> {app.phone}</p>
+                    <p><span className="text-muted-foreground">Endereço:</span> {app.address}</p>
+                    {app.description && <p><span className="text-muted-foreground">Descrição:</span> {app.description}</p>}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        const cityMatch = cities.find((c: any) => c.name.toLowerCase() === app.city.toLowerCase());
+                        if (!cityMatch) {
+                          toast({ title: "Cidade não encontrada. Cadastre a cidade primeiro.", variant: "destructive" });
+                          return;
+                        }
+                        const accessCode = `${app.name.split(" ")[0]}123`;
+                        await supabase.from("establishments").insert({
+                          name: app.name,
+                          phone: app.phone,
+                          address: app.address,
+                          city_id: cityMatch.id,
+                          category: app.category,
+                          access_code: accessCode,
+                        });
+                        await supabase.from("establishment_applications").update({ status: "approved" } as any).eq("id", app.id);
+                        toast({ title: `${app.name} aprovado! Código: ${accessCode}` });
+                        fetchData();
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground active:scale-[0.97]"
+                    >
+                      <CheckCircle className="h-3 w-3" /> Aprovar
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await supabase.from("establishment_applications").update({ status: "rejected" } as any).eq("id", app.id);
+                        toast({ title: `${app.name} recusado` });
+                        fetchData();
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-destructive py-2 text-xs font-bold text-destructive-foreground active:scale-[0.97]"
+                    >
+                      <X className="h-3 w-3" /> Recusar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            <h3 className="text-sm font-bold uppercase text-muted-foreground pt-2">Estabelecimentos ativos</h3>
+            {establishments.map((est: any) => {
+              const city = cities.find((c: any) => c.id === est.city_id);
+              return (
+                <div key={est.id} className="rounded-xl border bg-card p-4 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-bold">{est.name}</p>
+                      <p className="text-xs text-muted-foreground">{est.category} • {city?.name || "—"}</p>
+                      <p className="text-xs text-muted-foreground">📞 {est.phone} • 🔑 {est.access_code}</p>
+                    </div>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                      est.is_open ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
+                    }`}>
+                      {est.is_open ? "Aberto" : "Fechado"}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        await supabase.from("establishments").update({ status: est.status === "active" ? "inactive" : "active" }).eq("id", est.id);
+                        toast({ title: est.status === "active" ? "Estabelecimento desativado" : "Estabelecimento ativado" });
+                        fetchData();
+                      }}
+                      className={`flex-1 flex items-center justify-center gap-1 rounded-lg py-2 text-xs font-bold active:scale-[0.97] ${
+                        est.status === "active" ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"
+                      }`}
+                    >
+                      <Ban className="h-3 w-3" /> {est.status === "active" ? "Desativar" : "Ativar"}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await supabase.from("establishments").delete().eq("id", est.id);
+                        toast({ title: "Estabelecimento removido" });
+                        fetchData();
+                      }}
+                      className="flex items-center justify-center gap-1 rounded-lg border border-destructive px-3 py-2 text-xs font-bold text-destructive active:scale-[0.97]"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {establishments.length === 0 && (
+              <div className="flex flex-col items-center py-12 text-center">
+                <Store className="h-10 w-10 text-muted-foreground mb-3" />
+                <p className="text-sm text-muted-foreground">Nenhum estabelecimento cadastrado.</p>
+              </div>
+            )}
+          </div>
+        )}
+
           <button
             onClick={() => setShowCleanupConfirm(true)}
             className="w-full rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97]"
