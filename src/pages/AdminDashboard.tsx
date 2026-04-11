@@ -225,6 +225,8 @@ const AdminDashboard = () => {
           { key: "payments" as Tab, label: "Pagamentos", icon: DollarSign },
           { key: "feedback" as Tab, label: "Feedback", icon: Star },
           { key: "applications" as Tab, label: "Solicitações", icon: UserPlus },
+          { key: "cities" as Tab, label: "Cidades", icon: MapPin },
+          { key: "establishments" as Tab, label: "Parceiros", icon: Store },
         ]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
