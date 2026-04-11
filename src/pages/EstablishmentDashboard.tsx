@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Store, LogOut, Bell, Package, Clock, CheckCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { playIPhoneDing } from "@/lib/notifications";
+import { playLoudAlarm, requestNotificationPermission, showBrowserNotification } from "@/lib/notifications";
 
 interface Order {
   id: string;
@@ -17,8 +17,11 @@ interface Order {
 }
 
 const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  pending: { label: "Novo pedido", icon: <Bell className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
+  awaiting_preparation: { label: "Novo pedido", icon: <Bell className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
   preparing: { label: "Em preparo", icon: <Clock className="h-4 w-4" />, color: "bg-yellow-100 text-yellow-800" },
   ready: { label: "Pronto p/ retirada", icon: <CheckCircle className="h-4 w-4" />, color: "bg-green-100 text-green-800" },
+  ready_for_pickup: { label: "Pronto p/ retirada", icon: <CheckCircle className="h-4 w-4" />, color: "bg-green-100 text-green-800" },
   in_transit: { label: "Em entrega", icon: <Package className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
   completed: { label: "Finalizado", icon: <CheckCircle className="h-4 w-4" />, color: "bg-gray-100 text-gray-600" },
 };
@@ -29,9 +32,16 @@ const EstablishmentDashboard = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [flashNew, setFlashNew] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(false);
 
   const estId = localStorage.getItem("establishment_id");
   const estName = localStorage.getItem("establishment_name");
+
+  // Request notification permission on mount
+  useEffect(() => {
+    requestNotificationPermission().then(setNotifEnabled);
+  }, []);
 
   useEffect(() => {
     if (!estId) {
@@ -43,9 +53,20 @@ const EstablishmentDashboard = () => {
       .channel("est-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `establishment_id=eq.${estId}` }, (payload) => {
         if (payload.eventType === "INSERT") {
-          playIPhoneDing();
-          toast("🔔 Novo pedido recebido!", { duration: 5000 });
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          // Loud alarm sound (3x repeat)
+          playLoudAlarm();
+          // Browser push notification
+          showBrowserNotification(
+            "🔔 NOVO PEDIDO!",
+            `Pedido de ${(payload.new as any)?.customer_name || "cliente"} recebido!`
+          );
+          // Visual flash
+          setFlashNew(true);
+          setTimeout(() => setFlashNew(false), 3000);
+          // Toast
+          toast("🔔 NOVO PEDIDO RECEBIDO!", { duration: 8000 });
+          // Vibrate
+          if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
         }
         loadOrders();
       })
