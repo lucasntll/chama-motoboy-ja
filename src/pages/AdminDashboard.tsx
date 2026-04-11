@@ -140,7 +140,10 @@ const AdminDashboard = () => {
   }
 
   const totalCompletedOrders = orders.filter((o) => o.status === "completed").length;
-  const totalRevenue = totalCompletedOrders * 2;
+  const motoboyRevenue = totalCompletedOrders * 2;
+  const partnerOrders = orders.filter((o) => o.status === "completed" && o.order_type === "partner");
+  const estRevenue = partnerOrders.length * 2;
+  const totalRevenue = motoboyRevenue + estRevenue;
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
