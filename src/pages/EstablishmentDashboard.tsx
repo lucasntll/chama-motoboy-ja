@@ -195,13 +195,31 @@ const EstablishmentDashboard = () => {
                 </div>
 
                 <div className="flex gap-2">
-                  {(order.status === "pending" || order.status === "preparing") && (
+                  {(order.status === "awaiting_preparation" || order.status === "pending") && (
                     <button
-                      onClick={() => updateOrderStatus(order.id, order.status === "pending" ? "preparing" : "ready")}
+                      onClick={() => updateOrderStatus(order.id, "preparing")}
                       className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground active:scale-[0.97]"
                     >
-                      {order.status === "pending" ? "🔥 Iniciar Preparo" : "✅ Pedido Pronto"}
+                      🔥 Iniciar Preparo
                     </button>
+                  )}
+                  {order.status === "preparing" && (
+                    <button
+                      onClick={() => updateOrderStatus(order.id, "ready_for_pickup")}
+                      className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground active:scale-[0.97]"
+                    >
+                      ✅ Pedido Pronto
+                    </button>
+                  )}
+                  {order.status === "ready_for_pickup" && (
+                    <p className="flex-1 text-center text-xs font-semibold text-muted-foreground py-2.5">
+                      ⏳ Aguardando motoboy retirar...
+                    </p>
+                  )}
+                  {["accepted", "delivering"].includes(order.status) && (
+                    <p className="flex-1 text-center text-xs font-semibold text-muted-foreground py-2.5">
+                      🛵 Motoboy a caminho / em entrega
+                    </p>
                   )}
                 </div>
               </div>
