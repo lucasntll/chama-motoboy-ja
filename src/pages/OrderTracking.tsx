@@ -270,7 +270,14 @@ const OrderTracking = () => {
           )}
         </div>
 
-        {motoboy && order.status !== "pending" && order.status !== "cancelled" && (
+        {/* Real-time tracking map */}
+        <TrackingMap
+          motoboyCoords={motoboyCoords}
+          deliveryCoords={deliveryCoords}
+          status={order.status}
+        />
+
+
           <div className="rounded-xl border bg-card p-4 space-y-3">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase">Seu motoboy</h3>
             <div className="flex items-center gap-3">
