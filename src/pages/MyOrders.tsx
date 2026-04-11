@@ -21,7 +21,24 @@ const MyOrders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<StatusFilter>("all");
+  const [dismissed, setDismissed] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("dismissed_orders") || "[]"); } catch { return []; }
+  });
 
+  const dismissOrder = (orderId: string) => {
+    const next = [...dismissed, orderId];
+    setDismissed(next);
+    localStorage.setItem("dismissed_orders", JSON.stringify(next));
+  };
+
+  const clearFinished = () => {
+    const finishedIds = orders
+      .filter(o => o.status === "completed" || o.status === "cancelled")
+      .map(o => o.id);
+    const next = [...new Set([...dismissed, ...finishedIds])];
+    setDismissed(next);
+    localStorage.setItem("dismissed_orders", JSON.stringify(next));
+  };
   const fetchOrders = async () => {
     const phone = localStorage.getItem("client_phone");
     if (!phone) {
