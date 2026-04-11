@@ -65,12 +65,18 @@ const MyOrders = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const filtered = orders.filter((o) => {
-    if (filter === "all") return true;
-    const s = STATUS_LABELS[o.status];
-    if (!s) return filter === "active";
-    return s.group === (filter === "active" ? "active" : "completed");
-  });
+  const filtered = orders
+    .filter((o) => !dismissed.includes(o.id))
+    .filter((o) => {
+      if (filter === "all") return true;
+      const s = STATUS_LABELS[o.status];
+      if (!s) return filter === "active";
+      return s.group === (filter === "active" ? "active" : "completed");
+    });
+
+  const hasFinished = orders.some(o => 
+    (o.status === "completed" || o.status === "cancelled") && !dismissed.includes(o.id)
+  );
 
   const filters: { key: StatusFilter; label: string }[] = [
     { key: "all", label: "Todos" },
