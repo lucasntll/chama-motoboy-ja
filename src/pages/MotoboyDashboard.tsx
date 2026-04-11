@@ -71,17 +71,31 @@ const MotoboyDashboard = () => {
 
   const fetchAll = useCallback(async () => {
     if (!motoboyId) return;
-    const [motoboyRes, myOrdersRes, pendingRes] = await Promise.all([
+    const [motoboyRes, myOrdersRes] = await Promise.all([
       supabase.from("motoboys").select("*").eq("id", motoboyId).maybeSingle(),
       supabase.from("orders").select("*").eq("motoboy_id", motoboyId).order("created_at", { ascending: false }),
-      supabase.from("orders").select("*").eq("status", "pending").is("motoboy_id", null).order("created_at", { ascending: true }),
     ]);
-    if (motoboyRes.data) {
-      setMotoboyData(motoboyRes.data);
-      setIsOnline(motoboyRes.data.is_available);
+    const motoboy = motoboyRes.data;
+    if (motoboy) {
+      setMotoboyData(motoboy);
+      setIsOnline(motoboy.is_available);
     }
     setOrders(myOrdersRes.data || []);
-    setAllPending(pendingRes.data || []);
+
+    // Fetch available orders: pending (free) + ready_for_pickup (partner), filtered by motoboy's city
+    let pendingQuery = supabase
+      .from("orders")
+      .select("*")
+      .is("motoboy_id", null)
+      .in("status", ["pending", "ready_for_pickup"])
+      .order("created_at", { ascending: true });
+
+    if (motoboy?.city_id) {
+      pendingQuery = pendingQuery.eq("city_id", motoboy.city_id);
+    }
+
+    const { data: pendingData } = await pendingQuery;
+    setAllPending(pendingData || []);
     setLoading(false);
   }, [motoboyId]);
 
