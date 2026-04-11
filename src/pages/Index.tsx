@@ -16,7 +16,7 @@ const Index = () => {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-primary px-6 py-10">
-      <img src={logo} alt="ChamaMoto" className="h-28 w-auto mb-6 drop-shadow-md" />
+      <img src={logo} alt="ChamaMoto" className="h-28 w-auto mb-6 drop-shadow-md mix-blend-multiply" />
 
       <h1 className="text-2xl font-bold text-primary-foreground text-center mb-2">
         Peça qualquer coisa<br />sem sair de casa 🛵⚡
