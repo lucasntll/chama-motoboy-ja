@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import ClientOrder from "./pages/ClientOrder";
+import PartnerOrder from "./pages/PartnerOrder";
+import FreeOrder from "./pages/FreeOrder";
 import OrderTracking from "./pages/OrderTracking";
 import MotoboyAccess from "./pages/MotoboyAccess";
 import MotoboyDashboard from "./pages/MotoboyDashboard";
