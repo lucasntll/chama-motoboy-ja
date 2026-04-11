@@ -91,7 +91,7 @@ const EstablishmentDashboard = () => {
       .from("orders")
       .select("*")
       .eq("establishment_id", estId!)
-      .in("status", ["preparing", "ready", "in_transit", "pending"])
+      .in("status", ["awaiting_preparation", "preparing", "ready_for_pickup", "ready", "in_transit", "pending", "accepted", "delivering"])
       .order("created_at", { ascending: false });
     setOrders((data || []) as Order[]);
   };
