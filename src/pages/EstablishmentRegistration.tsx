@@ -56,10 +56,16 @@ const EstablishmentRegistration = () => {
 
         <div className="w-full max-w-xs space-y-3">
           <button
-            onClick={() => openWhatsApp("5535998309121", `Olá! Acabei de cadastrar o estabelecimento "${name}" no ChamaMoto. Gostaria de saber sobre a liberação do acesso.`)}
-            className="w-full rounded-xl bg-green-500 py-4 text-base font-bold text-white active:scale-[0.97]"
+            onClick={() => openWhatsApp("5535997238628", `Olá Leonardo! Acabei de cadastrar o estabelecimento "${name}" no ChamaMoto. Gostaria de saber sobre a liberação do acesso.`)}
+            className="w-full rounded-xl bg-[hsl(142,70%,45%)] py-4 text-base font-bold text-white active:scale-[0.97]"
           >
-            💬 Falar no WhatsApp
+            💬 Falar com Leonardo
+          </button>
+          <button
+            onClick={() => openWhatsApp("5535998309121", `Olá Lucas! Acabei de cadastrar o estabelecimento "${name}" no ChamaMoto. Gostaria de saber sobre a liberação do acesso.`)}
+            className="w-full rounded-xl border-2 border-[hsl(142,70%,45%)] py-4 text-base font-bold text-[hsl(142,70%,45%)] active:scale-[0.97]"
+          >
+            💬 Falar com Lucas
           </button>
           <button
             onClick={() => navigate("/")}
