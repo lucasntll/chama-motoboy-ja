@@ -11,6 +11,9 @@ import { usePWAInstall } from "@/hooks/usePWAInstall";
 import TrackingMap from "@/components/TrackingMap";
 
 const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }> = {
+  awaiting_confirmation: { label: "Aguardando confirmação do estabelecimento", emoji: "🏪", color: "text-purple-600" },
+  awaiting_customer_confirmation: { label: "Confirme o valor do pedido", emoji: "💰", color: "text-indigo-600" },
+  awaiting_preparation: { label: "Estabelecimento preparando", emoji: "🔥", color: "text-orange-600" },
   queued: { label: "Na fila de espera", emoji: "⏳", color: "text-orange-600" },
   pending: { label: "Procurando motoboy...", emoji: "🔍", color: "text-yellow-600" },
   accepted: { label: "Motoboy a caminho!", emoji: "🏍️", color: "text-blue-600" },
@@ -28,6 +31,7 @@ const OrderTracking = () => {
   const [motoboy, setMotoboy] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [queuePosition, setQueuePosition] = useState(0);
@@ -160,6 +164,24 @@ const OrderTracking = () => {
     fetchOrder();
   };
 
+  const handleCustomerConfirm = async () => {
+    if (!orderId) return;
+    setConfirming(true);
+    await supabase.from("orders").update({ status: "awaiting_preparation" } as any).eq("id", orderId);
+    toast.success("Pedido confirmado! Aguardando preparo.");
+    setConfirming(false);
+    fetchOrder();
+  };
+
+  const handleCustomerReject = async () => {
+    if (!orderId) return;
+    setCancelling(true);
+    await supabase.from("orders").update({ status: "cancelled" } as any).eq("id", orderId);
+    toast.success("Pedido cancelado");
+    setCancelling(false);
+    fetchOrder();
+  };
+
   const handleWhatsApp = () => {
     if (!motoboy?.phone) return;
     openWhatsApp(motoboy.phone, `Olá ${motoboy.name}, estou acompanhando meu pedido!`);
@@ -185,7 +207,7 @@ const OrderTracking = () => {
   }
 
   const status = STATUS_MAP[order.status] || STATUS_MAP.pending;
-  const canCancel = order.status === "pending" || order.status === "queued";
+  const canCancel = ["pending", "queued", "awaiting_confirmation", "awaiting_customer_confirmation"].includes(order.status);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -223,6 +245,63 @@ const OrderTracking = () => {
         <div className="flex flex-col items-center text-center py-6">
           <span className="text-5xl mb-4">{status.emoji}</span>
           <h2 className={`text-xl font-bold ${status.color}`}>{status.label}</h2>
+
+          {/* Awaiting establishment confirmation */}
+          {order.status === "awaiting_confirmation" && (
+            <div className="mt-3 space-y-2 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
+                <p className="text-sm text-muted-foreground">O estabelecimento está verificando seu pedido e informará o valor em breve.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Customer confirmation with price breakdown */}
+          {order.status === "awaiting_customer_confirmation" && (
+            <div className="mt-4 w-full space-y-3">
+              <div className="rounded-xl border-2 border-indigo-300 bg-indigo-50 p-4 space-y-2">
+                <p className="text-sm font-bold text-indigo-800">📋 Resumo do valor:</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Produtos:</span>
+                  <span className="font-bold">R$ {(order.product_value ?? 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Frete:</span>
+                  <span className="font-bold">R$ {(order.delivery_fee ?? 0).toFixed(2)}</span>
+                </div>
+                <div className="border-t pt-2 flex justify-between text-base">
+                  <span className="font-bold">Total:</span>
+                  <span className="font-extrabold text-primary">R$ {((order.product_value ?? 0) + (order.delivery_fee ?? 0)).toFixed(2)}</span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCustomerReject}
+                  disabled={cancelling}
+                  className="flex-1 rounded-xl border border-destructive py-3 text-sm font-bold text-destructive active:scale-[0.97] disabled:opacity-50"
+                >
+                  {cancelling ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "❌ Cancelar"}
+                </button>
+                <button
+                  onClick={handleCustomerConfirm}
+                  disabled={confirming}
+                  className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground active:scale-[0.97] disabled:opacity-50"
+                >
+                  {confirming ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "✅ Confirmar"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {order.status === "awaiting_preparation" && (
+            <div className="mt-3 space-y-2 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+                <p className="text-sm text-muted-foreground">O estabelecimento está preparando seu pedido!</p>
+              </div>
+            </div>
+          )}
+
           {order.status === "queued" && (
             <div className="mt-3 space-y-2">
               <div className="flex items-center justify-center gap-2">
@@ -316,10 +395,29 @@ const OrderTracking = () => {
         <div className="rounded-xl border bg-card p-4 space-y-3">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase">Status</h3>
           <StatusStep label="Pedido criado" done />
+          {order.order_type === "partner" && (
+            <>
+              <StatusStep
+                label="Confirmação do valor"
+                done={!["awaiting_confirmation"].includes(order.status)}
+                active={order.status === "awaiting_confirmation"}
+              />
+              <StatusStep
+                label="Confirmação do cliente"
+                done={!["awaiting_confirmation", "awaiting_customer_confirmation"].includes(order.status)}
+                active={order.status === "awaiting_customer_confirmation"}
+              />
+              <StatusStep
+                label="Em preparo"
+                done={!["awaiting_confirmation", "awaiting_customer_confirmation", "awaiting_preparation"].includes(order.status)}
+                active={order.status === "awaiting_preparation"}
+              />
+            </>
+          )}
           <StatusStep
-            label="Na fila de espera"
-            done={["pending", "accepted", "picking_up", "delivering", "completed"].includes(order.status)}
-            active={order.status === "queued"}
+            label="Na fila / Procurando motoboy"
+            done={["accepted", "picking_up", "delivering", "completed"].includes(order.status)}
+            active={["queued", "pending"].includes(order.status)}
           />
           <StatusStep
             label="Motoboy aceitou"

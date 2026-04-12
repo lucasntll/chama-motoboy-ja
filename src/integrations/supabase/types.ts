@@ -267,6 +267,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_address: string
+          delivery_fee: number | null
           delivery_lat: number | null
           delivery_lng: number | null
           distance_km: number | null
@@ -280,6 +281,7 @@ export type Database = {
           item_description: string
           motoboy_id: string | null
           order_type: string
+          product_value: number | null
           purchase_location: string | null
           service_type: string
           status: string
@@ -292,6 +294,7 @@ export type Database = {
           customer_name: string
           customer_phone: string
           delivery_address: string
+          delivery_fee?: number | null
           delivery_lat?: number | null
           delivery_lng?: number | null
           distance_km?: number | null
@@ -305,6 +308,7 @@ export type Database = {
           item_description: string
           motoboy_id?: string | null
           order_type?: string
+          product_value?: number | null
           purchase_location?: string | null
           service_type?: string
           status?: string
@@ -317,6 +321,7 @@ export type Database = {
           customer_name?: string
           customer_phone?: string
           delivery_address?: string
+          delivery_fee?: number | null
           delivery_lat?: number | null
           delivery_lng?: number | null
           distance_km?: number | null
@@ -330,6 +335,7 @@ export type Database = {
           item_description?: string
           motoboy_id?: string | null
           order_type?: string
+          product_value?: number | null
           purchase_location?: string | null
           service_type?: string
           status?: string

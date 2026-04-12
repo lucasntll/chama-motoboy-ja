@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Store, LogOut, Bell, Package, Clock, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Store, LogOut, Bell, Package, Clock, CheckCircle, Loader2, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { playLoudAlarm, requestNotificationPermission, showBrowserNotification } from "@/lib/notifications";
@@ -14,17 +14,23 @@ interface Order {
   house_reference: string;
   status: string;
   created_at: string;
+  product_value?: number | null;
+  delivery_fee?: number | null;
 }
 
 const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  awaiting_confirmation: { label: "Confirmar valor", icon: <DollarSign className="h-4 w-4" />, color: "bg-purple-100 text-purple-800" },
   pending: { label: "Novo pedido", icon: <Bell className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
   awaiting_preparation: { label: "Novo pedido", icon: <Bell className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
+  awaiting_customer_confirmation: { label: "Aguardando cliente", icon: <Clock className="h-4 w-4" />, color: "bg-indigo-100 text-indigo-800" },
   preparing: { label: "Em preparo", icon: <Clock className="h-4 w-4" />, color: "bg-yellow-100 text-yellow-800" },
   ready: { label: "Pronto p/ retirada", icon: <CheckCircle className="h-4 w-4" />, color: "bg-green-100 text-green-800" },
   ready_for_pickup: { label: "Pronto p/ retirada", icon: <CheckCircle className="h-4 w-4" />, color: "bg-green-100 text-green-800" },
   in_transit: { label: "Em entrega", icon: <Package className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
   completed: { label: "Finalizado", icon: <CheckCircle className="h-4 w-4" />, color: "bg-gray-100 text-gray-600" },
 };
+
+const DELIVERY_FEE = 5;
 
 const EstablishmentDashboard = () => {
   const navigate = useNavigate();
@@ -34,11 +40,11 @@ const EstablishmentDashboard = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [flashNew, setFlashNew] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(false);
+  const [valueInputs, setValueInputs] = useState<Record<string, string>>({});
 
   const estId = localStorage.getItem("establishment_id");
   const estName = localStorage.getItem("establishment_name");
 
-  // Request notification permission on mount
   useEffect(() => {
     requestNotificationPermission().then(setNotifEnabled);
   }, []);
@@ -53,19 +59,14 @@ const EstablishmentDashboard = () => {
       .channel("est-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `establishment_id=eq.${estId}` }, (payload) => {
         if (payload.eventType === "INSERT") {
-          // Loud alarm sound (3x repeat)
           playLoudAlarm();
-          // Browser push notification
           showBrowserNotification(
             "🔔 NOVO PEDIDO!",
             `Pedido de ${(payload.new as any)?.customer_name || "cliente"} recebido!`
           );
-          // Visual flash
           setFlashNew(true);
           setTimeout(() => setFlashNew(false), 3000);
-          // Toast
           toast("🔔 NOVO PEDIDO RECEBIDO!", { duration: 8000 });
-          // Vibrate
           if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
         }
         loadOrders();
@@ -91,7 +92,7 @@ const EstablishmentDashboard = () => {
       .from("orders")
       .select("*")
       .eq("establishment_id", estId!)
-      .in("status", ["awaiting_preparation", "preparing", "ready_for_pickup", "ready", "in_transit", "pending", "accepted", "delivering"])
+      .in("status", ["awaiting_confirmation", "awaiting_customer_confirmation", "awaiting_preparation", "preparing", "ready_for_pickup", "ready", "in_transit", "pending", "accepted", "delivering"])
       .order("created_at", { ascending: false });
     setOrders((data || []) as Order[]);
   };
@@ -106,6 +107,23 @@ const EstablishmentDashboard = () => {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
     toast.success("Status atualizado!");
+    loadOrders();
+  };
+
+  const confirmOrderValue = async (orderId: string) => {
+    const rawValue = valueInputs[orderId];
+    if (!rawValue || isNaN(Number(rawValue.replace(",", "."))) || Number(rawValue.replace(",", ".")) <= 0) {
+      toast.error("Insira um valor válido para os produtos");
+      return;
+    }
+    const productValue = Number(rawValue.replace(",", "."));
+    await supabase.from("orders").update({
+      product_value: productValue,
+      delivery_fee: DELIVERY_FEE,
+      status: "awaiting_customer_confirmation",
+    } as any).eq("id", orderId);
+    toast.success("Valor enviado para confirmação do cliente!");
+    setValueInputs((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
     loadOrders();
   };
 
@@ -194,7 +212,43 @@ const EstablishmentDashboard = () => {
                   {order.house_reference && <p>🏠 {order.house_reference}</p>}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
+                  {/* Step 1: Establishment confirms product value */}
+                  {order.status === "awaiting_confirmation" && (
+                    <div className="space-y-2 rounded-xl border-2 border-purple-300 bg-purple-50 p-3">
+                      <p className="text-xs font-bold text-purple-800">💰 Informe o valor total dos produtos:</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-purple-700">R$</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="0,00"
+                          value={valueInputs[order.id] || ""}
+                          onChange={(e) => setValueInputs((prev) => ({ ...prev, [order.id]: e.target.value }))}
+                          className="flex-1 rounded-lg border bg-white px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-400"
+                        />
+                      </div>
+                      <p className="text-[10px] text-purple-600">Frete: R$ {DELIVERY_FEE.toFixed(2)} será adicionado automaticamente</p>
+                      <button
+                        onClick={() => confirmOrderValue(order.id)}
+                        className="w-full rounded-xl bg-purple-600 py-2.5 text-sm font-bold text-white active:scale-[0.97]"
+                      >
+                        💲 Confirmar Valor do Pedido
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Step 2: Waiting for customer confirmation */}
+                  {order.status === "awaiting_customer_confirmation" && (
+                    <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3 space-y-1">
+                      <p className="text-xs font-bold text-indigo-700">⏳ Aguardando confirmação do cliente</p>
+                      <p className="text-xs text-indigo-600">
+                        Produtos: R$ {(order.product_value ?? 0).toFixed(2)} + Frete: R$ {(order.delivery_fee ?? DELIVERY_FEE).toFixed(2)} = <span className="font-bold">R$ {((order.product_value ?? 0) + (order.delivery_fee ?? DELIVERY_FEE)).toFixed(2)}</span>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Regular flow after customer confirms */}
                   {(order.status === "awaiting_preparation" || order.status === "pending") && (
                     <button
                       onClick={() => updateOrderStatus(order.id, "preparing")}
