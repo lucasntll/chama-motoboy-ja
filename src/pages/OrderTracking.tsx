@@ -11,6 +11,9 @@ import { usePWAInstall } from "@/hooks/usePWAInstall";
 import TrackingMap from "@/components/TrackingMap";
 
 const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }> = {
+  awaiting_confirmation: { label: "Aguardando confirmação do estabelecimento", emoji: "🏪", color: "text-purple-600" },
+  awaiting_customer_confirmation: { label: "Confirme o valor do pedido", emoji: "💰", color: "text-indigo-600" },
+  awaiting_preparation: { label: "Estabelecimento preparando", emoji: "🔥", color: "text-orange-600" },
   queued: { label: "Na fila de espera", emoji: "⏳", color: "text-orange-600" },
   pending: { label: "Procurando motoboy...", emoji: "🔍", color: "text-yellow-600" },
   accepted: { label: "Motoboy a caminho!", emoji: "🏍️", color: "text-blue-600" },
