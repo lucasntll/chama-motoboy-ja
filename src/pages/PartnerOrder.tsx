@@ -106,7 +106,7 @@ const PartnerOrder = () => {
       delivery_lng: deliveryCoords?.[1],
       estimated_time_min: 25,
       commission_amount: COMMISSION,
-      status: "awaiting_preparation",
+      status: "awaiting_confirmation",
       order_type: "partner",
       establishment_id: selectedEstablishment.id,
       establishment_commission: 1,
@@ -125,7 +125,7 @@ const PartnerOrder = () => {
     });
 
     localStorage.setItem("client_phone", customerPhone.replace(/\D/g, ""));
-    toast.success("Pedido enviado ao estabelecimento!");
+    toast.success("Pedido enviado! Aguardando confirmação do estabelecimento.");
     setSubmitting(false);
 
     if (inserted?.id) {
