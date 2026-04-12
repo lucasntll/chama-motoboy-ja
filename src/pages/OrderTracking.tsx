@@ -164,6 +164,24 @@ const OrderTracking = () => {
     fetchOrder();
   };
 
+  const handleCustomerConfirm = async () => {
+    if (!orderId) return;
+    setConfirming(true);
+    await supabase.from("orders").update({ status: "awaiting_preparation" } as any).eq("id", orderId);
+    toast.success("Pedido confirmado! Aguardando preparo.");
+    setConfirming(false);
+    fetchOrder();
+  };
+
+  const handleCustomerReject = async () => {
+    if (!orderId) return;
+    setCancelling(true);
+    await supabase.from("orders").update({ status: "cancelled" } as any).eq("id", orderId);
+    toast.success("Pedido cancelado");
+    setCancelling(false);
+    fetchOrder();
+  };
+
   const handleWhatsApp = () => {
     if (!motoboy?.phone) return;
     openWhatsApp(motoboy.phone, `Olá ${motoboy.name}, estou acompanhando meu pedido!`);
@@ -189,7 +207,7 @@ const OrderTracking = () => {
   }
 
   const status = STATUS_MAP[order.status] || STATUS_MAP.pending;
-  const canCancel = order.status === "pending" || order.status === "queued";
+  const canCancel = ["pending", "queued", "awaiting_confirmation", "awaiting_customer_confirmation"].includes(order.status);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
