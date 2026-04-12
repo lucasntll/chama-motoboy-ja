@@ -31,6 +31,7 @@ const OrderTracking = () => {
   const [motoboy, setMotoboy] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [queuePosition, setQueuePosition] = useState(0);
