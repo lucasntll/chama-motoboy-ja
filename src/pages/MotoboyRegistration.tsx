@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Camera, Upload, CheckCircle, Bike, Zap, MapPin, Clock, DollarSign, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { applyPhoneMask, stripPhoneMask } from "@/lib/phoneMask";
 
 const VEHICLE_OPTIONS = ["Moto", "Bike", "Carro", "Outro"];
 
@@ -63,7 +64,7 @@ const MotoboyRegistration = () => {
 
       const { error } = await supabase.from("motoboy_applications" as any).insert({
         full_name: form.full_name,
-        phone: form.phone,
+        phone: stripPhoneMask(form.phone),
         city: form.city,
         address: form.address,
         vehicle_type: form.vehicle_type,
@@ -160,7 +161,7 @@ const MotoboyRegistration = () => {
 
           {[
             { key: "full_name", label: "Nome completo *", placeholder: "Seu nome completo" },
-            { key: "phone", label: "Telefone (WhatsApp) *", placeholder: "5535999999999", type: "tel" },
+            { key: "phone", label: "Telefone (WhatsApp) *", placeholder: "(35) 99999-9999", type: "tel" },
             { key: "city", label: "Cidade *", placeholder: "Ex: Alfenas" },
             { key: "address", label: "Endereço *", placeholder: "Rua, número, bairro" },
           ].map((f) => (
@@ -169,7 +170,7 @@ const MotoboyRegistration = () => {
               <input
                 type={f.type || "text"}
                 value={(form as any)[f.key]}
-                onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                onChange={(e) => setForm({ ...form, [f.key]: f.key === "phone" ? applyPhoneMask(e.target.value) : e.target.value })}
                 placeholder={f.placeholder}
                 className="mt-1 w-full rounded-xl border bg-card px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               />

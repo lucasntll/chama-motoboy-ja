@@ -4,6 +4,7 @@ import { ArrowLeft, Store, CheckCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { openWhatsApp } from "@/lib/whatsapp";
+import { applyPhoneMask, stripPhoneMask } from "@/lib/phoneMask";
 
 const CATEGORIES = [
   "Restaurante", "Lanchonete", "Pizzaria", "Farmácia", "Mercado",
@@ -31,7 +32,7 @@ const EstablishmentRegistration = () => {
     await supabase.from("establishment_applications").insert({
       name: name.trim(),
       owner_name: ownerName.trim(),
-      phone: phone.trim(),
+      phone: stripPhoneMask(phone),
       address: address.trim(),
       city: city.trim(),
       category,
@@ -107,7 +108,7 @@ const EstablishmentRegistration = () => {
           </div>
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase">Telefone *</label>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" placeholder="(35) 99999-9999"
+            <input value={phone} onChange={(e) => setPhone(applyPhoneMask(e.target.value))} type="tel" placeholder="(35) 99999-9999"
               className="mt-1 w-full rounded-xl border bg-card py-3.5 px-4 text-sm font-medium placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring" />
           </div>
           <div>
