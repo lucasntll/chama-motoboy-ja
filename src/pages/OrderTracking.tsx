@@ -5,6 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { playIPhoneDing } from "@/lib/notifications";
+import { sendPushNotification } from "@/lib/sendPushNotification";
+import { subscribeToPush } from "@/lib/pushSubscription";
+import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 import FeedbackModal from "@/components/FeedbackModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
@@ -35,6 +38,9 @@ const OrderTracking = () => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [queuePosition, setQueuePosition] = useState(0);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(
+    "Notification" in window && Notification.permission !== "granted"
+  );
   const [queueTotal, setQueueTotal] = useState(0);
   const [showAcceptedBanner, setShowAcceptedBanner] = useState(false);
   const [previousStatus, setPreviousStatus] = useState<string | null>(null);
@@ -168,6 +174,17 @@ const OrderTracking = () => {
     if (!orderId) return;
     setConfirming(true);
     await supabase.from("orders").update({ status: "awaiting_preparation" } as any).eq("id", orderId);
+    
+    // Notify motoboys that customer confirmed
+    if (order) {
+      sendPushNotification({
+        event: "customer_confirmed",
+        order_id: orderId,
+        city_id: order.city_id,
+        customer_phone: order.customer_phone,
+      });
+    }
+    
     toast.success("Pedido confirmado! Aguardando preparo.");
     setConfirming(false);
     fetchOrder();
@@ -219,6 +236,15 @@ const OrderTracking = () => {
       </header>
 
       <main className="flex-1 px-4 py-6 space-y-5 relative">
+        {/* Notification permission prompt for clients */}
+        {showNotifPrompt && order && (
+          <NotificationPermissionPrompt
+            userType="client"
+            referenceId={order.customer_phone}
+            cityId={order.city_id}
+            onDismiss={() => setShowNotifPrompt(false)}
+          />
+        )}
         {/* Big accepted notification banner */}
         {showAcceptedBanner && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in px-6">

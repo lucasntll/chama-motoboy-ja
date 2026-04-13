@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { sendPushNotification } from "@/lib/sendPushNotification";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Hash, Loader2, Store, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -129,6 +130,12 @@ const PartnerOrder = () => {
     setSubmitting(false);
 
     if (inserted?.id) {
+      sendPushNotification({
+        event: "new_order",
+        order_id: inserted.id,
+        city_id: cityId || undefined,
+        customer_phone: customerPhone.replace(/\D/g, ""),
+      });
       navigate(`/acompanhar/${inserted.id}`);
     } else {
       navigate("/");

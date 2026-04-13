@@ -4,6 +4,8 @@ import { LogOut, Power, Loader2, MapPin, Phone, MessageCircle, ExternalLink, Che
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/whatsapp";
+import { sendPushNotification } from "@/lib/sendPushNotification";
+import { subscribeToPush } from "@/lib/pushSubscription";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 
@@ -179,6 +181,12 @@ const MotoboyDashboard = () => {
     setIsOnline(newStatus);
     setToggling(false);
     toast(newStatus ? "Você está online! 🟢" : "Você está offline ⚪");
+    
+    // Subscribe to push when going online
+    if (newStatus) {
+      const cityId = motoboyData?.city_id;
+      subscribeToPush("motoboy", motoboyId, cityId);
+    }
   };
 
   const acceptOrder = async (orderId: string) => {
@@ -189,14 +197,36 @@ const MotoboyDashboard = () => {
     }
     await supabase.from("orders").update({ status: "accepted", motoboy_id: motoboyId } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "busy", last_activity: new Date().toISOString() }).eq("id", motoboyId);
+    
+    // Get order details for push
+    const { data: orderData } = await supabase.from("orders").select("customer_phone, city_id").eq("id", orderId).maybeSingle();
+    if (orderData) {
+      sendPushNotification({
+        event: "motoboy_accepted",
+        order_id: orderId,
+        customer_phone: orderData.customer_phone,
+      });
+    }
+    
     toast.success("Corrida aceita! 🚀");
     setDeclinedOrders((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
     fetchAll();
   };
 
   const finalizeOrder = async (orderId: string) => {
+    // Get order details for push before updating
+    const { data: orderData } = await supabase.from("orders").select("customer_phone").eq("id", orderId).maybeSingle();
+    
     await supabase.from("orders").update({ status: "completed", completed_at: new Date().toISOString() } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "available", last_activity: new Date().toISOString() }).eq("id", motoboyId!);
+    
+    if (orderData) {
+      sendPushNotification({
+        event: "order_completed",
+        order_id: orderId,
+        customer_phone: orderData.customer_phone,
+      });
+    }
 
     // Auto-dispatch: promote next queued order to pending (filtered by city)
     let nextQuery = supabase

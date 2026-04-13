@@ -4,6 +4,8 @@ import { ArrowLeft, Store, LogOut, Bell, Package, Clock, CheckCircle, Loader2, D
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { playLoudAlarm, requestNotificationPermission, showBrowserNotification } from "@/lib/notifications";
+import { sendPushNotification } from "@/lib/sendPushNotification";
+import { subscribeToPush } from "@/lib/pushSubscription";
 
 interface Order {
   id: string;
@@ -47,6 +49,11 @@ const EstablishmentDashboard = () => {
 
   useEffect(() => {
     requestNotificationPermission().then(setNotifEnabled);
+    // Also subscribe to push if permission already granted
+    if (estId && Notification.permission === "granted") {
+      const cityId = localStorage.getItem("selected_city_id");
+      subscribeToPush("establishment", estId, cityId);
+    }
   }, []);
 
   useEffect(() => {
@@ -122,6 +129,17 @@ const EstablishmentDashboard = () => {
       delivery_fee: DELIVERY_FEE,
       status: "awaiting_customer_confirmation",
     } as any).eq("id", orderId);
+
+    // Find order to get customer phone
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      sendPushNotification({
+        event: "value_defined",
+        order_id: orderId,
+        customer_phone: order.customer_phone,
+      });
+    }
+
     toast.success("Valor enviado para confirmação do cliente!");
     setValueInputs((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
     loadOrders();
@@ -157,12 +175,13 @@ const EstablishmentDashboard = () => {
           {!notifEnabled && (
             <button
               onClick={async () => {
-                const ok = await requestNotificationPermission();
+                const cityId = localStorage.getItem("selected_city_id");
+                const ok = await subscribeToPush("establishment", estId!, cityId);
                 setNotifEnabled(ok);
                 if (ok) toast.success("Notificações ativadas!");
                 else toast.error("Permissão negada");
               }}
-              className="flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1.5 text-xs font-bold text-white animate-pulse"
+              className="flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground animate-pulse"
             >
               <Bell className="h-3 w-3" /> Ativar alertas
             </button>
