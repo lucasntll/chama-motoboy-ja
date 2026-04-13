@@ -29,17 +29,23 @@ const EstablishmentRegistration = () => {
     if (!canSubmit || submitting) return;
     setSubmitting(true);
 
-    await supabase.from("establishment_applications").insert({
+    const { error } = await supabase.from("establishment_applications").insert({
       name: name.trim(),
       owner_name: ownerName.trim(),
       phone: stripPhoneMask(phone),
       address: address.trim(),
       city: city.trim(),
       category,
-      description: description.trim(),
+      description: description.trim() || null,
     } as any);
 
     setSubmitting(false);
+
+    if (error) {
+      toast.error("Erro ao enviar cadastro. Tente novamente.");
+      return;
+    }
+
     setSubmitted(true);
     toast.success("Cadastro enviado com sucesso!");
   };
