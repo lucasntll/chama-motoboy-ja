@@ -2,6 +2,13 @@ import { openWhatsApp } from "@/lib/whatsapp";
 
 const APP_URL = "https://chama-motoboy-ja.lovable.app";
 
+/** Build a reliable link that works from WhatsApp using query params */
+function orderLink(orderId: string, target?: string): string {
+  const params = new URLSearchParams({ pedido: orderId });
+  if (target) params.set("to", target);
+  return `${APP_URL}/?${params.toString()}`;
+}
+
 /**
  * Notify establishment about a new order via WhatsApp
  */
@@ -14,7 +21,7 @@ export function notifyEstablishmentNewOrder(
   const msg = `🔔 *NOVO PEDIDO!*\n\n` +
     `👤 Cliente: ${customerName}\n` +
     `📦 Pedido: ${itemDescription}\n\n` +
-    `👉 Acesse o painel para confirmar:\n${APP_URL}/estabelecimento`;
+    `👉 Acesse o painel para confirmar:\n${orderLink(orderId, "estabelecimento")}`;
   openWhatsApp(estPhone, msg);
 }
 
@@ -32,7 +39,7 @@ export function notifyClientValueDefined(
     `📦 Produtos: R$ ${productValue.toFixed(2)}\n` +
     `🛵 Frete: R$ ${deliveryFee.toFixed(2)}\n` +
     `💵 *Total: R$ ${total.toFixed(2)}*\n\n` +
-    `👉 Confirme aqui:\n${APP_URL}/acompanhar/${orderId}`;
+    `👉 Confirme aqui:\n${orderLink(orderId)}`;
   openWhatsApp(clientPhone, msg);
 }
 
@@ -45,7 +52,7 @@ export function notifyClientOrderConfirmed(
 ) {
   const msg = `✅ *Pedido confirmado!*\n\n` +
     `Seu pedido está sendo preparado.\n\n` +
-    `👉 Acompanhe:\n${APP_URL}/acompanhar/${orderId}`;
+    `👉 Acompanhe:\n${orderLink(orderId)}`;
   openWhatsApp(clientPhone, msg);
 }
 
@@ -59,7 +66,7 @@ export function notifyClientMotoboyAccepted(
 ) {
   const msg = `🏍️ *Motoboy a caminho!*\n\n` +
     `${motoboyName} aceitou sua entrega.\n\n` +
-    `👉 Acompanhe em tempo real:\n${APP_URL}/acompanhar/${orderId}`;
+    `👉 Acompanhe em tempo real:\n${orderLink(orderId)}`;
   openWhatsApp(clientPhone, msg);
 }
 
@@ -74,6 +81,6 @@ export function notifyMotoboyNewRide(
   const msg = `🚀 *Nova corrida disponível!*\n\n` +
     `📦 ${itemDescription}\n` +
     `📍 ${deliveryAddress}\n\n` +
-    `👉 Acesse o painel:\n${APP_URL}/motoboy`;
+    `👉 Acesse o painel:\n${APP_URL}/?to=motoboy`;
   openWhatsApp(motoboyPhone, msg);
 }
