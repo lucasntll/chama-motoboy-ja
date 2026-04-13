@@ -83,6 +83,7 @@ const OrderTracking = () => {
           playIPhoneDing();
           if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
         }
+      }
       setPreviousStatus(data.status);
       setOrder(data);
 
