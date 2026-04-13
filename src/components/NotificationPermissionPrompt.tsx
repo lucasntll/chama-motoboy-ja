@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Bell, BellOff, X } from "lucide-react";
-import { subscribeToPush } from "@/lib/pushSubscription";
+import { useState, useEffect } from "react";
+import { Bell, BellOff, X, AlertTriangle, Settings } from "lucide-react";
+import { subscribeToPush, getNotificationStatus } from "@/lib/pushSubscription";
 import { toast } from "sonner";
 
 interface Props {
@@ -30,42 +30,118 @@ const MESSAGES = {
 
 const NotificationPermissionPrompt = ({ userType, referenceId, cityId, onDismiss }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [denied, setDenied] = useState(false);
+  const [status, setStatus] = useState<"default" | "denied" | "unsupported" | "granted">("default");
 
-  if (!("Notification" in window) || !("serviceWorker" in navigator)) return null;
-  if (Notification.permission === "granted") return null;
+  useEffect(() => {
+    const s = getNotificationStatus();
+    if (s === "unsupported") setStatus("unsupported");
+    else if (s === "denied") setStatus("denied");
+    else if (s === "granted") setStatus("granted");
+    else setStatus("default");
+  }, []);
+
+  // Don't show if already granted or unsupported
+  if (status === "granted") return null;
 
   const msg = MESSAGES[userType];
 
   const handleActivate = async () => {
+    // Pre-check: if already denied, show instructions
+    if (Notification.permission === "denied") {
+      setStatus("denied");
+      return;
+    }
+
     setLoading(true);
-    const success = await subscribeToPush(userType, referenceId, cityId);
+    const result = await subscribeToPush(userType, referenceId, cityId);
     setLoading(false);
 
-    if (success) {
-      toast.success("Notificações ativadas! ✅");
+    if (result.success) {
+      toast.success("Notificações ativadas com sucesso! ✅");
+      setStatus("granted");
       onDismiss?.();
-    } else if (Notification.permission === "denied") {
-      setDenied(true);
+    } else if (result.reason === "denied") {
+      setStatus("denied");
+    } else if (result.reason === "unsupported") {
+      setStatus("unsupported");
+      toast.error("Seu navegador não suporta notificações push.");
+    } else if (result.reason === "sw_failed") {
+      toast.error("Erro ao registrar o serviço. Verifique se está usando HTTPS.");
     } else {
-      toast.error("Não foi possível ativar as notificações.");
+      toast.error("Não foi possível ativar as notificações. Tente novamente.");
     }
   };
 
-  if (denied) {
+  // Unsupported browser
+  if (status === "unsupported") {
     return (
-      <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-center">
-        <BellOff className="mx-auto h-8 w-8 text-destructive mb-2" />
-        <p className="text-sm font-medium text-foreground">
-          Ative nas configurações do navegador para não perder pedidos
+      <div className="rounded-2xl border border-muted bg-muted/30 p-4 text-center">
+        <AlertTriangle className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+        <p className="text-sm font-medium text-foreground mb-1">
+          Navegador não suportado
         </p>
-        <button onClick={onDismiss} className="mt-2 text-xs text-muted-foreground underline">
-          Fechar
-        </button>
+        <p className="text-xs text-muted-foreground">
+          Use o Chrome, Edge ou Firefox para receber notificações push.
+        </p>
+        {onDismiss && (
+          <button onClick={onDismiss} className="mt-2 text-xs text-muted-foreground underline">
+            Fechar
+          </button>
+        )}
       </div>
     );
   }
 
+  // Permission denied — show manual instructions
+  if (status === "denied") {
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isAndroid = /android/i.test(navigator.userAgent);
+
+    return (
+      <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-center">
+        <BellOff className="mx-auto h-8 w-8 text-destructive mb-2" />
+        <p className="text-sm font-bold text-foreground mb-1">
+          Notificações bloqueadas 🔇
+        </p>
+        <p className="text-xs text-muted-foreground mb-3">
+          As notificações estão bloqueadas pelo navegador. Ative manualmente nas configurações:
+        </p>
+        <div className="rounded-xl bg-background/80 p-3 text-left text-xs text-muted-foreground space-y-1.5 mb-3">
+          {isIOS ? (
+            <>
+              <p>1. Abra <strong>Ajustes</strong> do iPhone</p>
+              <p>2. Vá em <strong>Safari</strong> → <strong>Notificações</strong></p>
+              <p>3. Encontre o ChamaMoto e ative</p>
+            </>
+          ) : isAndroid ? (
+            <>
+              <p>1. Toque no <strong>cadeado 🔒</strong> ao lado da URL</p>
+              <p>2. Toque em <strong>Permissões</strong></p>
+              <p>3. Ative <strong>Notificações</strong></p>
+              <p>4. Recarregue a página</p>
+            </>
+          ) : (
+            <>
+              <p>1. Clique no <strong>cadeado 🔒</strong> ao lado da URL</p>
+              <p>2. Em <strong>Notificações</strong>, selecione <strong>Permitir</strong></p>
+              <p>3. Recarregue a página</p>
+            </>
+          )}
+        </div>
+        <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+          <Settings className="h-3 w-3" />
+          <span>Configurações do navegador</span>
+        </div>
+        {onDismiss && (
+          <button onClick={onDismiss} className="mt-2 text-xs text-muted-foreground underline">
+            Fechar
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Default state — show activation button
   return (
     <div className="relative rounded-2xl border border-primary/20 bg-primary/5 p-4 text-center">
       {onDismiss && (
@@ -83,6 +159,9 @@ const NotificationPermissionPrompt = ({ userType, referenceId, cityId, onDismiss
       >
         {loading ? "Ativando..." : msg.button}
       </button>
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        Requer HTTPS • Funciona mesmo com o app fechado
+      </p>
     </div>
   );
 };
