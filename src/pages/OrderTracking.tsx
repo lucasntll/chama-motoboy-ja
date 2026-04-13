@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { playIPhoneDing } from "@/lib/notifications";
 import { sendPushNotification } from "@/lib/sendPushNotification";
-import { sendPushNotification } from "@/lib/sendPushNotification";
 import { subscribeToPush } from "@/lib/pushSubscription";
 import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 import FeedbackModal from "@/components/FeedbackModal";
