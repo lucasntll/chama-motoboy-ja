@@ -30,24 +30,39 @@ const MESSAGES = {
 
 const NotificationPermissionPrompt = ({ userType, referenceId, cityId, onDismiss }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<"default" | "denied" | "unsupported" | "granted">("default");
+  const [status, setStatus] = useState<"default" | "denied" | "unsupported" | "granted" | "ios_not_installed">("default");
+
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+    || (navigator as any).standalone === true;
 
   useEffect(() => {
+    // iOS Safari requires PWA installation for push notifications
+    if (isIOS && !isStandalone) {
+      setStatus("ios_not_installed");
+      return;
+    }
     const s = getNotificationStatus();
     if (s === "unsupported") setStatus("unsupported");
     else if (s === "denied") setStatus("denied");
     else if (s === "granted") setStatus("granted");
     else setStatus("default");
-  }, []);
+  }, [isIOS, isStandalone]);
 
-  // Don't show if already granted or unsupported
+  // Don't show if already granted
   if (status === "granted") return null;
 
   const msg = MESSAGES[userType];
 
   const handleActivate = async () => {
+    // iOS not installed as PWA
+    if (isIOS && !isStandalone) {
+      setStatus("ios_not_installed");
+      return;
+    }
+
     // Pre-check: if already denied, show instructions
-    if (Notification.permission === "denied") {
+    if ("Notification" in window && Notification.permission === "denied") {
       setStatus("denied");
       return;
     }
@@ -63,12 +78,25 @@ const NotificationPermissionPrompt = ({ userType, referenceId, cityId, onDismiss
     } else if (result.reason === "denied") {
       setStatus("denied");
     } else if (result.reason === "unsupported") {
-      setStatus("unsupported");
-      toast.error("Seu navegador não suporta notificações push.");
+      // On iOS not standalone, show install instructions instead
+      if (isIOS && !isStandalone) {
+        setStatus("ios_not_installed");
+      } else {
+        setStatus("unsupported");
+        toast.error("Seu navegador não suporta notificações push.");
+      }
     } else if (result.reason === "sw_failed") {
-      toast.error("Erro ao registrar o serviço. Verifique se está usando HTTPS.");
+      if (isIOS && !isStandalone) {
+        setStatus("ios_not_installed");
+      } else {
+        toast.error("Erro ao registrar o serviço. Verifique se está usando HTTPS.");
+      }
     } else {
-      toast.error("Não foi possível ativar as notificações. Tente novamente.");
+      if (isIOS && !isStandalone) {
+        setStatus("ios_not_installed");
+      } else {
+        toast.error("Não foi possível ativar as notificações. Tente novamente.");
+      }
     }
   };
 
