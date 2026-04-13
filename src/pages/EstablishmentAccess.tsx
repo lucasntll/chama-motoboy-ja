@@ -29,12 +29,14 @@ const EstablishmentAccess = () => {
     setError("");
 
     const stripped = stripPhoneMask(phone);
+    const withCountry = stripped.startsWith("55") ? stripped : `55${stripped}`;
+    const withoutCountry = stripped.startsWith("55") ? stripped.slice(2) : stripped;
 
-    // Try matching with stripped phone or raw input
+    // Try matching with all phone format variations
     const { data } = await supabase
       .from("establishments")
       .select("*")
-      .or(`phone.eq.${stripped},phone.eq.${phone.trim()}`)
+      .or(`phone.eq.${stripped},phone.eq.${withCountry},phone.eq.${withoutCountry},phone.eq.${phone.trim()}`)
       .eq("status", "active")
       .maybeSingle();
 
