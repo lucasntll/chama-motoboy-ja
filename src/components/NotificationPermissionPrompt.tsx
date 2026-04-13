@@ -100,6 +100,35 @@ const NotificationPermissionPrompt = ({ userType, referenceId, cityId, onDismiss
     }
   };
 
+  // iOS not installed as PWA — show install instructions
+  if (status === "ios_not_installed") {
+    return (
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-center">
+        <Bell className="mx-auto h-8 w-8 text-primary mb-2" />
+        <p className="text-sm font-bold text-foreground mb-1">
+          Instale o app para receber notificações 📲
+        </p>
+        <p className="text-xs text-muted-foreground mb-3">
+          No iPhone, as notificações só funcionam com o app instalado na tela inicial.
+        </p>
+        <div className="rounded-xl bg-background/80 p-3 text-left text-xs text-muted-foreground space-y-1.5 mb-3">
+          <p>1. Toque no botão <strong>Compartilhar</strong> (ícone ⬆️) na barra do Safari</p>
+          <p>2. Role e toque em <strong>"Adicionar à Tela de Início"</strong></p>
+          <p>3. Toque em <strong>"Adicionar"</strong></p>
+          <p>4. Abra o app pela tela inicial e ative as notificações</p>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Após instalar, abra o ChamaMoto pela tela inicial para ativar
+        </p>
+        {onDismiss && (
+          <button onClick={onDismiss} className="mt-2 text-xs text-muted-foreground underline">
+            Fechar
+          </button>
+        )}
+      </div>
+    );
+  }
+
   // Unsupported browser
   if (status === "unsupported") {
     return (
