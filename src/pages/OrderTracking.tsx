@@ -250,7 +250,48 @@ const OrderTracking = () => {
             onDismiss={() => setShowNotifPrompt(false)}
           />
         )}
-        {/* Big accepted notification banner */}
+        {/* Arrival celebration overlay */}
+        {showArrivalCelebration && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in px-6">
+            <div className="w-full max-w-sm rounded-2xl bg-card border-2 border-primary shadow-2xl p-8 text-center space-y-4 animate-scale-in relative overflow-hidden">
+              {/* Confetti particles */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                {[...Array(20)].map((_, i) => (
+                  <span
+                    key={i}
+                    className="absolute rounded-full animate-bounce"
+                    style={{
+                      width: `${6 + Math.random() * 8}px`,
+                      height: `${6 + Math.random() * 8}px`,
+                      background: `hsl(${Math.random() * 360}, 80%, 60%)`,
+                      left: `${Math.random() * 100}%`,
+                      top: `${-10 + Math.random() * 30}%`,
+                      animationDuration: `${1 + Math.random() * 2}s`,
+                      animationDelay: `${Math.random() * 0.5}s`,
+                    }}
+                  />
+                ))}
+              </div>
+              <span className="text-7xl block animate-bounce">🎉</span>
+              <h2 className="text-2xl font-extrabold text-primary">
+                Pedido Entregue!
+              </h2>
+              <p className="text-base text-foreground font-medium leading-relaxed">
+                Seu pedido foi entregue com sucesso! 🏍️✨
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Obrigado por usar o ChamaMotoboy!
+              </p>
+              <button
+                onClick={() => setShowArrivalCelebration(false)}
+                className="mt-2 w-full rounded-xl bg-primary py-3 text-base font-bold text-primary-foreground active:scale-[0.97] transition-transform"
+              >
+                Fechar 🎊
+              </button>
+            </div>
+          </div>
+        )}
+
         {showAcceptedBanner && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in px-6">
             <div className="w-full max-w-sm rounded-2xl bg-card border-2 border-primary shadow-2xl p-8 text-center space-y-4 animate-scale-in">
