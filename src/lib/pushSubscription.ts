@@ -9,7 +9,7 @@ type SubscribeFailureReason =
   | "save_failed"
   | "insecure_context";
 
-let cachedApplicationServerKey: Uint8Array | null = null;
+let cachedApplicationServerKey: ArrayBuffer | null = null;
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -50,7 +50,11 @@ async function getApplicationServerKey() {
     throw new Error("Missing VAPID public key in backend response.");
   }
 
-  cachedApplicationServerKey = urlBase64ToUint8Array(data.vapidPublicKey.trim());
+  const keyBytes = urlBase64ToUint8Array(data.vapidPublicKey.trim());
+  cachedApplicationServerKey = keyBytes.buffer.slice(
+    keyBytes.byteOffset,
+    keyBytes.byteOffset + keyBytes.byteLength,
+  );
   return cachedApplicationServerKey;
 }
 

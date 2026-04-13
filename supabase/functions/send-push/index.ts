@@ -34,6 +34,22 @@ function normalizePhone(value?: string | null) {
   return (value ?? "").replace(/\D/g, "");
 }
 
+function serializeError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(error));
+  } catch {
+    return { message: String(error) };
+  }
+}
+
 function uniqueStrings(values: Array<string | null | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value && value.trim())))];
 }
@@ -94,6 +110,16 @@ async function getVapidPrivateJwk(): Promise<JsonWebKey> {
 
   cachedVapidPrivateJwk = await crypto.subtle.exportKey("jwk", cryptoKey);
   return cachedVapidPrivateJwk;
+}
+
+function getVapidPublicKey(): string {
+  const key = Deno.env.get("VAPID_PUBLIC_KEY")?.trim();
+
+  if (!key) {
+    throw new Error("VAPID_PUBLIC_KEY secret is missing.");
+  }
+
+  return key;
 }
 
 async function sendWebPush(
@@ -173,6 +199,29 @@ async function getClientTargets(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (req.method === "GET") {
+    try {
+      return new Response(JSON.stringify({ vapidPublicKey: getVapidPublicKey() }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      const serialized = serializeError(error);
+      console.error("[send-push] Failed to provide VAPID public key", serialized);
+
+      return new Response(JSON.stringify({ error: serialized }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -285,9 +334,10 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("[send-push] Unhandled error", String(error));
+    const serialized = serializeError(error);
+    console.error("[send-push] Unhandled error", serialized);
 
-    return new Response(JSON.stringify({ error: String(error) }), {
+    return new Response(JSON.stringify({ error: serialized }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
