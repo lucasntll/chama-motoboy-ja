@@ -38,36 +38,63 @@ function uniqueStrings(values: Array<string | null | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value && value.trim())))];
 }
 
-function base64UrlToUint8Array(value: string) {
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
-  const binary = atob(base64 + padding);
+function base64ToUint8Array(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = "=".repeat((4 - (normalized.length % 4)) % 4);
+  const binary = atob(normalized + padding);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
+function parsePrivateKeyInput(secret: string) {
+  const trimmed = secret.trim();
+
+  if (trimmed.startsWith("{")) {
+    return { kind: "jwk" as const, value: JSON.parse(trimmed) as JsonWebKey };
+  }
+
+  if (trimmed.includes("BEGIN PRIVATE KEY")) {
+    const pem = trimmed
+      .replace("-----BEGIN PRIVATE KEY-----", "")
+      .replace("-----END PRIVATE KEY-----", "")
+      .replace(/\s+/g, "");
+
+    return { kind: "pkcs8" as const, value: base64ToUint8Array(pem) };
+  }
+
+  return { kind: "pkcs8" as const, value: base64ToUint8Array(trimmed.replace(/\s+/g, "")) };
+}
+
+let cachedVapidPrivateJwk: JsonWebKey | null = null;
+
 async function getVapidPrivateJwk(): Promise<JsonWebKey> {
+  if (cachedVapidPrivateJwk) {
+    return cachedVapidPrivateJwk;
+  }
+
   const secret = Deno.env.get("VAPID_PRIVATE_KEY");
 
   if (!secret) {
     throw new Error("VAPID_PRIVATE_KEY secret is missing.");
   }
 
-  if (secret.trim().startsWith("{")) {
-    return JSON.parse(secret);
+  const parsedSecret = parsePrivateKeyInput(secret);
+
+  if (parsedSecret.kind === "jwk") {
+    cachedVapidPrivateJwk = parsedSecret.value;
+    return cachedVapidPrivateJwk;
   }
 
   const cryptoKey = await crypto.subtle.importKey(
     "pkcs8",
-    base64UrlToUint8Array(secret),
+    parsedSecret.value,
     { name: "ECDSA", namedCurve: "P-256" },
     true,
     ["sign"],
   );
 
-  return await crypto.subtle.exportKey("jwk", cryptoKey);
+  cachedVapidPrivateJwk = await crypto.subtle.exportKey("jwk", cryptoKey);
+  return cachedVapidPrivateJwk;
 }
-
-const vapidPrivateJwkPromise = getVapidPrivateJwk();
 
 async function sendWebPush(
   supabase: ReturnType<typeof createClient>,
