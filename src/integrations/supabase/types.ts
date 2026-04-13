@@ -270,6 +270,8 @@ export type Database = {
           delivery_fee: number | null
           delivery_lat: number | null
           delivery_lng: number | null
+          dispatched_at: string | null
+          dispatched_to: string[] | null
           distance_km: number | null
           establishment_commission: number | null
           establishment_id: string | null
@@ -297,6 +299,8 @@ export type Database = {
           delivery_fee?: number | null
           delivery_lat?: number | null
           delivery_lng?: number | null
+          dispatched_at?: string | null
+          dispatched_to?: string[] | null
           distance_km?: number | null
           establishment_commission?: number | null
           establishment_id?: string | null
@@ -324,6 +328,8 @@ export type Database = {
           delivery_fee?: number | null
           delivery_lat?: number | null
           delivery_lng?: number | null
+          dispatched_at?: string | null
+          dispatched_to?: string[] | null
           distance_km?: number | null
           establishment_commission?: number | null
           establishment_id?: string | null
