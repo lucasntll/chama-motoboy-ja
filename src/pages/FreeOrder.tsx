@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { sendPushNotification } from "@/lib/sendPushNotification";
+import { dispatchOrderToMotoboys } from "@/lib/dispatchOrder";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Hash, Loader2, UserCheck, RotateCcw, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -112,15 +112,7 @@ const FreeOrder = () => {
 
     const fullAddress = `${deliveryAddress} - ${houseRef}`;
 
-    const { data: availableMotoboys } = await supabase
-      .from("motoboys")
-      .select("id")
-      .eq("status", "available")
-      .eq("is_available", true);
-
-    const hasAvailable = (availableMotoboys?.length || 0) > 0;
-    const orderStatus = hasAvailable ? "pending" : "queued";
-
+    // Insert order as pending first
     const { data: inserted } = await supabase.from("orders").insert({
       customer_name: customerName,
       customer_phone: customerPhone,
@@ -133,7 +125,7 @@ const FreeOrder = () => {
       delivery_lng: deliveryCoords?.[1],
       estimated_time_min: 30,
       commission_amount: COMMISSION,
-      status: orderStatus,
+      status: "pending",
       order_type: "free",
       city_id: cityId || null,
     } as any).select("id").single();
@@ -151,21 +143,20 @@ const FreeOrder = () => {
 
     localStorage.setItem("client_phone", customerPhone.replace(/\D/g, ""));
 
-    if (!hasAvailable) {
-      toast("Todos os motoboys estão em entrega. Seu pedido entrou na fila! 👊", { duration: 5000 });
-    }
-
-    setSubmitting(false);
-
     if (inserted?.id) {
-      sendPushNotification({
-        event: "new_order",
-        order_id: inserted.id,
-        city_id: cityId || undefined,
-        customer_phone: customerPhone.replace(/\D/g, ""),
-      });
+      // Dispatch to up to 2 available motoboys
+      const dispatched = await dispatchOrderToMotoboys(inserted.id, cityId || null);
+
+      if (dispatched.length === 0) {
+        // No motoboys available, move to queue
+        await supabase.from("orders").update({ status: "queued" } as any).eq("id", inserted.id);
+        toast("Todos os motoboys estão em entrega. Seu pedido entrou na fila! 👊", { duration: 5000 });
+      }
+
+      setSubmitting(false);
       navigate(`/acompanhar/${inserted.id}`);
     } else {
+      setSubmitting(false);
       navigate("/");
     }
   };

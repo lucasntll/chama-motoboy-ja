@@ -84,7 +84,7 @@ const MotoboyDashboard = () => {
     }
     setOrders(myOrdersRes.data || []);
 
-    // Fetch available orders: pending (free) + ready_for_pickup (partner), filtered by motoboy's city
+    // Fetch orders dispatched to THIS motoboy (or unassigned pending for backwards compat)
     let pendingQuery = supabase
       .from("orders")
       .select("*")
@@ -97,7 +97,15 @@ const MotoboyDashboard = () => {
     }
 
     const { data: pendingData } = await pendingQuery;
-    setAllPending(pendingData || []);
+    
+    // Filter: only show orders dispatched to this motoboy (or with empty dispatched_to for legacy)
+    const myPending = (pendingData || []).filter((o: any) => {
+      const dispatched = o.dispatched_to as string[] | null;
+      if (!dispatched || dispatched.length === 0) return true; // legacy orders without dispatch
+      return dispatched.includes(motoboyId!);
+    });
+    
+    setAllPending(myPending);
     setLoading(false);
   }, [motoboyId]);
 
@@ -191,11 +199,12 @@ const MotoboyDashboard = () => {
 
   const acceptOrder = async (orderId: string) => {
     if (hasActiveRide) { toast.error("Você já tem uma corrida ativa!"); return; }
-    const { data: check } = await supabase.from("orders").select("status, motoboy_id").eq("id", orderId).maybeSingle();
+    const { data: check } = await supabase.from("orders").select("status, motoboy_id, dispatched_to").eq("id", orderId).maybeSingle();
     if (!check || check.motoboy_id || !["pending", "ready_for_pickup"].includes(check.status)) {
       toast.error("Corrida já aceita por outro motoboy"); fetchAll(); return;
     }
-    await supabase.from("orders").update({ status: "accepted", motoboy_id: motoboyId } as any).eq("id", orderId);
+    // Clear dispatched_to when accepting
+    await supabase.from("orders").update({ status: "accepted", motoboy_id: motoboyId, dispatched_to: [] } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "busy", last_activity: new Date().toISOString() }).eq("id", motoboyId);
     
     // Get order details for push + WhatsApp fallback
@@ -231,7 +240,9 @@ const MotoboyDashboard = () => {
       });
     }
 
-    // Auto-dispatch: promote next queued order to pending (filtered by city)
+    // Auto-dispatch: promote next queued order and dispatch to this motoboy
+    const { dispatchOrderToMotoboys } = await import("@/lib/dispatchOrder");
+    
     let nextQuery = supabase
       .from("orders")
       .select("id")
@@ -247,6 +258,7 @@ const MotoboyDashboard = () => {
 
     if (nextQueued) {
       await supabase.from("orders").update({ status: "pending" } as any).eq("id", nextQueued.id);
+      await dispatchOrderToMotoboys(nextQueued.id, motoboyData?.city_id);
       toast.success("Entrega finalizada! ✅ Próximo pedido da fila liberado automaticamente!");
     } else {
       toast.success("Entrega finalizada! ✅");
