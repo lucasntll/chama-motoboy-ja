@@ -30,24 +30,39 @@ const MESSAGES = {
 
 const NotificationPermissionPrompt = ({ userType, referenceId, cityId, onDismiss }: Props) => {
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<"default" | "denied" | "unsupported" | "granted">("default");
+  const [status, setStatus] = useState<"default" | "denied" | "unsupported" | "granted" | "ios_not_installed">("default");
+
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches
+    || (navigator as any).standalone === true;
 
   useEffect(() => {
+    // iOS Safari requires PWA installation for push notifications
+    if (isIOS && !isStandalone) {
+      setStatus("ios_not_installed");
+      return;
+    }
     const s = getNotificationStatus();
     if (s === "unsupported") setStatus("unsupported");
     else if (s === "denied") setStatus("denied");
     else if (s === "granted") setStatus("granted");
     else setStatus("default");
-  }, []);
+  }, [isIOS, isStandalone]);
 
-  // Don't show if already granted or unsupported
+  // Don't show if already granted
   if (status === "granted") return null;
 
   const msg = MESSAGES[userType];
 
   const handleActivate = async () => {
+    // iOS not installed as PWA
+    if (isIOS && !isStandalone) {
+      setStatus("ios_not_installed");
+      return;
+    }
+
     // Pre-check: if already denied, show instructions
-    if (Notification.permission === "denied") {
+    if ("Notification" in window && Notification.permission === "denied") {
       setStatus("denied");
       return;
     }
@@ -63,14 +78,56 @@ const NotificationPermissionPrompt = ({ userType, referenceId, cityId, onDismiss
     } else if (result.reason === "denied") {
       setStatus("denied");
     } else if (result.reason === "unsupported") {
-      setStatus("unsupported");
-      toast.error("Seu navegador não suporta notificações push.");
+      // On iOS not standalone, show install instructions instead
+      if (isIOS && !isStandalone) {
+        setStatus("ios_not_installed");
+      } else {
+        setStatus("unsupported");
+        toast.error("Seu navegador não suporta notificações push.");
+      }
     } else if (result.reason === "sw_failed") {
-      toast.error("Erro ao registrar o serviço. Verifique se está usando HTTPS.");
+      if (isIOS && !isStandalone) {
+        setStatus("ios_not_installed");
+      } else {
+        toast.error("Erro ao registrar o serviço. Verifique se está usando HTTPS.");
+      }
     } else {
-      toast.error("Não foi possível ativar as notificações. Tente novamente.");
+      if (isIOS && !isStandalone) {
+        setStatus("ios_not_installed");
+      } else {
+        toast.error("Não foi possível ativar as notificações. Tente novamente.");
+      }
     }
   };
+
+  // iOS not installed as PWA — show install instructions
+  if (status === "ios_not_installed") {
+    return (
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-center">
+        <Bell className="mx-auto h-8 w-8 text-primary mb-2" />
+        <p className="text-sm font-bold text-foreground mb-1">
+          Instale o app para receber notificações 📲
+        </p>
+        <p className="text-xs text-muted-foreground mb-3">
+          No iPhone, as notificações só funcionam com o app instalado na tela inicial.
+        </p>
+        <div className="rounded-xl bg-background/80 p-3 text-left text-xs text-muted-foreground space-y-1.5 mb-3">
+          <p>1. Toque no botão <strong>Compartilhar</strong> (ícone ⬆️) na barra do Safari</p>
+          <p>2. Role e toque em <strong>"Adicionar à Tela de Início"</strong></p>
+          <p>3. Toque em <strong>"Adicionar"</strong></p>
+          <p>4. Abra o app pela tela inicial e ative as notificações</p>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Após instalar, abra o ChamaMoto pela tela inicial para ativar
+        </p>
+        {onDismiss && (
+          <button onClick={onDismiss} className="mt-2 text-xs text-muted-foreground underline">
+            Fechar
+          </button>
+        )}
+      </div>
+    );
+  }
 
   // Unsupported browser
   if (status === "unsupported") {
