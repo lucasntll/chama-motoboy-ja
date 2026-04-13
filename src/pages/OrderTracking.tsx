@@ -236,6 +236,15 @@ const OrderTracking = () => {
       </header>
 
       <main className="flex-1 px-4 py-6 space-y-5 relative">
+        {/* Notification permission prompt for clients */}
+        {showNotifPrompt && order && (
+          <NotificationPermissionPrompt
+            userType="client"
+            referenceId={order.customer_phone}
+            cityId={order.city_id}
+            onDismiss={() => setShowNotifPrompt(false)}
+          />
+        )}
         {/* Big accepted notification banner */}
         {showAcceptedBanner && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in px-6">
