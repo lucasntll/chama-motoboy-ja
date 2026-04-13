@@ -645,7 +645,7 @@ const AdminDashboard = () => {
                         const usedCodes = new Set((existingCodes || []).map((e: any) => e.access_code));
                         while (usedCodes.has(accessCode)) accessCode = generateCode();
 
-                        await supabase.from("establishments").insert({
+                        const { error: insertErr } = await supabase.from("establishments").insert({
                           name: app.name,
                           phone: app.phone,
                           address: app.address,
@@ -654,7 +654,14 @@ const AdminDashboard = () => {
                           access_code: accessCode,
                           status: "active",
                         });
-                        await supabase.from("establishment_applications").update({ status: "approved" } as any).eq("id", app.id);
+                        if (insertErr) {
+                          toast({ title: "Erro ao criar estabelecimento: " + insertErr.message, variant: "destructive" });
+                          return;
+                        }
+                        const { error: updateErr } = await supabase.from("establishment_applications").update({ status: "approved" } as any).eq("id", app.id);
+                        if (updateErr) {
+                          toast({ title: "Erro ao atualizar solicitação: " + updateErr.message, variant: "destructive" });
+                        }
                         toast({ title: `✅ Estabelecimento aprovado com sucesso! Código: ${accessCode}` });
 
                         // Send WhatsApp notification
