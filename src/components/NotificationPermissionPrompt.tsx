@@ -54,12 +54,12 @@ const NotificationPermissionPrompt = ({ userType, referenceId, cityId, onDismiss
 
   if (denied) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center">
-        <BellOff className="mx-auto h-8 w-8 text-amber-500 mb-2" />
-        <p className="text-sm font-medium text-amber-800">
+      <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 text-center">
+        <BellOff className="mx-auto h-8 w-8 text-destructive mb-2" />
+        <p className="text-sm font-medium text-foreground">
           Ative nas configurações do navegador para não perder pedidos
         </p>
-        <button onClick={onDismiss} className="mt-2 text-xs text-amber-600 underline">
+        <button onClick={onDismiss} className="mt-2 text-xs text-muted-foreground underline">
           Fechar
         </button>
       </div>
