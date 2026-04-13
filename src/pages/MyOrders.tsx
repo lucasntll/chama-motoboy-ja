@@ -58,9 +58,15 @@ const MyOrders = () => {
     fetchOrders();
     const phone = localStorage.getItem("client_phone");
     if (!phone) return;
+    // Use filtered subscription - listen for changes to orders by this phone
     const channel = supabase
       .channel("my-orders-list")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => fetchOrders())
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "orders",
+        filter: `customer_phone=eq.${phone}`,
+      }, () => fetchOrders())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
