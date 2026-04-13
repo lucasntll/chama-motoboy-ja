@@ -417,6 +417,50 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          city_id: string | null
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          reference_id: string
+          updated_at: string
+          user_type: string
+        }
+        Insert: {
+          auth: string
+          city_id?: string | null
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          reference_id: string
+          updated_at?: string
+          user_type: string
+        }
+        Update: {
+          auth?: string
+          city_id?: string | null
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          reference_id?: string
+          updated_at?: string
+          user_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           comment: string | null
