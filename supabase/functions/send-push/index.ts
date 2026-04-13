@@ -34,6 +34,26 @@ function normalizePhone(value?: string | null) {
   return (value ?? "").replace(/\D/g, "");
 }
 
+function normalizeSecretInput(secret: string) {
+  const trimmed = secret.trim().replace(/,+$/, "");
+
+  try {
+    const parsed = JSON.parse(trimmed);
+
+    if (typeof parsed === "string") {
+      return parsed.trim();
+    }
+
+    if (parsed && typeof parsed === "object") {
+      return JSON.stringify(parsed);
+    }
+  } catch {
+    // Keep original string when it is not valid JSON.
+  }
+
+  return trimmed;
+}
+
 function serializeError(error: unknown) {
   if (error instanceof Error) {
     return {
@@ -62,7 +82,7 @@ function base64ToUint8Array(value: string) {
 }
 
 function parsePrivateKeyInput(secret: string) {
-  const trimmed = secret.trim();
+  const trimmed = normalizeSecretInput(secret);
 
   if (trimmed.startsWith("{")) {
     return { kind: "jwk" as const, value: JSON.parse(trimmed) as JsonWebKey };
@@ -113,7 +133,13 @@ async function getVapidPrivateJwk(): Promise<JsonWebKey> {
 }
 
 function getVapidPublicKey(): string {
-  const key = Deno.env.get("VAPID_PUBLIC_KEY")?.trim();
+  const rawKey = Deno.env.get("VAPID_PUBLIC_KEY");
+
+  if (!rawKey) {
+    throw new Error("VAPID_PUBLIC_KEY secret is missing.");
+  }
+
+  const key = normalizeSecretInput(rawKey);
 
   if (!key) {
     throw new Error("VAPID_PUBLIC_KEY secret is missing.");
