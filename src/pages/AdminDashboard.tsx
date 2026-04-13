@@ -35,6 +35,7 @@ const AdminDashboard = () => {
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [newCityName, setNewCityName] = useState("");
   const [newCityState, setNewCityState] = useState("MG");
+  const [removingEstId, setRemovingEstId] = useState<string | null>(null);
 
   useEffect(() => { fetchData(); }, []);
 
