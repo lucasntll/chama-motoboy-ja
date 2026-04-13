@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { playLoudAlarm, requestNotificationPermission, showBrowserNotification } from "@/lib/notifications";
 import { sendPushNotification } from "@/lib/sendPushNotification";
 import { subscribeToPush } from "@/lib/pushSubscription";
+import { notifyClientValueDefined } from "@/lib/whatsappNotify";
+import { MessageCircle } from "lucide-react";
 
 interface Order {
   id: string;
@@ -260,11 +262,22 @@ const EstablishmentDashboard = () => {
 
                   {/* Step 2: Waiting for customer confirmation */}
                   {order.status === "awaiting_customer_confirmation" && (
-                    <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3 space-y-1">
+                    <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3 space-y-2">
                       <p className="text-xs font-bold text-indigo-700">⏳ Aguardando confirmação do cliente</p>
                       <p className="text-xs text-indigo-600">
                         Produtos: R$ {(order.product_value ?? 0).toFixed(2)} + Frete: R$ {(order.delivery_fee ?? DELIVERY_FEE).toFixed(2)} = <span className="font-bold">R$ {((order.product_value ?? 0) + (order.delivery_fee ?? DELIVERY_FEE)).toFixed(2)}</span>
                       </p>
+                      <button
+                        onClick={() => notifyClientValueDefined(
+                          order.customer_phone,
+                          order.product_value ?? 0,
+                          order.delivery_fee ?? DELIVERY_FEE,
+                          order.id
+                        )}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--whatsapp))] py-2 text-xs font-bold text-white active:scale-[0.97]"
+                      >
+                        <MessageCircle className="h-4 w-4" /> Notificar cliente via WhatsApp
+                      </button>
                     </div>
                   )}
 
@@ -286,9 +299,20 @@ const EstablishmentDashboard = () => {
                     </button>
                   )}
                   {order.status === "ready_for_pickup" && (
-                    <p className="flex-1 text-center text-xs font-semibold text-muted-foreground py-2.5">
-                      ⏳ Aguardando motoboy retirar...
-                    </p>
+                    <div className="space-y-2">
+                      <p className="flex-1 text-center text-xs font-semibold text-muted-foreground py-1">
+                        ⏳ Aguardando motoboy retirar...
+                      </p>
+                      <button
+                        onClick={async () => {
+                          const { openWhatsApp } = await import("@/lib/whatsapp");
+                          openWhatsApp("5535997570009", `🟢 Pedido PRONTO para retirada!\n\n📦 ${order.item_description}\n📍 ${order.delivery_address}\n\n👉 Acesse: https://chama-motoboy-ja.lovable.app/motoboy`);
+                        }}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--whatsapp))] py-2 text-xs font-bold text-white active:scale-[0.97]"
+                      >
+                        <MessageCircle className="h-4 w-4" /> Chamar motoboy via WhatsApp
+                      </button>
+                    </div>
                   )}
                   {["accepted", "delivering"].includes(order.status) && (
                     <p className="flex-1 text-center text-xs font-semibold text-muted-foreground py-2.5">
