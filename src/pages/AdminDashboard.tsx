@@ -961,6 +961,7 @@ const AdminDashboard = () => {
         </div>
       )}
 
+      {viewingPhoto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6" onClick={() => setViewingPhoto(null)}>
           <img src={viewingPhoto} alt="Foto" className="max-h-[80vh] max-w-full rounded-xl shadow-xl" />
         </div>
