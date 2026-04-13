@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3 } from "lucide-react";
+import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3, Copy } from "lucide-react";
+import { openWhatsApp } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -34,6 +35,7 @@ const AdminDashboard = () => {
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [newCityName, setNewCityName] = useState("");
   const [newCityState, setNewCityState] = useState("MG");
+  const [removingEstId, setRemovingEstId] = useState<string | null>(null);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -618,6 +620,7 @@ const AdminDashboard = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={async () => {
+                        // Find or create city
                         let cityMatch = cities.find((c: any) => c.name.toLowerCase() === app.city.toLowerCase());
                         if (!cityMatch) {
                           const { data: newCity, error: cityErr } = await supabase.from("cities").insert({ name: app.city.trim(), state: "MG" }).select().single();
@@ -628,7 +631,20 @@ const AdminDashboard = () => {
                           cityMatch = newCity;
                           toast({ title: `📍 Cidade "${newCity.name}" criada automaticamente` });
                         }
-                        const accessCode = `${app.name.split(" ")[0]}123`;
+
+                        // Generate unique access code (6 chars alphanumeric)
+                        const generateCode = () => {
+                          const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+                          let code = "";
+                          for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+                          return code;
+                        };
+                        let accessCode = generateCode();
+                        // Check uniqueness
+                        const { data: existingCodes } = await supabase.from("establishments").select("access_code");
+                        const usedCodes = new Set((existingCodes || []).map((e: any) => e.access_code));
+                        while (usedCodes.has(accessCode)) accessCode = generateCode();
+
                         await supabase.from("establishments").insert({
                           name: app.name,
                           phone: app.phone,
@@ -636,9 +652,14 @@ const AdminDashboard = () => {
                           city_id: cityMatch.id,
                           category: app.category,
                           access_code: accessCode,
+                          status: "active",
                         });
                         await supabase.from("establishment_applications").update({ status: "approved" } as any).eq("id", app.id);
-                        toast({ title: `${app.name} aprovado! Código: ${accessCode}` });
+                        toast({ title: `✅ Estabelecimento aprovado com sucesso! Código: ${accessCode}` });
+
+                        // Send WhatsApp notification
+                        openWhatsApp(app.phone, `Olá! Seu cadastro no ChamaMotoboy foi aprovado! 🎉\n\nSeu código de acesso é: *${accessCode}*\n\nUse esse código para acessar o painel do seu estabelecimento.`);
+
                         fetchData();
                       }}
                       className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground active:scale-[0.97]"
@@ -648,7 +669,7 @@ const AdminDashboard = () => {
                     <button
                       onClick={async () => {
                         await supabase.from("establishment_applications").update({ status: "rejected" } as any).eq("id", app.id);
-                        toast({ title: `${app.name} recusado` });
+                        toast({ title: `❌ Estabelecimento recusado com sucesso` });
                         fetchData();
                       }}
                       className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-destructive py-2 text-xs font-bold text-destructive-foreground active:scale-[0.97]"
@@ -661,7 +682,7 @@ const AdminDashboard = () => {
             })}
 
             <h3 className="text-sm font-bold uppercase text-muted-foreground pt-2">Estabelecimentos ativos</h3>
-            {establishments.map((est: any) => {
+            {establishments.filter((e: any) => e.status === "active").map((est: any) => {
               const city = cities.find((c: any) => c.id === est.city_id);
               return (
                 <div key={est.id} className="rounded-xl border bg-card p-4 space-y-2">
@@ -669,7 +690,7 @@ const AdminDashboard = () => {
                     <div>
                       <p className="text-sm font-bold">{est.name}</p>
                       <p className="text-xs text-muted-foreground">{est.category} • {city?.name || "—"}</p>
-                      <p className="text-xs text-muted-foreground">📞 {est.phone} • 🔑 {est.access_code}</p>
+                      <p className="text-xs text-muted-foreground">📞 {est.phone}</p>
                     </div>
                     <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
                       est.is_open ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
@@ -677,37 +698,33 @@ const AdminDashboard = () => {
                       {est.is_open ? "Aberto" : "Fechado"}
                     </span>
                   </div>
+                  <div className="flex items-center gap-2 bg-secondary/50 rounded-lg px-3 py-2">
+                    <span className="text-xs font-medium">🔑 Código: <span className="font-bold">{est.access_code}</span></span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(est.access_code || "");
+                        toast({ title: "📋 Código copiado!" });
+                      }}
+                      className="ml-auto flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    >
+                      <Copy className="h-3 w-3" /> Copiar
+                    </button>
+                  </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={async () => {
-                        await supabase.from("establishments").update({ status: est.status === "active" ? "inactive" : "active" }).eq("id", est.id);
-                        toast({ title: est.status === "active" ? "Estabelecimento desativado" : "Estabelecimento ativado" });
-                        fetchData();
-                      }}
-                      className={`flex-1 flex items-center justify-center gap-1 rounded-lg py-2 text-xs font-bold active:scale-[0.97] ${
-                        est.status === "active" ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"
-                      }`}
+                      onClick={() => setRemovingEstId(est.id)}
+                      className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-destructive py-2 text-xs font-bold text-destructive-foreground active:scale-[0.97]"
                     >
-                      <Ban className="h-3 w-3" /> {est.status === "active" ? "Desativar" : "Ativar"}
-                    </button>
-                    <button
-                      onClick={async () => {
-                        await supabase.from("establishments").delete().eq("id", est.id);
-                        toast({ title: "Estabelecimento removido" });
-                        fetchData();
-                      }}
-                      className="flex items-center justify-center gap-1 rounded-lg border border-destructive px-3 py-2 text-xs font-bold text-destructive active:scale-[0.97]"
-                    >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3 w-3" /> Remover
                     </button>
                   </div>
                 </div>
               );
             })}
-            {establishments.length === 0 && (
+            {establishments.filter((e: any) => e.status === "active").length === 0 && (
               <div className="flex flex-col items-center py-12 text-center">
                 <Store className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground">Nenhum estabelecimento cadastrado.</p>
+                <p className="text-sm text-muted-foreground">Nenhum estabelecimento ativo.</p>
               </div>
             )}
           </div>
@@ -913,6 +930,31 @@ const AdminDashboard = () => {
               <button onClick={() => setShowCleanupConfirm(false)} className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">Cancelar</button>
               <button onClick={cleanupHistory} disabled={cleaning} className="flex-1 rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97] disabled:opacity-50">
                 {cleaning ? "Apagando..." : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {removingEstId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
+            <h3 className="text-lg font-bold text-center">⚠️ Remover estabelecimento?</h3>
+            <p className="text-sm text-muted-foreground text-center">
+              Tem certeza que deseja remover este estabelecimento? Ele não receberá mais pedidos e não aparecerá para clientes.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setRemovingEstId(null)} className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">Cancelar</button>
+              <button
+                onClick={async () => {
+                  await supabase.from("establishments").update({ status: "inactive" }).eq("id", removingEstId);
+                  toast({ title: "✅ Estabelecimento removido com sucesso" });
+                  setRemovingEstId(null);
+                  fetchData();
+                }}
+                className="flex-1 rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97]"
+              >
+                Confirmar
               </button>
             </div>
           </div>
