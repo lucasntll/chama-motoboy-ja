@@ -176,10 +176,11 @@ const EstablishmentDashboard = () => {
             <button
               onClick={async () => {
                 const cityId = localStorage.getItem("selected_city_id");
-                const ok = await subscribeToPush("establishment", estId!, cityId);
-                setNotifEnabled(ok);
-                if (ok) toast.success("Notificações ativadas!");
-                else toast.error("Permissão negada");
+                const result = await subscribeToPush("establishment", estId!, cityId);
+                setNotifEnabled(result.success);
+                if (result.success) toast.success("Notificações ativadas!");
+                else if (result.reason === "denied") toast.error("Notificações bloqueadas. Ative nas configurações do navegador.");
+                else toast.error("Não foi possível ativar notificações.");
               }}
               className="flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground animate-pulse"
             >
