@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { sendPushNotification } from "@/lib/sendPushNotification";
+import { subscribeToPush } from "@/lib/pushSubscription";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 
@@ -180,6 +181,12 @@ const MotoboyDashboard = () => {
     setIsOnline(newStatus);
     setToggling(false);
     toast(newStatus ? "Você está online! 🟢" : "Você está offline ⚪");
+    
+    // Subscribe to push when going online
+    if (newStatus) {
+      const cityId = motoboyData?.city_id;
+      subscribeToPush("motoboy", motoboyId, cityId);
+    }
   };
 
   const acceptOrder = async (orderId: string) => {
