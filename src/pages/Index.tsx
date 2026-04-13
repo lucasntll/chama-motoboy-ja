@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Bike, ShoppingBag, Settings, Store } from "lucide-react";
 import logo from "@/assets/logo-chamamoto.png";
 import ActiveOrderBanner from "@/components/ActiveOrderBanner";
@@ -10,8 +10,28 @@ import { useCitySelection } from "@/hooks/useCitySelection";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const pwa = usePWAInstall();
   const { cities, selectedCity, loading: citiesLoading, selectCity, clearCity } = useCitySelection();
+
+  // Handle deep links from WhatsApp query params
+  useEffect(() => {
+    const pedidoId = searchParams.get("pedido");
+    const target = searchParams.get("to");
+
+    if (pedidoId) {
+      navigate(`/acompanhar/${pedidoId}`, { replace: true });
+      return;
+    }
+    if (target === "estabelecimento") {
+      navigate("/estabelecimento-acesso", { replace: true });
+      return;
+    }
+    if (target === "motoboy") {
+      navigate("/motoboy-acesso", { replace: true });
+      return;
+    }
+  }, [searchParams, navigate]);
 
   useEffect(() => {
     pwa.triggerShow("visit");
