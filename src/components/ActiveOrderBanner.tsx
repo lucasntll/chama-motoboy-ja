@@ -82,10 +82,12 @@ const ActiveOrderBanner = () => {
         event: "*",
         schema: "public",
         table: "orders",
+        filter: `customer_phone=eq.${phone}`,
       }, () => fetchOrders())
       .subscribe();
 
-    const interval = setInterval(fetchOrders, 15000);
+    // Reduced polling from 15s to 60s (realtime handles most updates)
+    const interval = setInterval(fetchOrders, 60000);
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);

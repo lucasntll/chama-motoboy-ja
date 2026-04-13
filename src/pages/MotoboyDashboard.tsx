@@ -113,12 +113,45 @@ const MotoboyDashboard = () => {
 
   useEffect(() => {
     if (!motoboyId) return;
-    const channel = supabase
-      .channel("motoboy-dashboard")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => fetchAll())
+    const cityId = motoboyData?.city_id;
+    const channels: any[] = [];
+
+    // Listen for orders assigned to this motoboy
+    const myChannel = supabase
+      .channel("motoboy-my-orders")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "orders",
+        filter: `motoboy_id=eq.${motoboyId}`,
+      }, () => fetchAll())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [motoboyId, fetchAll]);
+    channels.push(myChannel);
+
+    // Listen for new pending orders (filtered by city if available)
+    const pendingFilter = cityId
+      ? `city_id=eq.${cityId}`
+      : undefined;
+    const pendingChannel = supabase
+      .channel("motoboy-pending-orders")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "orders",
+        ...(pendingFilter && { filter: pendingFilter }),
+      }, (payload) => {
+        const row = payload.new as any;
+        if (row && ["pending", "ready_for_pickup", "queued"].includes(row.status)) {
+          fetchAll();
+        } else if (payload.eventType === "UPDATE") {
+          fetchAll();
+        }
+      })
+      .subscribe();
+    channels.push(pendingChannel);
+
+    return () => { channels.forEach(c => supabase.removeChannel(c)); };
+  }, [motoboyId, motoboyData?.city_id, fetchAll]);
 
   const hasActiveRide = orders.some((o) => ["accepted", "picking_up", "delivering"].includes(o.status));
 
