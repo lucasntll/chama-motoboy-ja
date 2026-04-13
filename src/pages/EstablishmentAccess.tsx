@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Store, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { applyPhoneMask, stripPhoneMask } from "@/lib/phoneMask";
 
 const EstablishmentAccess = () => {
   const navigate = useNavigate();
@@ -27,26 +28,25 @@ const EstablishmentAccess = () => {
     setLoading(true);
     setError("");
 
+    const stripped = stripPhoneMask(phone);
+
+    // Try matching with stripped phone or raw input
     const { data } = await supabase
       .from("establishments")
       .select("*")
-      .eq("phone", phone.trim())
+      .or(`phone.eq.${stripped},phone.eq.${phone.trim()}`)
+      .eq("status", "active")
       .maybeSingle();
 
     setLoading(false);
 
     if (!data) {
-      setError("Telefone não cadastrado");
+      setError("Estabelecimento não encontrado. Verifique o telefone ou cadastre-se abaixo.");
       return;
     }
 
-    if ((data as any).access_code !== code.trim()) {
+    if ((data as any).access_code !== code.trim().toUpperCase()) {
       setError("Código de acesso incorreto");
-      return;
-    }
-
-    if ((data as any).status === "blocked") {
-      setError("Estabelecimento bloqueado. Contate o admin.");
       return;
     }
 
@@ -80,8 +80,8 @@ const EstablishmentAccess = () => {
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => { setPhone(e.target.value); setError(""); }}
-                placeholder="5535999999999"
+                onChange={(e) => { setPhone(applyPhoneMask(e.target.value)); setError(""); }}
+                placeholder="(35) 99999-9999"
                 className="mt-1 w-full rounded-xl border bg-card py-3.5 px-4 text-sm font-medium placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
                 onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               />
@@ -89,11 +89,12 @@ const EstablishmentAccess = () => {
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Código de acesso</label>
               <input
-                type="password"
+                type="text"
                 value={code}
-                onChange={(e) => { setCode(e.target.value); setError(""); }}
-                placeholder="Seu código pessoal"
-                className="mt-1 w-full rounded-xl border bg-card py-3.5 px-4 text-sm font-medium placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                onChange={(e) => { setCode(e.target.value.toUpperCase()); setError(""); }}
+                placeholder="Ex: ABC123"
+                maxLength={6}
+                className="mt-1 w-full rounded-xl border bg-card py-3.5 px-4 text-sm font-bold tracking-widest placeholder:text-muted-foreground/50 placeholder:font-medium placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-ring"
                 onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               />
             </div>
