@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { playIPhoneDing } from "@/lib/notifications";
 import { sendPushNotification } from "@/lib/sendPushNotification";
+import { sendPushNotification } from "@/lib/sendPushNotification";
+import { subscribeToPush } from "@/lib/pushSubscription";
+import NotificationPermissionPrompt from "@/components/NotificationPermissionPrompt";
 import FeedbackModal from "@/components/FeedbackModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
@@ -36,6 +39,9 @@ const OrderTracking = () => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [queuePosition, setQueuePosition] = useState(0);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(
+    "Notification" in window && Notification.permission !== "granted"
+  );
   const [queueTotal, setQueueTotal] = useState(0);
   const [showAcceptedBanner, setShowAcceptedBanner] = useState(false);
   const [previousStatus, setPreviousStatus] = useState<string | null>(null);
