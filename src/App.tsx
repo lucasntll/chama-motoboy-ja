@@ -34,6 +34,7 @@ const App = () => (
           <Route path="/cliente/parceiro" element={<PartnerOrder />} />
           <Route path="/cliente/livre" element={<FreeOrder />} />
           <Route path="/acompanhar/:orderId" element={<OrderTracking />} />
+          <Route path="/pedido/:orderId" element={<OrderTracking />} />
           <Route path="/motoboy-acesso" element={<MotoboyAccess />} />
           <Route path="/motoboy" element={<MotoboyDashboard />} />
           <Route path="/cadastro-motoboy" element={<MotoboyRegistration />} />
