@@ -958,7 +958,11 @@ const AdminDashboard = () => {
               <button onClick={() => setRemovingEstId(null)} className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">Cancelar</button>
               <button
                 onClick={async () => {
-                  await supabase.from("establishments").update({ status: "inactive" }).eq("id", removingEstId);
+                  const { error } = await supabase.from("establishments").update({ status: "inactive" }).eq("id", removingEstId);
+                  if (error) {
+                    toast({ title: "Erro ao remover: " + error.message, variant: "destructive" });
+                    return;
+                  }
                   toast({ title: "✅ Estabelecimento removido com sucesso" });
                   setRemovingEstId(null);
                   fetchData();
