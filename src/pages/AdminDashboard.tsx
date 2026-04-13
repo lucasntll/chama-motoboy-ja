@@ -645,7 +645,7 @@ const AdminDashboard = () => {
                         const usedCodes = new Set((existingCodes || []).map((e: any) => e.access_code));
                         while (usedCodes.has(accessCode)) accessCode = generateCode();
 
-                        await supabase.from("establishments").insert({
+                        const { error: insertErr } = await supabase.from("establishments").insert({
                           name: app.name,
                           phone: app.phone,
                           address: app.address,
@@ -654,7 +654,14 @@ const AdminDashboard = () => {
                           access_code: accessCode,
                           status: "active",
                         });
-                        await supabase.from("establishment_applications").update({ status: "approved" } as any).eq("id", app.id);
+                        if (insertErr) {
+                          toast({ title: "Erro ao criar estabelecimento: " + insertErr.message, variant: "destructive" });
+                          return;
+                        }
+                        const { error: updateErr } = await supabase.from("establishment_applications").update({ status: "approved" } as any).eq("id", app.id);
+                        if (updateErr) {
+                          toast({ title: "Erro ao atualizar solicitação: " + updateErr.message, variant: "destructive" });
+                        }
                         toast({ title: `✅ Estabelecimento aprovado com sucesso! Código: ${accessCode}` });
 
                         // Send WhatsApp notification
@@ -668,7 +675,11 @@ const AdminDashboard = () => {
                     </button>
                     <button
                       onClick={async () => {
-                        await supabase.from("establishment_applications").update({ status: "rejected" } as any).eq("id", app.id);
+                        const { error } = await supabase.from("establishment_applications").update({ status: "rejected" } as any).eq("id", app.id);
+                        if (error) {
+                          toast({ title: "Erro ao recusar: " + error.message, variant: "destructive" });
+                          return;
+                        }
                         toast({ title: `❌ Estabelecimento recusado com sucesso` });
                         fetchData();
                       }}
@@ -947,7 +958,11 @@ const AdminDashboard = () => {
               <button onClick={() => setRemovingEstId(null)} className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">Cancelar</button>
               <button
                 onClick={async () => {
-                  await supabase.from("establishments").update({ status: "inactive" }).eq("id", removingEstId);
+                  const { error } = await supabase.from("establishments").update({ status: "inactive" }).eq("id", removingEstId);
+                  if (error) {
+                    toast({ title: "Erro ao remover: " + error.message, variant: "destructive" });
+                    return;
+                  }
                   toast({ title: "✅ Estabelecimento removido com sucesso" });
                   setRemovingEstId(null);
                   fetchData();
