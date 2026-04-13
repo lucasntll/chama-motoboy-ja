@@ -618,10 +618,15 @@ const AdminDashboard = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={async () => {
-                        const cityMatch = cities.find((c: any) => c.name.toLowerCase() === app.city.toLowerCase());
+                        let cityMatch = cities.find((c: any) => c.name.toLowerCase() === app.city.toLowerCase());
                         if (!cityMatch) {
-                          toast({ title: "Cidade não encontrada. Cadastre a cidade primeiro.", variant: "destructive" });
-                          return;
+                          const { data: newCity, error: cityErr } = await supabase.from("cities").insert({ name: app.city.trim(), state: "MG" }).select().single();
+                          if (cityErr || !newCity) {
+                            toast({ title: "Erro ao criar cidade automaticamente.", variant: "destructive" });
+                            return;
+                          }
+                          cityMatch = newCity;
+                          toast({ title: `📍 Cidade "${newCity.name}" criada automaticamente` });
                         }
                         const accessCode = `${app.name.split(" ")[0]}123`;
                         await supabase.from("establishments").insert({
