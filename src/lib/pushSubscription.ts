@@ -1,7 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const VAPID_PUBLIC_KEY = "BDJ6CSbS7Xr6VJbMHyVq8xRMwnmfQ4PqW3bvKNi1fWyloXSCHXuGnhb7QEZFqSrj8VDxq3YBVn4kPvXzT1MXXE";
-
 type PushUserType = "client" | "motoboy" | "establishment";
 type SubscribeFailureReason =
   | "denied"
@@ -10,6 +8,8 @@ type SubscribeFailureReason =
   | "subscribe_failed"
   | "save_failed"
   | "insecure_context";
+
+let cachedApplicationServerKey: Uint8Array | null = null;
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -25,6 +25,33 @@ function urlBase64ToUint8Array(base64String: string) {
 function uint8ArrayToBase64Url(value: Uint8Array) {
   const base64 = window.btoa(String.fromCharCode(...value));
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function getApplicationServerKey() {
+  if (cachedApplicationServerKey) {
+    return cachedApplicationServerKey;
+  }
+
+  const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push`, {
+    method: "GET",
+    headers: {
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Unable to load VAPID public key (${response.status})`);
+  }
+
+  const data = await response.json();
+
+  if (typeof data?.vapidPublicKey !== "string" || !data.vapidPublicKey.trim()) {
+    throw new Error("Missing VAPID public key in backend response.");
+  }
+
+  cachedApplicationServerKey = urlBase64ToUint8Array(data.vapidPublicKey.trim());
+  return cachedApplicationServerKey;
 }
 
 function sanitizeCityId(cityId?: string | null) {
@@ -103,16 +130,19 @@ export async function subscribeToPush(
     }
 
     let subscription = await reg.pushManager.getSubscription();
-    if (!subscription) {
-      try {
-        subscription = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-        });
-      } catch (err) {
-        console.error("[Push] Subscribe failed:", err);
-        return { success: false, reason: "subscribe_failed" };
-      }
+    if (subscription) {
+      await subscription.unsubscribe().catch(() => undefined);
+      subscription = null;
+    }
+
+    try {
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: await getApplicationServerKey(),
+      });
+    } catch (err) {
+      console.error("[Push] Subscribe failed:", err);
+      return { success: false, reason: "subscribe_failed" };
     }
 
     const normalizedReferenceId = normalizeReferenceId(userType, referenceId);
@@ -140,9 +170,7 @@ export async function subscribeToPush(
 
     const { error } = await supabase
       .from("push_subscriptions")
-      .upsert(payload, { onConflict: "endpoint" })
-      .select("id")
-      .single();
+      .upsert(payload, { onConflict: "endpoint" });
 
     if (error) {
       console.error("[Push] Save subscription failed:", error);
