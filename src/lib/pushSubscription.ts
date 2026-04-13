@@ -87,7 +87,7 @@ export async function subscribeToPush(
           auth,
           user_type: userType,
           reference_id: referenceId,
-          city_id: cityId || null,
+          city_id: (cityId && cityId !== "undefined" && cityId !== "null") ? cityId : null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "endpoint" }
