@@ -136,6 +136,16 @@ const PartnerOrder = () => {
         city_id: cityId || undefined,
         customer_phone: customerPhone.replace(/\D/g, ""),
       });
+      // WhatsApp fallback: notify establishment
+      if (selectedEstablishment.phone) {
+        const { notifyEstablishmentNewOrder } = await import("@/lib/whatsappNotify");
+        notifyEstablishmentNewOrder(
+          selectedEstablishment.phone,
+          customerName,
+          orderDesc,
+          inserted.id
+        );
+      }
       navigate(`/acompanhar/${inserted.id}`);
     } else {
       navigate("/");
