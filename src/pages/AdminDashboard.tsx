@@ -675,7 +675,11 @@ const AdminDashboard = () => {
                     </button>
                     <button
                       onClick={async () => {
-                        await supabase.from("establishment_applications").update({ status: "rejected" } as any).eq("id", app.id);
+                        const { error } = await supabase.from("establishment_applications").update({ status: "rejected" } as any).eq("id", app.id);
+                        if (error) {
+                          toast({ title: "Erro ao recusar: " + error.message, variant: "destructive" });
+                          return;
+                        }
                         toast({ title: `❌ Estabelecimento recusado com sucesso` });
                         fetchData();
                       }}
