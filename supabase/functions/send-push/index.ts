@@ -103,7 +103,7 @@ async function sendWebPush(
 ): Promise<boolean> {
   try {
     const { endpoint, headers, body } = await buildPushHTTPRequest({
-      privateJWK: await vapidPrivateJwkPromise,
+      privateJWK: await getVapidPrivateJwk(),
       subject: CONTACT_EMAIL,
       subscription: {
         endpoint: subscription.endpoint,
