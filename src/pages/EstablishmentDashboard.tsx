@@ -74,7 +74,7 @@ const EstablishmentDashboard = () => {
           setFlashNew(true);
           setTimeout(() => setFlashNew(false), 3000);
           toast("🔔 NOVO PEDIDO RECEBIDO!", { duration: 8000 });
-          if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
+          // Vibration is now handled inside playLoudAlarm for a prolonged pattern
         }
         loadOrders();
       })

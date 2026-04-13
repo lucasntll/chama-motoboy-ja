@@ -22,30 +22,52 @@ export const playIPhoneDing = () => {
   } catch {}
 };
 
-// Loud alarm for establishment new orders - repeats 3x
+// Intense siren alarm for establishment new orders - 5 cycles with rising pitch
 export const playLoudAlarm = () => {
   try {
     const ctx = new AudioContext();
     const now = ctx.currentTime;
 
-    for (let rep = 0; rep < 3; rep++) {
-      const offset = rep * 0.8;
-      const notes = [880, 1100, 880, 1100]; // alternating alarm
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = "square";
-        osc.frequency.value = freq;
-        const t = now + offset + i * 0.15;
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.6, t + 0.01);
-        gain.gain.linearRampToValueAtTime(0.5, t + 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-        osc.start(t);
-        osc.stop(t + 0.15);
-      });
+    // Layer 1: Rising siren sweep (5 cycles)
+    for (let rep = 0; rep < 5; rep++) {
+      const offset = rep * 0.6;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(600, now + offset);
+      osc.frequency.linearRampToValueAtTime(1400, now + offset + 0.3);
+      osc.frequency.linearRampToValueAtTime(600, now + offset + 0.55);
+      gain.gain.setValueAtTime(0, now + offset);
+      gain.gain.linearRampToValueAtTime(0.7, now + offset + 0.05);
+      gain.gain.setValueAtTime(0.7, now + offset + 0.4);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.58);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.6);
+    }
+
+    // Layer 2: Sharp staccato beeps on top
+    const beepFreqs = [1200, 1500, 1200, 1500, 1800];
+    beepFreqs.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "square";
+      osc.frequency.value = freq;
+      const t = now + i * 0.6 + 0.1;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.5, t + 0.01);
+      gain.gain.setValueAtTime(0.5, t + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      osc.start(t);
+      osc.stop(t + 0.16);
+    });
+
+    // Prolonged vibration pattern: long-short-long-short-long-long
+    if (navigator.vibrate) {
+      navigator.vibrate([500, 150, 500, 150, 500, 200, 800, 200, 500, 150, 500, 150, 800]);
     }
   } catch {}
 };
