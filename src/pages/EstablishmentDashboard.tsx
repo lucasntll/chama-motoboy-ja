@@ -4,6 +4,7 @@ import { ArrowLeft, Store, LogOut, Bell, Package, Clock, CheckCircle, Loader2, D
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { playLoudAlarm, requestNotificationPermission, showBrowserNotification } from "@/lib/notifications";
+import { sendPushNotification } from "@/lib/sendPushNotification";
 
 interface Order {
   id: string;
@@ -122,6 +123,17 @@ const EstablishmentDashboard = () => {
       delivery_fee: DELIVERY_FEE,
       status: "awaiting_customer_confirmation",
     } as any).eq("id", orderId);
+
+    // Find order to get customer phone
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      sendPushNotification({
+        event: "value_defined",
+        order_id: orderId,
+        customer_phone: order.customer_phone,
+      });
+    }
+
     toast.success("Valor enviado para confirmação do cliente!");
     setValueInputs((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
     loadOrders();
