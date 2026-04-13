@@ -273,8 +273,12 @@ const MotoboyDashboard = () => {
   };
 
   const cancelAcceptedOrder = async (orderId: string) => {
-    await supabase.from("orders").update({ status: "pending", motoboy_id: null } as any).eq("id", orderId);
+    await supabase.from("orders").update({ status: "pending", motoboy_id: null, dispatched_to: [] } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "available", last_activity: new Date().toISOString() }).eq("id", motoboyId!);
+    // Re-dispatch to available motoboys
+    const { dispatchOrderToMotoboys } = await import("@/lib/dispatchOrder");
+    const orderData = await supabase.from("orders").select("city_id").eq("id", orderId).maybeSingle();
+    await dispatchOrderToMotoboys(orderId, orderData?.data?.city_id);
     toast.success("Corrida cancelada. Ela voltou para a lista.");
     setCancelOrderId(null);
     fetchAll();
