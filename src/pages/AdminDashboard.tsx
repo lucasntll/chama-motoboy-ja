@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3 } from "lucide-react";
+import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3, Copy } from "lucide-react";
+import { openWhatsApp } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
