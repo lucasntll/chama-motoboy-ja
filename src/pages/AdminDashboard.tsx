@@ -936,7 +936,31 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {viewingPhoto && (
+      {removingEstId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
+            <h3 className="text-lg font-bold text-center">⚠️ Remover estabelecimento?</h3>
+            <p className="text-sm text-muted-foreground text-center">
+              Tem certeza que deseja remover este estabelecimento? Ele não receberá mais pedidos e não aparecerá para clientes.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setRemovingEstId(null)} className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">Cancelar</button>
+              <button
+                onClick={async () => {
+                  await supabase.from("establishments").update({ status: "inactive" }).eq("id", removingEstId);
+                  toast({ title: "✅ Estabelecimento removido com sucesso" });
+                  setRemovingEstId(null);
+                  fetchData();
+                }}
+                className="flex-1 rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97]"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6" onClick={() => setViewingPhoto(null)}>
           <img src={viewingPhoto} alt="Foto" className="max-h-[80vh] max-w-full rounded-xl shadow-xl" />
         </div>
