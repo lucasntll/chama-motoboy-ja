@@ -10,9 +10,10 @@ export async function dispatchOrderToMotoboys(
   cityId?: string | null
 ): Promise<string[]> {
   // 1. Find available motoboys (online, no active ride)
+  // Find available motoboys - try city-specific first, then all available
   let query = supabase
     .from("motoboys")
-    .select("id, name, phone")
+    .select("id, name, phone, city_id")
     .eq("status", "available")
     .eq("is_available", true);
 
@@ -21,6 +22,18 @@ export async function dispatchOrderToMotoboys(
   }
 
   const { data: available } = await query;
+
+  // If city filter returns nothing, try without city filter
+  if ((!available || available.length === 0) && cityId) {
+    const { data: allAvailable } = await supabase
+      .from("motoboys")
+      .select("id, name, phone, city_id")
+      .eq("status", "available")
+      .eq("is_available", true);
+    if (allAvailable && allAvailable.length > 0) {
+      available = allAvailable;
+    }
+  }
 
   if (!available || available.length === 0) return [];
 
