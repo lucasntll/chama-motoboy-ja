@@ -84,24 +84,38 @@ const MotoboyDashboard = () => {
     }
     setOrders(myOrdersRes.data || []);
 
-    // Fetch orders dispatched to THIS motoboy (or unassigned pending for backwards compat)
+    // Fetch ALL pending orders available for this motoboy
     let pendingQuery = supabase
       .from("orders")
       .select("*")
       .is("motoboy_id", null)
-      .in("status", ["pending", "ready_for_pickup"])
+      .in("status", ["pending", "queued", "ready_for_pickup"])
       .order("created_at", { ascending: true });
 
     if (motoboy?.city_id) {
+      // Try city-specific first
       pendingQuery = pendingQuery.eq("city_id", motoboy.city_id);
     }
 
     const { data: pendingData } = await pendingQuery;
     
-    // Filter: only show orders dispatched to this motoboy (or with empty dispatched_to for legacy)
-    const myPending = (pendingData || []).filter((o: any) => {
+    // If city filter returned nothing, try without city filter
+    let finalPending = pendingData || [];
+    if (finalPending.length === 0 && motoboy?.city_id) {
+      const { data: allPendingData } = await supabase
+        .from("orders")
+        .select("*")
+        .is("motoboy_id", null)
+        .in("status", ["pending", "queued", "ready_for_pickup"])
+        .order("created_at", { ascending: true });
+      finalPending = allPendingData || [];
+    }
+    
+    // Show orders: dispatched to this motoboy first, then any unassigned
+    const myPending = finalPending.filter((o: any) => {
       const dispatched = o.dispatched_to as string[] | null;
-      if (!dispatched || dispatched.length === 0) return true; // legacy orders without dispatch
+      // Show if dispatched to this motoboy, or if no specific dispatch (available to all)
+      if (!dispatched || dispatched.length === 0) return true;
       return dispatched.includes(motoboyId!);
     });
     
@@ -128,22 +142,16 @@ const MotoboyDashboard = () => {
       .subscribe();
     channels.push(myChannel);
 
-    // Listen for new pending orders (filtered by city if available)
-    const pendingFilter = cityId
-      ? `city_id=eq.${cityId}`
-      : undefined;
+    // Listen for ALL order changes to catch new pending orders
     const pendingChannel = supabase
-      .channel("motoboy-pending-orders")
+      .channel("motoboy-all-orders")
       .on("postgres_changes", {
         event: "*",
         schema: "public",
         table: "orders",
-        ...(pendingFilter && { filter: pendingFilter }),
       }, (payload) => {
         const row = payload.new as any;
-        if (row && ["pending", "ready_for_pickup", "queued"].includes(row.status)) {
-          fetchAll();
-        } else if (payload.eventType === "UPDATE") {
+        if (row && ["pending", "queued", "ready_for_pickup", "accepted", "completed", "cancelled"].includes(row.status)) {
           fetchAll();
         }
       })
@@ -232,12 +240,22 @@ const MotoboyDashboard = () => {
 
   const acceptOrder = async (orderId: string) => {
     if (hasActiveRide) { toast.error("Você já tem uma corrida ativa!"); return; }
-    const { data: check } = await supabase.from("orders").select("status, motoboy_id, dispatched_to").eq("id", orderId).maybeSingle();
-    if (!check || check.motoboy_id || !["pending", "ready_for_pickup"].includes(check.status)) {
-      toast.error("Corrida já aceita por outro motoboy"); fetchAll(); return;
+    
+    // Atomic accept: only update if still unassigned and pending
+    const { data: updated, error } = await supabase
+      .from("orders")
+      .update({ status: "accepted", motoboy_id: motoboyId, dispatched_to: [] } as any)
+      .eq("id", orderId)
+      .is("motoboy_id", null)
+      .in("status", ["pending", "queued", "ready_for_pickup"])
+      .select("id")
+      .maybeSingle();
+    
+    if (error || !updated) {
+      toast.error("Corrida já aceita por outro motoboy");
+      fetchAll();
+      return;
     }
-    // Clear dispatched_to when accepting
-    await supabase.from("orders").update({ status: "accepted", motoboy_id: motoboyId, dispatched_to: [] } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "busy", last_activity: new Date().toISOString() }).eq("id", motoboyId);
     
     // Get order details for push + WhatsApp fallback

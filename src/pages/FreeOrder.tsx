@@ -41,7 +41,7 @@ const FreeOrder = () => {
   const [submitting, setSubmitting] = useState(false);
   const descRef = useRef<HTMLTextAreaElement>(null);
 
-  const cityId = localStorage.getItem("selected_city_id") || "";
+  const cityId = localStorage.getItem("selected_city_id") || null;
 
   useEffect(() => {
     if (hasSavedData) {
@@ -128,7 +128,7 @@ const FreeOrder = () => {
       status: "pending",
       order_type: "free",
       city_id: cityId || null,
-    } as any).select("id").single();
+    }).select("id").single();
 
     saveAfterOrder({
       category,
@@ -145,7 +145,7 @@ const FreeOrder = () => {
 
     if (inserted?.id) {
       // Dispatch to up to 2 available motoboys
-      const dispatched = await dispatchOrderToMotoboys(inserted.id, cityId || null);
+      const dispatched = await dispatchOrderToMotoboys(inserted.id, cityId);
 
       if (dispatched.length === 0) {
         // No motoboys available, move to queue
