@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3, Copy } from "lucide-react";
+import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3, Copy, Pill } from "lucide-react";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-type Tab = "motoboys" | "orders" | "payments" | "feedback" | "applications" | "cities" | "establishments" | "financeiro";
+type Tab = "motoboys" | "orders" | "payments" | "feedback" | "applications" | "cities" | "establishments" | "financeiro" | "farmacias";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -232,6 +232,7 @@ const AdminDashboard = () => {
           { key: "applications" as Tab, label: "Solicitações", icon: UserPlus },
           { key: "cities" as Tab, label: "Cidades", icon: MapPin },
           { key: "establishments" as Tab, label: "Parceiros", icon: Store },
+          { key: "farmacias" as Tab, label: "Farmácias", icon: Pill },
           { key: "financeiro" as Tab, label: "Financeiro", icon: TrendingUp },
         ]).map(({ key, label, icon: Icon }) => (
           <button
@@ -738,6 +739,19 @@ const AdminDashboard = () => {
                 <p className="text-sm text-muted-foreground">Nenhum estabelecimento ativo.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {tab === "farmacias" && (
+          <div className="flex flex-col items-center py-8 space-y-4">
+            <span className="text-5xl">💊</span>
+            <p className="text-sm text-muted-foreground text-center">Gerencie farmácias, produtos e categorias</p>
+            <button
+              onClick={() => navigate("/admin/farmacias")}
+              className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground active:scale-[0.97] shadow-lg"
+            >
+              <Pill className="h-4 w-4" /> Abrir Gestão de Farmácias
+            </button>
           </div>
         )}
 
