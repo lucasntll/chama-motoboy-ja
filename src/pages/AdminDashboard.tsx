@@ -95,14 +95,35 @@ const AdminDashboard = () => {
     return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a)).map(([, v]) => v);
   };
 
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
   const toggleBlock = async (motoboy: any) => {
+    setActionLoading(motoboy.id + "_block");
     const newAvailable = !motoboy.is_available;
-    await supabase.from("motoboys").update({
+    const { error } = await supabase.from("motoboys").update({
       is_available: newAvailable,
       status: newAvailable ? "available" : "inactive",
     }).eq("id", motoboy.id);
-    toast({ title: newAvailable ? "Motoboy desbloqueado" : "Motoboy bloqueado" });
+    setActionLoading(null);
+    if (error) {
+      toast({ title: "Erro ao atualizar status", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: newAvailable ? "Motoboy desbloqueado ✅" : "Motoboy bloqueado ⛔" });
     fetchData();
+  };
+
+  const removeMotoboy = async (motoboy: any) => {
+    if (!confirm(`Tem certeza que deseja remover ${motoboy.name}? Esta ação não pode ser desfeita.`)) return;
+    setActionLoading(motoboy.id + "_remove");
+    const { error } = await supabase.from("motoboys").delete().eq("id", motoboy.id);
+    setActionLoading(null);
+    if (error) {
+      toast({ title: "Erro ao remover motoboy", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `${motoboy.name} removido com sucesso ✅` });
+    setMotoboys((prev) => prev.filter((m) => m.id !== motoboy.id));
   };
 
   const markAsPaid = async (motoboyId: string) => {
@@ -319,11 +340,20 @@ const AdminDashboard = () => {
                 </button>
                 <button
                   onClick={() => toggleBlock(m)}
+                  disabled={actionLoading === m.id + "_block"}
                   className={`flex-1 flex items-center justify-center gap-1 rounded-lg py-2 text-xs font-bold active:scale-[0.97] ${
                     m.is_available ? "bg-destructive text-destructive-foreground" : "bg-secondary text-secondary-foreground"
                   }`}
                 >
-                  <Ban className="h-3 w-3" /> {m.is_available ? "Bloquear" : "Desbloquear"}
+                  {actionLoading === m.id + "_block" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Ban className="h-3 w-3" />}
+                  {m.is_available ? "Bloquear" : "Desbloquear"}
+                </button>
+                <button
+                  onClick={() => removeMotoboy(m)}
+                  disabled={actionLoading === m.id + "_remove"}
+                  className="flex items-center justify-center gap-1 rounded-lg bg-destructive/10 text-destructive px-3 py-2 text-xs font-bold active:scale-[0.97]"
+                >
+                  {actionLoading === m.id + "_remove" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                 </button>
               </div>
             </div>
