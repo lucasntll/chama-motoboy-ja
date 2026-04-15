@@ -742,6 +742,19 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {tab === "farmacias" && (
+          <div className="flex flex-col items-center py-8 space-y-4">
+            <span className="text-5xl">💊</span>
+            <p className="text-sm text-muted-foreground text-center">Gerencie farmácias, produtos e categorias</p>
+            <button
+              onClick={() => navigate("/admin/farmacias")}
+              className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground active:scale-[0.97] shadow-lg"
+            >
+              <Pill className="h-4 w-4" /> Abrir Gestão de Farmácias
+            </button>
+          </div>
+        )}
+
         {tab === "financeiro" && (() => {
           const completed = orders.filter((o) => o.status === "completed");
           const partner = completed.filter((o) => o.order_type === "partner");
