@@ -95,14 +95,35 @@ const AdminDashboard = () => {
     return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a)).map(([, v]) => v);
   };
 
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
   const toggleBlock = async (motoboy: any) => {
+    setActionLoading(motoboy.id + "_block");
     const newAvailable = !motoboy.is_available;
-    await supabase.from("motoboys").update({
+    const { error } = await supabase.from("motoboys").update({
       is_available: newAvailable,
       status: newAvailable ? "available" : "inactive",
     }).eq("id", motoboy.id);
-    toast({ title: newAvailable ? "Motoboy desbloqueado" : "Motoboy bloqueado" });
+    setActionLoading(null);
+    if (error) {
+      toast({ title: "Erro ao atualizar status", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: newAvailable ? "Motoboy desbloqueado ✅" : "Motoboy bloqueado ⛔" });
     fetchData();
+  };
+
+  const removeMotoboy = async (motoboy: any) => {
+    if (!confirm(`Tem certeza que deseja remover ${motoboy.name}? Esta ação não pode ser desfeita.`)) return;
+    setActionLoading(motoboy.id + "_remove");
+    const { error } = await supabase.from("motoboys").delete().eq("id", motoboy.id);
+    setActionLoading(null);
+    if (error) {
+      toast({ title: "Erro ao remover motoboy", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `${motoboy.name} removido com sucesso ✅` });
+    setMotoboys((prev) => prev.filter((m) => m.id !== motoboy.id));
   };
 
   const markAsPaid = async (motoboyId: string) => {
