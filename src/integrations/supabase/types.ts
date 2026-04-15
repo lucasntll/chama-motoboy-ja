@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      categories: {
+        Row: {
+          active: boolean
+          color: string
+          created_at: string
+          description: string | null
+          display_order: number
+          icon: string
+          id: string
+          image_url: string | null
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          color?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon?: string
+          id?: string
+          image_url?: string | null
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          color?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          icon?: string
+          id?: string
+          image_url?: string | null
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cities: {
         Row: {
           created_at: string
@@ -80,59 +122,224 @@ export type Database = {
         }
         Relationships: []
       }
+      establishment_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          establishment_id: string
+          id: string
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          establishment_id: string
+          id?: string
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          establishment_id?: string
+          id?: string
+          name?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "establishment_categories_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      establishment_products: {
+        Row: {
+          active: boolean
+          category_id: string | null
+          created_at: string
+          description: string | null
+          establishment_id: string
+          id: string
+          image_url: string | null
+          internal_code: string | null
+          name: string
+          price: number
+          stock: number | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          establishment_id: string
+          id?: string
+          image_url?: string | null
+          internal_code?: string | null
+          name: string
+          price?: number
+          stock?: number | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          establishment_id?: string
+          id?: string
+          image_url?: string | null
+          internal_code?: string | null
+          name?: string
+          price?: number
+          stock?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "establishment_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "establishment_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "establishment_products_establishment_id_fkey"
+            columns: ["establishment_id"]
+            isOneToOne: false
+            referencedRelation: "establishments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       establishments: {
         Row: {
+          accepts_pickup: boolean | null
           access_code: string | null
           address: string
+          address_number: string | null
           auto_schedule: boolean
+          banner_url: string | null
           category: string
+          category_id: string | null
           city_id: string
           close_time: string | null
           commission_per_order: number
+          complement: string | null
           created_at: string
+          delivery_fee: number | null
+          delivery_radius_km: number | null
+          document_number: string | null
+          email: string | null
+          estimated_delivery_time: number | null
+          full_description: string | null
           id: string
           is_open: boolean
+          latitude: number | null
+          logo_url: string | null
+          longitude: number | null
           name: string
+          neighborhood: string | null
           open_time: string | null
+          own_delivery: boolean | null
+          owner_name: string | null
           phone: string
           photo_url: string | null
+          short_description: string | null
           status: string
+          sunday_open: boolean | null
+          whatsapp: string | null
+          zip_code: string | null
         }
         Insert: {
+          accepts_pickup?: boolean | null
           access_code?: string | null
           address: string
+          address_number?: string | null
           auto_schedule?: boolean
+          banner_url?: string | null
           category?: string
+          category_id?: string | null
           city_id: string
           close_time?: string | null
           commission_per_order?: number
+          complement?: string | null
           created_at?: string
+          delivery_fee?: number | null
+          delivery_radius_km?: number | null
+          document_number?: string | null
+          email?: string | null
+          estimated_delivery_time?: number | null
+          full_description?: string | null
           id?: string
           is_open?: boolean
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
           name: string
+          neighborhood?: string | null
           open_time?: string | null
+          own_delivery?: boolean | null
+          owner_name?: string | null
           phone: string
           photo_url?: string | null
+          short_description?: string | null
           status?: string
+          sunday_open?: boolean | null
+          whatsapp?: string | null
+          zip_code?: string | null
         }
         Update: {
+          accepts_pickup?: boolean | null
           access_code?: string | null
           address?: string
+          address_number?: string | null
           auto_schedule?: boolean
+          banner_url?: string | null
           category?: string
+          category_id?: string | null
           city_id?: string
           close_time?: string | null
           commission_per_order?: number
+          complement?: string | null
           created_at?: string
+          delivery_fee?: number | null
+          delivery_radius_km?: number | null
+          document_number?: string | null
+          email?: string | null
+          estimated_delivery_time?: number | null
+          full_description?: string | null
           id?: string
           is_open?: boolean
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
           name?: string
+          neighborhood?: string | null
           open_time?: string | null
+          own_delivery?: boolean | null
+          owner_name?: string | null
           phone?: string
           photo_url?: string | null
+          short_description?: string | null
           status?: string
+          sunday_open?: boolean | null
+          whatsapp?: string | null
+          zip_code?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "establishments_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "establishments_city_id_fkey"
             columns: ["city_id"]
