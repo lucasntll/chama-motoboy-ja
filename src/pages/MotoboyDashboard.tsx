@@ -246,12 +246,22 @@ const MotoboyDashboard = () => {
 
   const acceptOrder = async (orderId: string) => {
     if (hasActiveRide) { toast.error("Você já tem uma corrida ativa!"); return; }
-    const { data: check } = await supabase.from("orders").select("status, motoboy_id, dispatched_to").eq("id", orderId).maybeSingle();
-    if (!check || check.motoboy_id || !["pending", "ready_for_pickup"].includes(check.status)) {
-      toast.error("Corrida já aceita por outro motoboy"); fetchAll(); return;
+    
+    // Atomic accept: only update if still unassigned and pending
+    const { data: updated, error } = await supabase
+      .from("orders")
+      .update({ status: "accepted", motoboy_id: motoboyId, dispatched_to: [] } as any)
+      .eq("id", orderId)
+      .is("motoboy_id", null)
+      .in("status", ["pending", "queued", "ready_for_pickup"])
+      .select("id")
+      .maybeSingle();
+    
+    if (error || !updated) {
+      toast.error("Corrida já aceita por outro motoboy");
+      fetchAll();
+      return;
     }
-    // Clear dispatched_to when accepting
-    await supabase.from("orders").update({ status: "accepted", motoboy_id: motoboyId, dispatched_to: [] } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ status: "busy", last_activity: new Date().toISOString() }).eq("id", motoboyId);
     
     // Get order details for push + WhatsApp fallback
