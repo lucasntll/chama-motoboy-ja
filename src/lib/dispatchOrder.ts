@@ -21,7 +21,7 @@ export async function dispatchOrderToMotoboys(
     query = query.eq("city_id", cityId);
   }
 
-  const { data: available } = await query;
+  let { data: available } = await query;
 
   // If city filter returns nothing, try without city filter
   if ((!available || available.length === 0) && cityId) {
