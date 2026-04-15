@@ -5,7 +5,7 @@ import { openWhatsApp } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-type Tab = "motoboys" | "orders" | "payments" | "feedback" | "applications" | "cities" | "establishments" | "financeiro";
+type Tab = "motoboys" | "orders" | "payments" | "feedback" | "applications" | "cities" | "establishments" | "financeiro" | "farmacias";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
