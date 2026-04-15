@@ -233,6 +233,7 @@ const AdminDashboard = () => {
           { key: "cities" as Tab, label: "Cidades", icon: MapPin },
           { key: "establishments" as Tab, label: "Parceiros", icon: Store },
           { key: "farmacias" as Tab, label: "Farmácias", icon: Pill },
+          { key: "categorias" as Tab, label: "Categorias", icon: LayoutGrid },
           { key: "financeiro" as Tab, label: "Financeiro", icon: TrendingUp },
         ]).map(({ key, label, icon: Icon }) => (
           <button
