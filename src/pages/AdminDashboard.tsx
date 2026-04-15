@@ -340,11 +340,20 @@ const AdminDashboard = () => {
                 </button>
                 <button
                   onClick={() => toggleBlock(m)}
+                  disabled={actionLoading === m.id + "_block"}
                   className={`flex-1 flex items-center justify-center gap-1 rounded-lg py-2 text-xs font-bold active:scale-[0.97] ${
                     m.is_available ? "bg-destructive text-destructive-foreground" : "bg-secondary text-secondary-foreground"
                   }`}
                 >
-                  <Ban className="h-3 w-3" /> {m.is_available ? "Bloquear" : "Desbloquear"}
+                  {actionLoading === m.id + "_block" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Ban className="h-3 w-3" />}
+                  {m.is_available ? "Bloquear" : "Desbloquear"}
+                </button>
+                <button
+                  onClick={() => removeMotoboy(m)}
+                  disabled={actionLoading === m.id + "_remove"}
+                  className="flex items-center justify-center gap-1 rounded-lg bg-destructive/10 text-destructive px-3 py-2 text-xs font-bold active:scale-[0.97]"
+                >
+                  {actionLoading === m.id + "_remove" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                 </button>
               </div>
             </div>
