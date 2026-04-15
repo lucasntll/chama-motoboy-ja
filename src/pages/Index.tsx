@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Bike, ShoppingBag, Settings, Store } from "lucide-react";
+import { Bike, ShoppingBag, Settings } from "lucide-react";
 import logo from "@/assets/logo-chamamoto.png";
 import ActiveOrderBanner from "@/components/ActiveOrderBanner";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
@@ -21,10 +21,6 @@ const Index = () => {
 
     if (pedidoId) {
       navigate(`/acompanhar/${pedidoId}`, { replace: true });
-      return;
-    }
-    if (target === "estabelecimento") {
-      navigate("/estabelecimento-acesso", { replace: true });
       return;
     }
     if (target === "motoboy") {
@@ -63,11 +59,11 @@ const Index = () => {
       {hasCity && (
         <div className="w-full max-w-sm space-y-3 mt-6 animate-fade-in">
           <button
-            onClick={() => navigate("/cliente")}
+            onClick={() => navigate("/cliente/livre")}
             className="flex w-full items-center justify-center gap-3 rounded-2xl bg-primary-foreground py-5 text-lg font-bold text-primary shadow-xl transition-all active:scale-[0.97] hover:shadow-2xl"
           >
             <ShoppingBag className="h-6 w-6" />
-            Sou Cliente
+            Fazer Pedido
           </button>
 
           <button
@@ -76,14 +72,6 @@ const Index = () => {
           >
             <Bike className="h-6 w-6" />
             Sou Motoboy
-          </button>
-
-          <button
-            onClick={() => navigate("/estabelecimento-acesso")}
-            className="flex w-full items-center justify-center gap-3 rounded-2xl border-2 border-primary-foreground/30 bg-primary-foreground/10 py-5 text-lg font-bold text-primary-foreground shadow-lg transition-all active:scale-[0.97] hover:bg-primary-foreground/20"
-          >
-            <Store className="h-6 w-6" />
-            Sou Estabelecimento
           </button>
         </div>
       )}
@@ -94,13 +82,7 @@ const Index = () => {
             onClick={() => navigate("/cadastro-motoboy")}
             className="text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground transition-colors tracking-wide"
           >
-            Quer ser um parceiro? <span className="underline underline-offset-4 font-semibold">Cadastre-se aqui</span>
-          </button>
-          <button
-            onClick={() => navigate("/cadastro-estabelecimento")}
-            className="text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground transition-colors tracking-wide"
-          >
-            Tem um estabelecimento? <span className="underline underline-offset-4 font-semibold">Cadastre-se</span>
+            Quer ser motoboy? <span className="underline underline-offset-4 font-semibold">Cadastre-se aqui</span>
           </button>
         </div>
       )}
