@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3, Copy } from "lucide-react";
+import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3, Copy, Pill } from "lucide-react";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -232,6 +232,7 @@ const AdminDashboard = () => {
           { key: "applications" as Tab, label: "Solicitações", icon: UserPlus },
           { key: "cities" as Tab, label: "Cidades", icon: MapPin },
           { key: "establishments" as Tab, label: "Parceiros", icon: Store },
+          { key: "farmacias" as Tab, label: "Farmácias", icon: Pill },
           { key: "financeiro" as Tab, label: "Financeiro", icon: TrendingUp },
         ]).map(({ key, label, icon: Icon }) => (
           <button
