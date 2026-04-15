@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Bike, ShoppingBag, Settings } from "lucide-react";
+import { Bike, ShoppingBag, Settings, Pill, ShoppingCart, Beer, Croissant, Beef, Store, FileText, MoreHorizontal } from "lucide-react";
 import logo from "@/assets/logo-chamamoto.png";
 import ActiveOrderBanner from "@/components/ActiveOrderBanner";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
@@ -57,7 +57,34 @@ const Index = () => {
       <ActiveOrderBanner />
 
       {hasCity && (
-        <div className="w-full max-w-sm space-y-3 mt-6 animate-fade-in">
+        <div className="w-full max-w-sm space-y-4 mt-6 animate-fade-in">
+          {/* Categories */}
+          <div>
+            <p className="text-sm font-semibold text-primary-foreground/80 mb-2 text-center">O que você precisa?</p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { icon: ShoppingBag, label: "Lanche", emoji: "🍔", action: () => { localStorage.setItem("preselect_category", "Lanche"); navigate("/cliente/livre"); } },
+                { icon: Pill, label: "Remédio", emoji: "💊", action: () => navigate("/farmacias") },
+                { icon: ShoppingCart, label: "Mercado", emoji: "🛒", action: () => { localStorage.setItem("preselect_category", "Mercado"); navigate("/cliente/livre"); } },
+                { icon: Beer, label: "Bebida", emoji: "🍺", action: () => { localStorage.setItem("preselect_category", "Bebida"); navigate("/cliente/livre"); } },
+                { icon: Croissant, label: "Padaria", emoji: "🥖", action: () => { localStorage.setItem("preselect_category", "Padaria"); navigate("/cliente/livre"); } },
+                { icon: Beef, label: "Açougue", emoji: "🥩", action: () => { localStorage.setItem("preselect_category", "Açougue"); navigate("/cliente/livre"); } },
+                { icon: Store, label: "Loja", emoji: "🏪", action: () => { localStorage.setItem("preselect_category", "Loja"); navigate("/cliente/livre"); } },
+                { icon: FileText, label: "Documento", emoji: "📄", action: () => { localStorage.setItem("preselect_category", "Documento"); navigate("/cliente/livre"); } },
+                { icon: MoreHorizontal, label: "Outros", emoji: "🧩", action: () => { localStorage.setItem("preselect_category", "Outros"); navigate("/cliente/livre"); } },
+              ].map((cat) => (
+                <button
+                  key={cat.label}
+                  onClick={cat.action}
+                  className="flex flex-col items-center gap-1.5 rounded-2xl bg-primary-foreground/10 border border-primary-foreground/20 py-3 px-2 text-primary-foreground transition-all active:scale-[0.95] hover:bg-primary-foreground/20"
+                >
+                  <span className="text-xl">{cat.emoji}</span>
+                  <span className="text-[11px] font-semibold">{cat.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
             onClick={() => navigate("/cliente/livre")}
             className="flex w-full items-center justify-center gap-3 rounded-2xl bg-primary-foreground py-5 text-lg font-bold text-primary shadow-xl transition-all active:scale-[0.97] hover:shadow-2xl"
