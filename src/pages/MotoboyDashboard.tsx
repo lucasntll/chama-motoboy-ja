@@ -84,24 +84,38 @@ const MotoboyDashboard = () => {
     }
     setOrders(myOrdersRes.data || []);
 
-    // Fetch orders dispatched to THIS motoboy (or unassigned pending for backwards compat)
+    // Fetch ALL pending orders available for this motoboy
     let pendingQuery = supabase
       .from("orders")
       .select("*")
       .is("motoboy_id", null)
-      .in("status", ["pending", "ready_for_pickup"])
+      .in("status", ["pending", "queued", "ready_for_pickup"])
       .order("created_at", { ascending: true });
 
     if (motoboy?.city_id) {
+      // Try city-specific first
       pendingQuery = pendingQuery.eq("city_id", motoboy.city_id);
     }
 
     const { data: pendingData } = await pendingQuery;
     
-    // Filter: only show orders dispatched to this motoboy (or with empty dispatched_to for legacy)
-    const myPending = (pendingData || []).filter((o: any) => {
+    // If city filter returned nothing, try without city filter
+    let finalPending = pendingData || [];
+    if (finalPending.length === 0 && motoboy?.city_id) {
+      const { data: allPendingData } = await supabase
+        .from("orders")
+        .select("*")
+        .is("motoboy_id", null)
+        .in("status", ["pending", "queued", "ready_for_pickup"])
+        .order("created_at", { ascending: true });
+      finalPending = allPendingData || [];
+    }
+    
+    // Show orders: dispatched to this motoboy first, then any unassigned
+    const myPending = finalPending.filter((o: any) => {
       const dispatched = o.dispatched_to as string[] | null;
-      if (!dispatched || dispatched.length === 0) return true; // legacy orders without dispatch
+      // Show if dispatched to this motoboy, or if no specific dispatch (available to all)
+      if (!dispatched || dispatched.length === 0) return true;
       return dispatched.includes(motoboyId!);
     });
     
