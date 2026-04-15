@@ -44,6 +44,25 @@ const FreeOrder = () => {
   const cityId = localStorage.getItem("selected_city_id") || null;
 
   useEffect(() => {
+    // Handle preselected category from home
+    const preselect = localStorage.getItem("preselect_category");
+    if (preselect) {
+      setCategory(preselect);
+      localStorage.removeItem("preselect_category");
+    }
+
+    // Handle pharmacy order
+    const pharmacyOrder = localStorage.getItem("pharmacy_order");
+    if (pharmacyOrder) {
+      try {
+        const data = JSON.parse(pharmacyOrder);
+        if (data.description) setOrderDesc(data.description.replace(/^Remédio:\s*/, ""));
+        if (data.description) setCategory("Remédio");
+        if (data.purchaseLocation) setPurchaseLocation(data.purchaseLocation);
+      } catch {}
+      localStorage.removeItem("pharmacy_order");
+    }
+
     if (hasSavedData) {
       if (clientData.name) setCustomerName(clientData.name);
       if (clientData.phone) setCustomerPhone(clientData.phone);
