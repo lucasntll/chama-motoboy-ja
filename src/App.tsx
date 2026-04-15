@@ -10,11 +10,14 @@ import MotoboyAccess from "./pages/MotoboyAccess";
 import MotoboyDashboard from "./pages/MotoboyDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminPharmacies from "./pages/AdminPharmacies";
+import AdminCategories from "./pages/AdminCategories";
 import MotoboyRegistration from "./pages/MotoboyRegistration";
 import Login from "./pages/Login";
 import MyOrders from "./pages/MyOrders";
 import PharmacyList from "./pages/PharmacyList";
 import PharmacyDetail from "./pages/PharmacyDetail";
+import EstablishmentList from "./pages/EstablishmentList";
+import EstablishmentDetail from "./pages/EstablishmentDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,11 +40,14 @@ const App = () => (
           <Route path="/meus-pedidos" element={<MyOrders />} />
           <Route path="/farmacias" element={<PharmacyList />} />
           <Route path="/farmacia/:pharmacyId" element={<PharmacyDetail />} />
+          <Route path="/categoria/:categorySlug" element={<EstablishmentList />} />
+          <Route path="/estabelecimento/:establishmentId" element={<EstablishmentDetail />} />
 
           {/* Admin */}
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/farmacias" element={<AdminPharmacies />} />
+          <Route path="/admin/categorias" element={<AdminCategories />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
