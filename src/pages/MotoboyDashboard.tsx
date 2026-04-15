@@ -258,7 +258,7 @@ const MotoboyDashboard = () => {
     }
     await supabase.from("motoboys").update({ status: "busy", last_activity: new Date().toISOString() }).eq("id", motoboyId);
     
-    // Get order details for push + WhatsApp fallback
+    // Get order details for push notification (no WhatsApp auto-open)
     const { data: orderData } = await supabase.from("orders").select("customer_phone, city_id").eq("id", orderId).maybeSingle();
     if (orderData) {
       sendPushNotification({
@@ -266,9 +266,6 @@ const MotoboyDashboard = () => {
         order_id: orderId,
         customer_phone: orderData.customer_phone,
       });
-      // WhatsApp fallback: notify client
-      const { notifyClientMotoboyAccepted } = await import("@/lib/whatsappNotify");
-      notifyClientMotoboyAccepted(orderData.customer_phone, motoboyName, orderId);
     }
     
     toast.success("Corrida aceita! 🚀");
