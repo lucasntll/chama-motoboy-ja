@@ -164,19 +164,13 @@ const FreeOrder = () => {
   return (
     <div className="flex min-h-screen flex-col bg-background pb-20">
       <header className="flex items-center gap-3 bg-card px-4 py-3 border-b">
-        <button onClick={() => navigate("/cliente")} className="rounded-full p-1.5 active:scale-90 transition-transform hover:bg-secondary">
+        <button onClick={() => navigate("/")} className="rounded-full p-1.5 active:scale-90 transition-transform hover:bg-secondary">
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-lg font-bold">Pedido Livre</h1>
+        <h1 className="text-lg font-bold">Novo Pedido</h1>
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4 pb-6">
-        <div className="rounded-xl border border-yellow-600/30 bg-yellow-500/10 p-3 flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
-          <p className="text-xs text-foreground/80 font-medium">
-            No pedido livre o motoboy vai até o local, compra e entrega. Pode levar mais tempo que um pedido de parceiro.
-          </p>
-        </div>
 
         {customerName.trim() && (
           <div className="rounded-2xl bg-primary/5 border border-primary/20 px-4 py-3 animate-fade-in">
