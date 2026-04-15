@@ -9,9 +9,12 @@ import OrderTracking from "./pages/OrderTracking";
 import MotoboyAccess from "./pages/MotoboyAccess";
 import MotoboyDashboard from "./pages/MotoboyDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminPharmacies from "./pages/AdminPharmacies";
 import MotoboyRegistration from "./pages/MotoboyRegistration";
 import Login from "./pages/Login";
 import MyOrders from "./pages/MyOrders";
+import PharmacyList from "./pages/PharmacyList";
+import PharmacyDetail from "./pages/PharmacyDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,10 +35,13 @@ const App = () => (
           <Route path="/motoboy" element={<MotoboyDashboard />} />
           <Route path="/cadastro-motoboy" element={<MotoboyRegistration />} />
           <Route path="/meus-pedidos" element={<MyOrders />} />
+          <Route path="/farmacias" element={<PharmacyList />} />
+          <Route path="/farmacia/:pharmacyId" element={<PharmacyDetail />} />
 
           {/* Admin */}
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/farmacias" element={<AdminPharmacies />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
