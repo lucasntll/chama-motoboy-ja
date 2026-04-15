@@ -142,22 +142,16 @@ const MotoboyDashboard = () => {
       .subscribe();
     channels.push(myChannel);
 
-    // Listen for new pending orders (filtered by city if available)
-    const pendingFilter = cityId
-      ? `city_id=eq.${cityId}`
-      : undefined;
+    // Listen for ALL order changes to catch new pending orders
     const pendingChannel = supabase
-      .channel("motoboy-pending-orders")
+      .channel("motoboy-all-orders")
       .on("postgres_changes", {
         event: "*",
         schema: "public",
         table: "orders",
-        ...(pendingFilter && { filter: pendingFilter }),
       }, (payload) => {
         const row = payload.new as any;
-        if (row && ["pending", "ready_for_pickup", "queued"].includes(row.status)) {
-          fetchAll();
-        } else if (payload.eventType === "UPDATE") {
+        if (row && ["pending", "queued", "ready_for_pickup", "accepted", "completed", "cancelled"].includes(row.status)) {
           fetchAll();
         }
       })
