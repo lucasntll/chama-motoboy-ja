@@ -145,7 +145,7 @@ const FreeOrder = () => {
 
     if (inserted?.id) {
       // Dispatch to up to 2 available motoboys
-      const dispatched = await dispatchOrderToMotoboys(inserted.id, cityId || null);
+      const dispatched = await dispatchOrderToMotoboys(inserted.id, cityId);
 
       if (dispatched.length === 0) {
         // No motoboys available, move to queue
