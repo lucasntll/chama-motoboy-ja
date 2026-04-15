@@ -56,8 +56,8 @@ export async function dispatchOrderToMotoboys(
     sendPushNotification({
       event: "new_order",
       order_id: orderId,
-      city_id: cityId || undefined,
-      customer_phone: motoboy.phone,
+      city_id: cityId || null,
+      motoboy_id: motoboy.id,
     });
   }
 

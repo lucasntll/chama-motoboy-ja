@@ -293,12 +293,17 @@ Deno.serve(async (req) => {
       }
 
       case "customer_confirmed": {
-        const { data: motoboys, error: motoboysError } = await supabase
+        let motoboyQuery = supabase
           .from("motoboys")
           .select("id")
-          .eq("city_id", city_id)
           .eq("is_available", true)
           .eq("status", "available");
+
+        if (city_id && city_id !== "undefined" && city_id !== "null") {
+          motoboyQuery = motoboyQuery.eq("city_id", city_id);
+        }
+
+        const { data: motoboys, error: motoboysError } = await motoboyQuery;
 
         if (motoboysError) throw motoboysError;
 
