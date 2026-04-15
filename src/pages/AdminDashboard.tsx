@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3, Copy, Pill } from "lucide-react";
+import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3, Copy, Pill, LayoutGrid } from "lucide-react";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-type Tab = "motoboys" | "orders" | "payments" | "feedback" | "applications" | "cities" | "establishments" | "financeiro" | "farmacias";
+type Tab = "motoboys" | "orders" | "payments" | "feedback" | "applications" | "cities" | "establishments" | "financeiro" | "farmacias" | "categorias";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -233,6 +233,7 @@ const AdminDashboard = () => {
           { key: "cities" as Tab, label: "Cidades", icon: MapPin },
           { key: "establishments" as Tab, label: "Parceiros", icon: Store },
           { key: "farmacias" as Tab, label: "Farmácias", icon: Pill },
+          { key: "categorias" as Tab, label: "Categorias", icon: LayoutGrid },
           { key: "financeiro" as Tab, label: "Financeiro", icon: TrendingUp },
         ]).map(({ key, label, icon: Icon }) => (
           <button
@@ -751,6 +752,19 @@ const AdminDashboard = () => {
               className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground active:scale-[0.97] shadow-lg"
             >
               <Pill className="h-4 w-4" /> Abrir Gestão de Farmácias
+            </button>
+          </div>
+        )}
+
+        {tab === "categorias" && (
+          <div className="flex flex-col items-center py-8 space-y-4">
+            <span className="text-5xl">🗂️</span>
+            <p className="text-sm text-muted-foreground text-center">Gerencie categorias e estabelecimentos do app</p>
+            <button
+              onClick={() => navigate("/admin/categorias")}
+              className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground active:scale-[0.97] shadow-lg"
+            >
+              <LayoutGrid className="h-4 w-4" /> Abrir Gestão de Categorias
             </button>
           </div>
         )}
