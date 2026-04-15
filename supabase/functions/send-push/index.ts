@@ -262,18 +262,23 @@ Deno.serve(async (req) => {
 
     switch (event) {
       case "new_order": {
-        const { data, error } = await supabase
+        let query = supabase
           .from("push_subscriptions")
           .select("endpoint, p256dh, auth, user_type, reference_id, city_id")
-          .eq("user_type", "establishment")
-          .eq("city_id", city_id);
+          .eq("user_type", "motoboy");
+
+        if (city_id && city_id !== "undefined" && city_id !== "null") {
+          query = query.eq("city_id", city_id);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
         targets = (data as SubscriptionRecord[] | null) ?? [];
-        notifTitle = "🔔 Novo pedido!";
-        notifBody = "Você tem um novo pedido para confirmar.";
-        notifUrl = "/estabelecimento";
+        notifTitle = "🏍️ Nova corrida disponível!";
+        notifBody = "Você tem uma nova corrida para aceitar!";
+        notifUrl = "/motoboy-painel";
         tag = "new-order";
         break;
       }
@@ -288,12 +293,17 @@ Deno.serve(async (req) => {
       }
 
       case "customer_confirmed": {
-        const { data: motoboys, error: motoboysError } = await supabase
+        let motoboyQuery = supabase
           .from("motoboys")
           .select("id")
-          .eq("city_id", city_id)
           .eq("is_available", true)
           .eq("status", "available");
+
+        if (city_id && city_id !== "undefined" && city_id !== "null") {
+          motoboyQuery = motoboyQuery.eq("city_id", city_id);
+        }
+
+        const { data: motoboys, error: motoboysError } = await motoboyQuery;
 
         if (motoboysError) throw motoboysError;
 
