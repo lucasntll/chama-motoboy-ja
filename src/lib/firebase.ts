@@ -15,7 +15,7 @@ const firebaseConfig = {
 // ⚠️ O valor "G-7XZPN9166E" parece ser um Measurement ID do Google Analytics.
 // A VAPID key real do FCM é uma string longa (~88 chars) encontrada em:
 // Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
-export const FIREBASE_VAPID_KEY = "G-7XZPN9166E";
+export const FIREBASE_VAPID_KEY = "BPiAKhBkFQWvdmT-76Pq5pndhtyBEXM0OYs7R_TgLXnL7iNF1psG553JF_LYH74xiIH8rU9gepszrtIlXeeKlPo";
 
 export const firebaseApp = initializeApp(firebaseConfig);
 
