@@ -402,6 +402,208 @@ export type Database = {
           },
         ]
       }
+      pharmacies: {
+        Row: {
+          accepts_pickup: boolean
+          address: string
+          address_number: string | null
+          banner_url: string | null
+          city_id: string | null
+          closing_time: string | null
+          cnpj: string | null
+          complement: string | null
+          created_at: string
+          delivery_fee: number | null
+          delivery_radius_km: number | null
+          email: string | null
+          estimated_delivery_time: number | null
+          full_description: string | null
+          id: string
+          latitude: number | null
+          logo_url: string | null
+          longitude: number | null
+          name: string
+          neighborhood: string | null
+          opening_time: string | null
+          own_delivery: boolean
+          owner_name: string
+          phone: string
+          short_description: string | null
+          status: string
+          sunday_open: boolean
+          updated_at: string
+          whatsapp: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          accepts_pickup?: boolean
+          address?: string
+          address_number?: string | null
+          banner_url?: string | null
+          city_id?: string | null
+          closing_time?: string | null
+          cnpj?: string | null
+          complement?: string | null
+          created_at?: string
+          delivery_fee?: number | null
+          delivery_radius_km?: number | null
+          email?: string | null
+          estimated_delivery_time?: number | null
+          full_description?: string | null
+          id?: string
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          name: string
+          neighborhood?: string | null
+          opening_time?: string | null
+          own_delivery?: boolean
+          owner_name?: string
+          phone?: string
+          short_description?: string | null
+          status?: string
+          sunday_open?: boolean
+          updated_at?: string
+          whatsapp?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          accepts_pickup?: boolean
+          address?: string
+          address_number?: string | null
+          banner_url?: string | null
+          city_id?: string | null
+          closing_time?: string | null
+          cnpj?: string | null
+          complement?: string | null
+          created_at?: string
+          delivery_fee?: number | null
+          delivery_radius_km?: number | null
+          email?: string | null
+          estimated_delivery_time?: number | null
+          full_description?: string | null
+          id?: string
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          name?: string
+          neighborhood?: string | null
+          opening_time?: string | null
+          own_delivery?: boolean
+          owner_name?: string
+          phone?: string
+          short_description?: string | null
+          status?: string
+          sunday_open?: boolean
+          updated_at?: string
+          whatsapp?: string | null
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacies_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          pharmacy_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          pharmacy_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          pharmacy_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_categories_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_products: {
+        Row: {
+          active: boolean
+          category_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          internal_code: string | null
+          name: string
+          pharmacy_id: string
+          price: number
+          stock: number | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          internal_code?: string | null
+          name: string
+          pharmacy_id: string
+          price?: number
+          stock?: number | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          internal_code?: string | null
+          name?: string
+          pharmacy_id?: string
+          price?: number
+          stock?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_products_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       popular_places: {
         Row: {
           created_at: string
