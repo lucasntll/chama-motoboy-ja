@@ -78,10 +78,14 @@ const OrderTracking = () => {
         } else if (data.status === "delivering") {
           playIPhoneDing();
           toast("🛵 Seu pedido saiu para entrega!", { duration: 6000 });
+          // Local push: motoboy out for delivery
+          import("@/lib/despiaNotifications").then(m => m.notifyMotoboyOutForDelivery(orderId!));
         } else if (data.status === "completed") {
           setShowArrivalCelebration(true);
           playIPhoneDing();
           if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
+          // Local push: motoboy arrived / delivered
+          import("@/lib/despiaNotifications").then(m => m.notifyMotoboyArrived(orderId!));
         }
       }
       setPreviousStatus(data.status);
