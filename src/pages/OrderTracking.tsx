@@ -12,6 +12,7 @@ import FeedbackModal from "@/components/FeedbackModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import TrackingMap from "@/components/TrackingMap";
+import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 
 const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }> = {
   awaiting_confirmation: { label: "Aguardando confirmação do estabelecimento", emoji: "🏪", color: "text-purple-600" },
@@ -52,10 +53,13 @@ const OrderTracking = () => {
   useEffect(() => {
     const handler = () => pwa.triggerShow("order");
     window.addEventListener("pwa-trigger-install", handler);
-    // Also trigger on mount (user just placed an order)
     pwa.triggerShow("order");
     return () => window.removeEventListener("pwa-trigger-install", handler);
   }, []);
+
+  // Re-sync when app returns from background
+  useRefetchOnFocus(() => fetchOrder(), !!orderId);
+
   const fetchOrder = async () => {
     if (!orderId) return;
     const { data } = await supabase

@@ -9,6 +9,7 @@ import { subscribeToPush } from "@/lib/pushSubscription";
 import { notifyClientValueDefined } from "@/lib/whatsappNotify";
 import { MessageCircle } from "lucide-react";
 import PushSetupCard from "@/components/notifications/PushSetupCard";
+import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 
 interface Order {
   id: string;
@@ -85,6 +86,9 @@ const EstablishmentDashboard = () => {
 
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // Re-sync when establishment app returns from background
+  useRefetchOnFocus(() => loadData(), !!estId);
 
   const loadData = async () => {
     setLoading(true);
