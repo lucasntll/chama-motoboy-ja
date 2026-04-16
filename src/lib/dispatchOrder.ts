@@ -11,10 +11,12 @@ export async function dispatchOrderToMotoboys(
 ): Promise<string[]> {
   // 1. Find available motoboys (online, no active ride)
   // Find available motoboys - try city-specific first, then all available
+  // Online = is_available=true (controlled only by motoboy toggle/logout).
+  // "busy" check is done below via active orders, NOT via motoboys.status,
+  // so accepting a ride no longer drops the motoboy from the online pool.
   let query = supabase
     .from("motoboys")
     .select("id, name, phone, city_id")
-    .eq("status", "available")
     .eq("is_available", true);
 
   if (cityId) {
@@ -28,7 +30,6 @@ export async function dispatchOrderToMotoboys(
     const { data: allAvailable } = await supabase
       .from("motoboys")
       .select("id, name, phone, city_id")
-      .eq("status", "available")
       .eq("is_available", true);
     if (allAvailable && allAvailable.length > 0) {
       available = allAvailable;
@@ -89,7 +90,6 @@ export async function redispatchOrder(
   let query = supabase
     .from("motoboys")
     .select("id, name, phone")
-    .eq("status", "available")
     .eq("is_available", true);
 
   if (cityId) {
