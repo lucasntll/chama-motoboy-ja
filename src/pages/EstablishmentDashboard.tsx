@@ -87,6 +87,9 @@ const EstablishmentDashboard = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // Re-sync when establishment app returns from background
+  useRefetchOnFocus(() => loadData(), !!estId);
+
   const loadData = async () => {
     setLoading(true);
     const { data: est } = await supabase.from("establishments").select("*").eq("id", estId!).single();

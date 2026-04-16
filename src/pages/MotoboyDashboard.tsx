@@ -163,6 +163,9 @@ const MotoboyDashboard = () => {
     return () => { channels.forEach(c => supabase.removeChannel(c)); };
   }, [motoboyId, motoboyData?.city_id, fetchAll]);
 
+  // Re-sync when motoboy app returns from background
+  useRefetchOnFocus(() => fetchAll(), !!motoboyId);
+
   const hasActiveRide = orders.some((o) => ["accepted", "picking_up", "delivering"].includes(o.status));
 
   const visiblePending = useMemo(() => {
