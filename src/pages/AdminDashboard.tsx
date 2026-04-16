@@ -39,6 +39,41 @@ const AdminDashboard = () => {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Realtime subscriptions: keep admin panel always in sync
+  useEffect(() => {
+    const applyChange = <T extends { id: string }>(
+      setter: React.Dispatch<React.SetStateAction<any[]>>,
+      payload: any
+    ) => {
+      setter((prev) => {
+        if (payload.eventType === "INSERT") {
+          if (prev.some((x) => x.id === payload.new.id)) return prev;
+          return [payload.new, ...prev];
+        }
+        if (payload.eventType === "UPDATE") {
+          return prev.map((x) => (x.id === payload.new.id ? { ...x, ...payload.new } : x));
+        }
+        if (payload.eventType === "DELETE") {
+          return prev.filter((x) => x.id !== payload.old.id);
+        }
+        return prev;
+      });
+    };
+
+    const channel = supabase
+      .channel("admin-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "motoboys" }, (p) => applyChange(setMotoboys, p))
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (p) => applyChange(setOrders, p))
+      .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, (p) => applyChange(setReviews, p))
+      .on("postgres_changes", { event: "*", schema: "public", table: "motoboy_applications" }, (p) => applyChange(setApplications, p))
+      .on("postgres_changes", { event: "*", schema: "public", table: "cities" }, (p) => applyChange(setCities, p))
+      .on("postgres_changes", { event: "*", schema: "public", table: "establishments" }, (p) => applyChange(setEstablishments, p))
+      .on("postgres_changes", { event: "*", schema: "public", table: "establishment_applications" }, (p) => applyChange(setEstApplications, p))
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   const fetchData = async () => {
     const [m, o, r, a, c, e, ea] = await Promise.all([
       supabase.from("motoboys").select("*").order("name"),
