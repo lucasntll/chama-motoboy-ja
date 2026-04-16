@@ -75,6 +75,8 @@ const OrderTracking = () => {
           playIPhoneDing();
           toast("🚀 Seu pedido foi aceito por um motoboy!", { duration: 6000 });
           setTimeout(() => setShowAcceptedBanner(false), 12000);
+          // Local push: motoboy accepted the order
+          import("@/lib/despiaNotifications").then(m => m.notifyMotoboyAccepted(orderId!));
         } else if (data.status === "delivering") {
           playIPhoneDing();
           toast("🛵 Seu pedido saiu para entrega!", { duration: 6000 });
@@ -84,8 +86,8 @@ const OrderTracking = () => {
           setShowArrivalCelebration(true);
           playIPhoneDing();
           if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
-          // Local push: motoboy arrived / delivered
-          import("@/lib/despiaNotifications").then(m => m.notifyMotoboyArrived(orderId!));
+          // Local push: order delivered with thank-you
+          import("@/lib/despiaNotifications").then(m => m.notifyOrderDelivered(orderId!));
         }
       }
       setPreviousStatus(data.status);

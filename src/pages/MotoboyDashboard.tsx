@@ -191,6 +191,13 @@ const MotoboyDashboard = () => {
         }, 200);
       } catch (_) {}
       toast.success("Nova corrida disponível! 🚀");
+      // Local push: notify courier about new order on their device
+      if (allPending.length > 0) {
+        import("@/lib/despiaNotifications").then(m => {
+          const newestOrder = allPending[allPending.length - 1];
+          if (newestOrder?.id) m.notifyNewOrderForCourier(newestOrder.id);
+        });
+      }
     }
     prevPendingCount.current = allPending.length;
   }, [allPending.length, isOnline]);
