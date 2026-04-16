@@ -72,6 +72,10 @@ const MyOrders = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // Re-sync when app returns from background
+  useRefetchOnFocus(() => fetchOrders());
+
+
   const filtered = orders
     .filter((o) => !dismissed.includes(o.id))
     .filter((o) => {

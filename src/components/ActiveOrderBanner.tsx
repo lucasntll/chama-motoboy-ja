@@ -95,6 +95,10 @@ const ActiveOrderBanner = () => {
     };
   }, []);
 
+  // Re-sync when client app returns from background
+  useRefetchOnFocus(() => fetchOrders());
+
+
   const activeOrders = orders.filter((o) =>
     ["queued", "pending", "accepted", "picking_up", "delivering"].includes(o.status)
   );

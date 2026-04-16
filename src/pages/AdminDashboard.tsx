@@ -40,6 +40,10 @@ const AdminDashboard = () => {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Re-sync when admin returns from background
+  useRefetchOnFocus(() => fetchData());
+
+
   // Realtime subscriptions: keep admin panel always in sync
   useEffect(() => {
     const applyChange = <T extends { id: string }>(
