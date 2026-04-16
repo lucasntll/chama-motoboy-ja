@@ -261,6 +261,16 @@ Deno.serve(async (req) => {
     let tag = "order";
 
     switch (event) {
+      case "order_created": {
+        // Notify the customer that their order was received
+        targets = await getClientTargets(supabase, customer_phone);
+        notifTitle = "✅ Pedido recebido!";
+        notifBody = "Seu pedido foi recebido com sucesso e já está sendo processado.";
+        notifUrl = order_id ? `/acompanhar/${order_id}` : "/meus-pedidos";
+        tag = `order-created-${order_id ?? "x"}`;
+        break;
+      }
+
       case "new_order": {
         let query = supabase
           .from("push_subscriptions")
@@ -277,9 +287,9 @@ Deno.serve(async (req) => {
 
         targets = (data as SubscriptionRecord[] | null) ?? [];
         notifTitle = "🏍️ Nova corrida disponível!";
-        notifBody = "Você tem uma nova corrida para aceitar!";
-        notifUrl = "/motoboy-painel";
-        tag = "new-order";
+        notifBody = "Há um novo pedido disponível para entrega.";
+        notifUrl = "/motoboy";
+        tag = `new-order-${order_id ?? "x"}`;
         break;
       }
 
@@ -288,16 +298,18 @@ Deno.serve(async (req) => {
         notifTitle = "💰 Valor do pedido definido!";
         notifBody = "Confira o valor e confirme seu pedido.";
         notifUrl = `/acompanhar/${order_id}`;
-        tag = "value-defined";
+        tag = `value-defined-${order_id ?? "x"}`;
         break;
       }
 
       case "customer_confirmed": {
+        // Aligned with Onda 1: filter only by is_available (not status).
+        // The client's app already runs dispatchOrderToMotoboys which excludes
+        // motoboys with active rides via the orders table.
         let motoboyQuery = supabase
           .from("motoboys")
           .select("id")
-          .eq("is_available", true)
-          .eq("status", "available");
+          .eq("is_available", true);
 
         if (city_id && city_id !== "undefined" && city_id !== "null") {
           motoboyQuery = motoboyQuery.eq("city_id", city_id);
@@ -321,26 +333,44 @@ Deno.serve(async (req) => {
 
         notifTitle = "🏍️ Nova corrida disponível!";
         notifBody = "Um cliente confirmou o pedido. Aceite a corrida!";
-        notifUrl = "/motoboy-painel";
-        tag = "new-ride";
+        notifUrl = "/motoboy";
+        tag = `new-ride-${order_id ?? "x"}`;
         break;
       }
 
       case "motoboy_accepted": {
         targets = await getClientTargets(supabase, customer_phone);
         notifTitle = "🚀 Motoboy a caminho!";
-        notifBody = "Seu pedido foi aceito por um motoboy.";
+        notifBody = "Seu pedido já foi aceito por um motoboy e logo sairá para entrega.";
         notifUrl = `/acompanhar/${order_id}`;
-        tag = "motoboy-accepted";
+        tag = `motoboy-accepted-${order_id ?? "x"}`;
+        break;
+      }
+
+      case "out_for_delivery": {
+        targets = await getClientTargets(supabase, customer_phone);
+        notifTitle = "🛵 Saiu para entrega!";
+        notifBody = "Seu pedido já saiu para entrega e está a caminho.";
+        notifUrl = `/acompanhar/${order_id}`;
+        tag = `out-for-delivery-${order_id ?? "x"}`;
+        break;
+      }
+
+      case "motoboy_arrived": {
+        targets = await getClientTargets(supabase, customer_phone);
+        notifTitle = "📍 Motoboy chegou!";
+        notifBody = "O motoboy chegou ao local da entrega. Confira seu pedido.";
+        notifUrl = `/acompanhar/${order_id}`;
+        tag = `motoboy-arrived-${order_id ?? "x"}`;
         break;
       }
 
       case "order_completed": {
         targets = await getClientTargets(supabase, customer_phone);
         notifTitle = "✅ Pedido entregue!";
-        notifBody = "Sua entrega foi finalizada. Obrigado!";
+        notifBody = "Seu pedido foi entregue com sucesso. Obrigado pela preferência!";
         notifUrl = `/acompanhar/${order_id}`;
-        tag = "completed";
+        tag = `completed-${order_id ?? "x"}`;
         break;
       }
 
