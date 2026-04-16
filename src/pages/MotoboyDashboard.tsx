@@ -7,6 +7,7 @@ import { openWhatsApp } from "@/lib/whatsapp";
 import { sendPushNotification } from "@/lib/sendPushNotification";
 import { subscribeToPush } from "@/lib/pushSubscription";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import PushSetupCard from "@/components/notifications/PushSetupCard";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 
 interface DayGroup {
@@ -387,6 +388,10 @@ const MotoboyDashboard = () => {
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4">
+        {motoboyId && (
+          <PushSetupCard userType="motoboy" referenceId={motoboyId} />
+        )}
+
         <button
           onClick={toggleOnline}
           disabled={toggling}

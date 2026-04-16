@@ -12,9 +12,11 @@ interface UsePushNotificationsOptions {
   referenceId: string;
   userId?: string;
   autoListenForeground?: boolean;
+  /** Optional platform tag (e.g. "client-web", "motoboy-web", "establishment-web"). */
+  platform?: string;
 }
 
-export const usePushNotifications = ({ referenceId, userId, autoListenForeground = true }: UsePushNotificationsOptions) => {
+export const usePushNotifications = ({ referenceId, userId, autoListenForeground = true, platform = "web" }: UsePushNotificationsOptions) => {
   const [supported] = useState(() => isNotificationSupported());
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">(() => getNotificationPermission());
   const [token, setToken] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export const usePushNotifications = ({ referenceId, userId, autoListenForeground
       await saveOrUpdateFCMToken({
         referenceId,
         token: fcmToken,
-        platform: "web",
+        platform,
         deviceName: navigator.userAgent.slice(0, 100),
         userId,
       });
@@ -74,7 +76,7 @@ export const usePushNotifications = ({ referenceId, userId, autoListenForeground
       setLoading(false);
       return null;
     }
-  }, [supported, referenceId, userId]);
+  }, [supported, referenceId, userId, platform]);
 
   const refreshToken = useCallback(async () => {
     if (permission !== "granted") return null;
