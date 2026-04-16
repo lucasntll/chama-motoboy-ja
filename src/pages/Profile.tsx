@@ -3,6 +3,7 @@ import { Camera, Save } from "lucide-react";
 import { DEFAULT_PROFILE, type UserProfile } from "@/lib/data";
 import { useClientData } from "@/hooks/useClientData";
 import BottomNav from "@/components/BottomNav";
+import PushSetupCard from "@/components/notifications/PushSetupCard";
 import { useToast } from "@/hooks/use-toast";
 
 const Profile = () => {
@@ -100,6 +101,12 @@ const Profile = () => {
             </div>
           )}
         </div>
+
+        {profile.phone && (
+          <div className="mt-8 max-w-sm mx-auto">
+            <PushSetupCard userType="client" referenceId={profile.phone.replace(/\D/g, "")} />
+          </div>
+        )}
       </main>
 
       <BottomNav />
