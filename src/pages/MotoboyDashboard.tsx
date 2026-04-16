@@ -234,6 +234,8 @@ const MotoboyDashboard = () => {
     if (!motoboyId) return;
     setToggling(true);
     const newStatus = !isOnline;
+    // Only the motoboy toggle controls is_available. We never flip it server-side
+    // when accepting/finishing rides — that's what kept knocking them offline.
     await supabase.from("motoboys").update({
       is_available: newStatus,
       status: newStatus ? "available" : "inactive",
@@ -242,13 +244,28 @@ const MotoboyDashboard = () => {
     setIsOnline(newStatus);
     setToggling(false);
     toast(newStatus ? "Você está online! 🟢" : "Você está offline ⚪");
-    
-    // Subscribe to push when going online
+
     if (newStatus) {
       const cityId = motoboyData?.city_id;
       subscribeToPush("motoboy", motoboyId, cityId);
     }
   };
+
+  // Heartbeat: while online, refresh last_activity every 60s so the backend
+  // knows the motoboy is still present even with the app in background.
+  useEffect(() => {
+    if (!motoboyId || !isOnline) return;
+    const beat = () => {
+      supabase
+        .from("motoboys")
+        .update({ last_activity: new Date().toISOString() })
+        .eq("id", motoboyId)
+        .then(() => undefined);
+    };
+    beat(); // immediate
+    const id = setInterval(beat, 60_000);
+    return () => clearInterval(id);
+  }, [motoboyId, isOnline]);
 
   const acceptOrder = async (orderId: string) => {
     if (hasActiveRide) { toast.error("Você já tem uma corrida ativa!"); return; }
@@ -268,7 +285,11 @@ const MotoboyDashboard = () => {
       fetchAll();
       return;
     }
-    await supabase.from("motoboys").update({ status: "busy", last_activity: new Date().toISOString() }).eq("id", motoboyId);
+    // IMPORTANT: do NOT change motoboys.status here. The motoboy stays online
+    // (is_available=true). The dispatch system already skips motoboys with an
+    // active ride via the orders table, so we don't need a status flip and we
+    // avoid the "I went offline by myself" bug.
+    await supabase.from("motoboys").update({ last_activity: new Date().toISOString() }).eq("id", motoboyId);
     
     // Get order details for push notification (no WhatsApp auto-open)
     const { data: orderData } = await supabase.from("orders").select("customer_phone, city_id").eq("id", orderId).maybeSingle();
@@ -290,7 +311,8 @@ const MotoboyDashboard = () => {
     const { data: orderData } = await supabase.from("orders").select("customer_phone").eq("id", orderId).maybeSingle();
     
     await supabase.from("orders").update({ status: "completed", completed_at: new Date().toISOString() } as any).eq("id", orderId);
-    await supabase.from("motoboys").update({ status: "available", last_activity: new Date().toISOString() }).eq("id", motoboyId!);
+    // Keep motoboy online; just touch heartbeat. Status untouched.
+    await supabase.from("motoboys").update({ last_activity: new Date().toISOString() }).eq("id", motoboyId!);
     
     if (orderData) {
       sendPushNotification({
@@ -334,7 +356,7 @@ const MotoboyDashboard = () => {
 
   const cancelAcceptedOrder = async (orderId: string) => {
     await supabase.from("orders").update({ status: "pending", motoboy_id: null, dispatched_to: [] } as any).eq("id", orderId);
-    await supabase.from("motoboys").update({ status: "available", last_activity: new Date().toISOString() }).eq("id", motoboyId!);
+    await supabase.from("motoboys").update({ last_activity: new Date().toISOString() }).eq("id", motoboyId!);
     // Re-dispatch to available motoboys
     const { dispatchOrderToMotoboys } = await import("@/lib/dispatchOrder");
     const orderData = await supabase.from("orders").select("city_id").eq("id", orderId).maybeSingle();

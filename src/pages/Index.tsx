@@ -51,7 +51,6 @@ const Index = () => {
     { slug: "acougue", name: "Açougue", icon: "🥩" },
     { slug: "loja", name: "Loja", icon: "🏪" },
     { slug: "documento", name: "Documento", icon: "📄" },
-    { slug: "outros", name: "Outros", icon: "🧩" },
   ];
 
   return (
