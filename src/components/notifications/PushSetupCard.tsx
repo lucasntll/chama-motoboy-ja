@@ -32,6 +32,7 @@ export const PushSetupCard = ({ userType, referenceId, userId }: Props) => {
   const { permission, token, loading, error, enableNotifications } = usePushNotifications({
     referenceId,
     userId,
+    platform: platformTag,
   });
 
   const { hasNativePrompt, installNative } = usePWAInstall();
@@ -83,7 +84,6 @@ export const PushSetupCard = ({ userType, referenceId, userId }: Props) => {
       </Card>
     );
   }
-
   // ---------- Browser unsupported ----------
   if (pushCheck.reason === "browser-unsupported") {
     return (
