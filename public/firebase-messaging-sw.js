@@ -1,5 +1,5 @@
 /* eslint-disable no-undef */
-// Firebase Messaging Service Worker for background notifications
+// Firebase Messaging SW — background notifications for Android & iOS PWA
 
 importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
@@ -15,21 +15,57 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
+
+// Background data-only or notification messages
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || "ChamaMoto";
-  const body = payload.notification?.body || "Você tem uma nova notificação";
-  const icon = "/placeholder.svg";
-  const link = payload.data?.link || "/";
+  const title = payload.notification?.title || payload.data?.title || "ChamaMoto";
+  const body = payload.notification?.body || payload.data?.body || "Você tem uma nova notificação";
+  const link = payload.data?.link || payload.fcmOptions?.link || "/";
+  const tag = payload.data?.tag || `chamamoto-${Date.now()}`;
 
   self.registration.showNotification(title, {
     body,
-    icon,
-    badge: icon,
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
     data: { link },
-    vibrate: [200, 100, 200],
-    tag: "chamamoto-notification",
+    vibrate: [200, 100, 200, 100, 200],
+    tag,
     renotify: true,
+    requireInteraction: true,
   });
+});
+
+// Some platforms (iOS PWA) deliver as raw push event — handle that too
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+  let payload = {};
+  try {
+    payload = event.data.json();
+  } catch {
+    payload = { notification: { title: "ChamaMoto", body: event.data.text() } };
+  }
+
+  const n = payload.notification || {};
+  const d = payload.data || {};
+  const title = n.title || d.title || "ChamaMoto";
+  const body = n.body || d.body || "Você tem uma nova notificação";
+  const link = d.link || "/";
+  const tag = d.tag || `chamamoto-${Date.now()}`;
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { link },
+      vibrate: [200, 100, 200, 100, 200],
+      tag,
+      renotify: true,
+      requireInteraction: true,
+    })
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
@@ -39,7 +75,7 @@ self.addEventListener("notificationclick", (event) => {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && "focus" in client) {
-          client.navigate(link);
+          client.navigate(link).catch(() => {});
           return client.focus();
         }
       }
