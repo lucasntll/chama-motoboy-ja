@@ -130,10 +130,17 @@ const PartnerOrder = () => {
     setSubmitting(false);
 
     if (inserted?.id) {
+      // Notify the establishment (motoboys are only notified after price confirmation)
       sendPushNotification({
         event: "new_order",
         order_id: inserted.id,
         city_id: cityId || undefined,
+        customer_phone: customerPhone.replace(/\D/g, ""),
+      });
+      // Notify the customer that their order was received
+      sendPushNotification({
+        event: "order_created",
+        order_id: inserted.id,
         customer_phone: customerPhone.replace(/\D/g, ""),
       });
       // WhatsApp fallback: notify establishment
