@@ -9,6 +9,7 @@ import { subscribeToPush } from "@/lib/pushSubscription";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import PushSetupCard from "@/components/notifications/PushSetupCard";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
+import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 
 interface DayGroup {
   date: string;

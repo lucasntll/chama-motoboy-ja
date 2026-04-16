@@ -4,6 +4,7 @@ import { Loader2, ChevronRight, Package, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { playIPhoneDing } from "@/lib/notifications";
 import { toast } from "sonner";
+import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 
 const STATUS_LABELS: Record<string, { label: string; emoji: string }> = {
   queued: { label: "Na fila de espera", emoji: "⏳" },

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, Package, Filter, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "@/components/BottomNav";
+import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 
 type StatusFilter = "all" | "active" | "completed";
 

@@ -4,6 +4,7 @@ import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar
 import { openWhatsApp } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 
 type Tab = "motoboys" | "orders" | "payments" | "feedback" | "applications" | "cities" | "establishments" | "financeiro" | "farmacias" | "categorias";
 

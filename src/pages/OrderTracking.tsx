@@ -12,6 +12,7 @@ import FeedbackModal from "@/components/FeedbackModal";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import TrackingMap from "@/components/TrackingMap";
+import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 
 const STATUS_MAP: Record<string, { label: string; emoji: string; color: string }> = {
   awaiting_confirmation: { label: "Aguardando confirmação do estabelecimento", emoji: "🏪", color: "text-purple-600" },
