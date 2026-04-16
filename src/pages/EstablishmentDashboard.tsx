@@ -8,6 +8,7 @@ import { sendPushNotification } from "@/lib/sendPushNotification";
 import { subscribeToPush } from "@/lib/pushSubscription";
 import { notifyClientValueDefined } from "@/lib/whatsappNotify";
 import { MessageCircle } from "lucide-react";
+import PushSetupCard from "@/components/notifications/PushSetupCard";
 
 interface Order {
   id: string;
@@ -204,6 +205,10 @@ const EstablishmentDashboard = () => {
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-3">
+        {estId && (
+          <PushSetupCard userType="establishment" referenceId={estId} />
+        )}
+
         {activeOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Bell className="h-12 w-12 text-muted-foreground/30 mb-4" />
