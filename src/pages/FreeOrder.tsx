@@ -163,9 +163,17 @@ const FreeOrder = () => {
     localStorage.setItem("client_phone", customerPhone.replace(/\D/g, ""));
 
     if (inserted?.id) {
-      // Local push: order created
+      // Local push (foreground): order created
       const { notifyOrderCreated } = await import("@/lib/despiaNotifications");
       notifyOrderCreated(inserted.id);
+
+      // Web push (background): notify the customer device
+      const { sendPushNotification } = await import("@/lib/sendPushNotification");
+      sendPushNotification({
+        event: "order_created",
+        order_id: inserted.id,
+        customer_phone: customerPhone.replace(/\D/g, ""),
+      });
 
       // Dispatch to up to 2 available motoboys
       const dispatched = await dispatchOrderToMotoboys(inserted.id, cityId);

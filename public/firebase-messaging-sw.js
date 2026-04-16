@@ -18,12 +18,14 @@ const messaging = firebase.messaging();
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
 
-// Background data-only or notification messages
+// Background data-only or notification messages.
+// Use deterministic `tag` (without timestamp) so duplicate pushes for the
+// same event/order replace one another instead of spamming the user.
 messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || payload.data?.title || "ChamaMoto";
   const body = payload.notification?.body || payload.data?.body || "Você tem uma nova notificação";
   const link = payload.data?.link || payload.fcmOptions?.link || "/";
-  const tag = payload.data?.tag || `chamamoto-${Date.now()}`;
+  const tag = payload.data?.tag || "chamamoto-default";
 
   self.registration.showNotification(title, {
     body,
@@ -32,7 +34,7 @@ messaging.onBackgroundMessage((payload) => {
     data: { link },
     vibrate: [200, 100, 200, 100, 200],
     tag,
-    renotify: true,
+    renotify: false,
     requireInteraction: true,
   });
 });
@@ -51,8 +53,8 @@ self.addEventListener("push", (event) => {
   const d = payload.data || {};
   const title = n.title || d.title || "ChamaMoto";
   const body = n.body || d.body || "Você tem uma nova notificação";
-  const link = d.link || "/";
-  const tag = d.tag || `chamamoto-${Date.now()}`;
+  const link = d.link || d.url || "/";
+  const tag = d.tag || "chamamoto-default";
 
   event.waitUntil(
     self.registration.showNotification(title, {
@@ -62,7 +64,7 @@ self.addEventListener("push", (event) => {
       data: { link },
       vibrate: [200, 100, 200, 100, 200],
       tag,
-      renotify: true,
+      renotify: false,
       requireInteraction: true,
     })
   );
