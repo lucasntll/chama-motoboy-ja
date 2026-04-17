@@ -1,43 +1,112 @@
-const CACHE_NAME = "chamamoto-v1";
-const PRECACHE_URLS = ["/", "/index.html"];
+const CACHE_NAME = "chamamoto-v2";
+const STATIC_CACHE = "chamamoto-static-v2";
+const RUNTIME_CACHE = "chamamoto-runtime-v2";
+
+// Priority pages to precache for fast access and offline reliability
+const PRECACHE_URLS = [
+  "/",
+  "/index.html",
+  "/manifest.json",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/login",
+  "/meus-pedidos",
+  "/motoboy",
+  "/estabelecimento",
+];
 
 // Install: precache shell
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
+    caches.open(STATIC_CACHE).then((cache) =>
+      // Use addAll with catch to avoid failing entire install if one URL fails
+      Promise.all(
+        PRECACHE_URLS.map((url) =>
+          cache.add(url).catch(() => console.warn("[SW] Failed to cache:", url))
+        )
+      )
+    )
   );
   self.skipWaiting();
 });
 
 // Activate: clean old caches
 self.addEventListener("activate", (event) => {
+  const validCaches = [STATIC_CACHE, RUNTIME_CACHE];
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => !validCaches.includes(k)).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
-// Fetch: network-first for navigations, cache-first for assets
+// Fetch: smart caching strategy
 self.addEventListener("fetch", (event) => {
   const { request } = event;
+  const url = new URL(request.url);
 
-  // Skip non-GET and cross-origin
-  if (request.method !== "GET" || !request.url.startsWith(self.location.origin)) return;
+  // Skip non-GET
+  if (request.method !== "GET") return;
 
-  // Never cache OAuth or API calls
-  if (request.url.includes("/~oauth") || request.url.includes("/rest/") || request.url.includes("/functions/")) return;
+  // Never cache OAuth, Supabase API, or edge functions
+  if (
+    url.pathname.includes("/~oauth") ||
+    url.hostname.includes("supabase.co") ||
+    url.pathname.includes("/rest/") ||
+    url.pathname.includes("/functions/") ||
+    url.pathname.includes("/auth/")
+  ) {
+    return;
+  }
 
+  // Navigation requests: network-first, fallback to cached index
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(() => caches.match("/index.html"))
+      fetch(request)
+        .then((response) => {
+          // Cache successful navigations
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match("/index.html")))
     );
     return;
   }
 
+  // Same-origin assets (JS, CSS, images, fonts): cache-first with network fallback
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) {
+          // Refresh in background (stale-while-revalidate)
+          fetch(request)
+            .then((response) => {
+              if (response.ok) {
+                caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, response));
+              }
+            })
+            .catch(() => {});
+          return cached;
+        }
+        return fetch(request).then((response) => {
+          if (response.ok && (request.destination === "script" || request.destination === "style" || request.destination === "image" || request.destination === "font")) {
+            const clone = response.clone();
+            caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Cross-origin: network with cache fallback
   event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request))
+    fetch(request).catch(() => caches.match(request))
   );
 });
 
