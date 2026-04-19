@@ -76,22 +76,6 @@ const Index = () => {
 
       {hasCity && (
         <div className="w-full max-w-sm space-y-4 mt-6 animate-fade-in">
-          <div>
-            <p className="text-sm font-semibold text-primary-foreground/80 mb-2 text-center">O que você precisa?</p>
-            <div className="grid grid-cols-3 gap-2">
-              {displayCategories.map((cat) => (
-                <button
-                  key={cat.slug}
-                  onClick={() => handleCategoryClick(cat)}
-                  className="flex flex-col items-center gap-1.5 rounded-2xl bg-primary-foreground/10 border border-primary-foreground/20 py-3 px-2 text-primary-foreground transition-all active:scale-[0.95] hover:bg-primary-foreground/20"
-                >
-                  <span className="text-xl">{cat.icon}</span>
-                  <span className="text-[11px] font-semibold">{cat.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <button
             onClick={() => navigate("/cliente/livre")}
             className="flex w-full items-center justify-center gap-3 rounded-2xl bg-primary-foreground py-5 text-lg font-bold text-primary shadow-xl transition-all active:scale-[0.97] hover:shadow-2xl"
