@@ -109,7 +109,7 @@ const ActiveOrderBanner = () => {
   if (activeOrders.length === 0 && recentCompleted.length === 0) return null;
 
   return (
-    <div className="w-full max-w-sm space-y-3">
+    <div className="w-full max-w-sm space-y-3 min-w-0 overflow-hidden px-1">
       <h3 className="text-sm font-bold text-primary-foreground/90 uppercase tracking-wide">
         Seus pedidos
       </h3>
@@ -122,9 +122,9 @@ const ActiveOrderBanner = () => {
             onClick={() => navigate(`/acompanhar/${order.id}`)}
             className="flex w-full items-center gap-3 rounded-2xl bg-primary-foreground/15 backdrop-blur-sm border border-primary-foreground/20 px-4 py-3.5 text-left transition-all active:scale-[0.97] hover:bg-primary-foreground/20"
           >
-            <span className="text-2xl">{s.emoji}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-primary-foreground truncate">
+            <span className="text-2xl shrink-0">{s.emoji}</span>
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <p className="text-sm font-bold text-primary-foreground truncate break-words">
                 {order.item_description}
               </p>
               <div className="flex items-center gap-1.5">
@@ -145,10 +145,10 @@ const ActiveOrderBanner = () => {
             <div key={order.id} className="flex items-center gap-2">
               <button
                 onClick={() => navigate(`/acompanhar/${order.id}`)}
-                className="flex flex-1 items-center gap-3 rounded-2xl bg-primary-foreground/10 border border-primary-foreground/10 px-4 py-3 text-left transition-all active:scale-[0.97]"
+                className="flex flex-1 min-w-0 items-center gap-3 rounded-2xl bg-primary-foreground/10 border border-primary-foreground/10 px-4 py-3 text-left transition-all active:scale-[0.97]"
               >
-                <span className="text-xl">✅</span>
-                <div className="flex-1 min-w-0">
+                <span className="text-xl shrink-0">✅</span>
+                <div className="flex-1 min-w-0 overflow-hidden">
                   <p className="text-sm font-semibold text-primary-foreground/80 truncate">
                     {order.item_description}
                   </p>
