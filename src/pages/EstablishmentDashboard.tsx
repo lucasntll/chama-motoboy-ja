@@ -10,6 +10,7 @@ import { notifyClientValueDefined } from "@/lib/whatsappNotify";
 import { MessageCircle } from "lucide-react";
 import PushSetupCard from "@/components/notifications/PushSetupCard";
 import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
+import { getDeliveryFee } from "@/lib/deliveryPricing";
 
 interface Order {
   id: string;
