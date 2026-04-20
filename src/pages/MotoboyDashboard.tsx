@@ -166,7 +166,10 @@ const MotoboyDashboard = () => {
   // Re-sync when motoboy app returns from background
   useRefetchOnFocus(() => fetchAll(), !!motoboyId);
 
-  const hasActiveRide = orders.some((o) => ["accepted", "picking_up", "delivering"].includes(o.status));
+  const activeRides = orders.filter((o) => ["accepted", "picking_up", "delivering"].includes(o.status));
+  const hasActiveRide = activeRides.length > 0; // mantido para compatibilidade
+  const MAX_ACTIVE_RIDES = 2;
+  const hasMaxActiveRides = activeRides.length >= MAX_ACTIVE_RIDES;
 
   const visiblePending = useMemo(() => {
     const now = Date.now();
@@ -228,7 +231,7 @@ const MotoboyDashboard = () => {
   }, [completedOrders]);
 
   const totalAccumulated = completedOrders.length;
-  const activeOrder = orders.find((o) => ["accepted", "picking_up", "delivering"].includes(o.status));
+  const activeOrder = activeRides[0]; // primeira ativa (compatibilidade com UI existente)
 
   const toggleOnline = async () => {
     if (!motoboyId) return;
@@ -268,7 +271,7 @@ const MotoboyDashboard = () => {
   }, [motoboyId, isOnline]);
 
   const acceptOrder = async (orderId: string) => {
-    if (hasActiveRide) { toast.error("Você já tem uma corrida ativa!"); return; }
+    if (hasMaxActiveRides) { toast.error(`Você já tem ${MAX_ACTIVE_RIDES} corridas ativas! Finalize uma antes.`); return; }
     
     // Atomic accept: only update if still unassigned and pending
     const { data: updated, error } = await supabase

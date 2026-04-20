@@ -3,54 +3,17 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useClientOrderNotifications } from "@/hooks/useClientOrderNotifications";
 import Index from "./pages/Index";
-import FreeOrder from "./pages/FreeOrder";
-import OrderTracking from "./pages/OrderTracking";
 import MotoboyAccess from "./pages/MotoboyAccess";
 import MotoboyDashboard from "./pages/MotoboyDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
-import AdminPharmacies from "./pages/AdminPharmacies";
-import AdminCategories from "./pages/AdminCategories";
 import MotoboyRegistration from "./pages/MotoboyRegistration";
+import EstablishmentAccess from "./pages/EstablishmentAccess";
+import EstablishmentDashboard from "./pages/EstablishmentDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import Login from "./pages/Login";
-import MyOrders from "./pages/MyOrders";
-import PharmacyList from "./pages/PharmacyList";
-import PharmacyDetail from "./pages/PharmacyDetail";
-import EstablishmentList from "./pages/EstablishmentList";
-import EstablishmentDetail from "./pages/EstablishmentDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
-
-const AppInner = () => {
-  useClientOrderNotifications();
-  return (
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/cliente" element={<FreeOrder />} />
-      <Route path="/cliente/livre" element={<FreeOrder />} />
-      <Route path="/acompanhar/:orderId" element={<OrderTracking />} />
-      <Route path="/pedido/:orderId" element={<OrderTracking />} />
-      <Route path="/motoboy-acesso" element={<MotoboyAccess />} />
-      <Route path="/motoboy" element={<MotoboyDashboard />} />
-      <Route path="/cadastro-motoboy" element={<MotoboyRegistration />} />
-      <Route path="/meus-pedidos" element={<MyOrders />} />
-      <Route path="/farmacias" element={<PharmacyList />} />
-      <Route path="/farmacia/:pharmacyId" element={<PharmacyDetail />} />
-      <Route path="/categoria/:categorySlug" element={<EstablishmentList />} />
-      <Route path="/estabelecimento/:establishmentId" element={<EstablishmentDetail />} />
-
-      {/* Admin */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="/admin/farmacias" element={<AdminPharmacies />} />
-      <Route path="/admin/categorias" element={<AdminCategories />} />
-
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -58,7 +21,24 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AppInner />
+        <Routes>
+          <Route path="/" element={<Index />} />
+
+          {/* Estabelecimento */}
+          <Route path="/estabelecimento-acesso" element={<EstablishmentAccess />} />
+          <Route path="/estabelecimento" element={<EstablishmentDashboard />} />
+
+          {/* Motoboy */}
+          <Route path="/motoboy-acesso" element={<MotoboyAccess />} />
+          <Route path="/motoboy" element={<MotoboyDashboard />} />
+          <Route path="/cadastro-motoboy" element={<MotoboyRegistration />} />
+
+          {/* Admin */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
