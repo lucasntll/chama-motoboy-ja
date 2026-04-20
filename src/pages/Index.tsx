@@ -1,67 +1,24 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Bike, ShoppingBag, Settings } from "lucide-react";
+import { Store, Bike, Settings } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-chamamoto.png";
-import ActiveOrderBanner from "@/components/ActiveOrderBanner";
-import PWAInstallPrompt from "@/components/PWAInstallPrompt";
-import { usePWAInstall } from "@/hooks/usePWAInstall";
 import CitySelector from "@/components/CitySelector";
 import { useCitySelection } from "@/hooks/useCitySelection";
-import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const pwa = usePWAInstall();
   const { cities, selectedCity, loading: citiesLoading, selectCity, clearCity } = useCitySelection();
-  const [categories, setCategories] = useState<any[]>([]);
-
-  useEffect(() => {
-    const pedidoId = searchParams.get("pedido");
-    const target = searchParams.get("to");
-    if (pedidoId) { navigate(`/acompanhar/${pedidoId}`, { replace: true }); return; }
-    if (target === "motoboy") { navigate("/motoboy-acesso", { replace: true }); return; }
-  }, [searchParams, navigate]);
-
-  useEffect(() => { pwa.triggerShow("visit"); }, []);
-
-  useEffect(() => {
-    supabase.from("categories").select("*").eq("active", true).order("display_order").then(({ data }) => {
-      setCategories(data || []);
-    });
-  }, []);
 
   const hasCity = !!selectedCity;
-
-  const handleCategoryClick = (cat: any) => {
-    if (cat.slug === "remedio") {
-      navigate("/farmacias");
-    } else {
-      navigate(`/categoria/${cat.slug}`);
-    }
-  };
-
-  // Fallback static categories if DB is empty
-  const displayCategories = categories.length > 0 ? categories : [
-    { slug: "lanche", name: "Lanche", icon: "🍔" },
-    { slug: "remedio", name: "Remédio", icon: "💊" },
-    { slug: "mercado", name: "Mercado", icon: "🛒" },
-    { slug: "bebida", name: "Bebida", icon: "🍺" },
-    { slug: "padaria", name: "Padaria", icon: "🥖" },
-    { slug: "acougue", name: "Açougue", icon: "🥩" },
-    { slug: "loja", name: "Loja", icon: "🏪" },
-    { slug: "documento", name: "Documento", icon: "📄" },
-  ];
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-primary px-6 py-10">
       <img src={logo} alt="ChamaMoto" className="h-28 w-auto mb-6 drop-shadow-md" />
 
       <h1 className="text-2xl font-bold text-primary-foreground text-center mb-2">
-        Peça qualquer coisa<br />sem sair de casa 🛵⚡
+        ChamaMoto 🛵⚡
       </h1>
       <p className="text-primary-foreground/80 text-center text-sm mb-6">
-        Entrega rápida na sua cidade 👊
+        Sua entrega rápida, sem complicação
       </p>
 
       <CitySelector
@@ -72,16 +29,14 @@ const Index = () => {
         onClear={clearCity}
       />
 
-      <ActiveOrderBanner />
-
       {hasCity && (
         <div className="w-full max-w-sm space-y-4 mt-6 animate-fade-in">
           <button
-            onClick={() => navigate("/cliente/livre")}
+            onClick={() => navigate("/estabelecimento-acesso")}
             className="flex w-full items-center justify-center gap-3 rounded-2xl bg-primary-foreground py-5 text-lg font-bold text-primary shadow-xl transition-all active:scale-[0.97] hover:shadow-2xl"
           >
-            <ShoppingBag className="h-6 w-6" />
-            Fazer Pedido
+            <Store className="h-6 w-6" />
+            Sou Estabelecimento
           </button>
 
           <button
@@ -91,41 +46,29 @@ const Index = () => {
             <Bike className="h-6 w-6" />
             Sou Motoboy
           </button>
-        </div>
-      )}
 
-      {hasCity && (
-        <div className="mt-5 flex flex-col items-center gap-2">
           <button
-            onClick={() => navigate("/cadastro-motoboy")}
-            className="text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground transition-colors tracking-wide"
+            onClick={() => navigate("/login")}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary-foreground/20 bg-transparent py-3.5 text-sm font-semibold text-primary-foreground/80 transition-all active:scale-[0.97] hover:bg-primary-foreground/10"
           >
-            Quer ser motoboy? <span className="underline underline-offset-4 font-semibold">Cadastre-se aqui</span>
+            <Settings className="h-4 w-4" />
+            Admin
           </button>
         </div>
       )}
 
-      <button
-        onClick={() => navigate("/login")}
-        className="mt-3 flex items-center gap-1.5 text-xs text-primary-foreground/40 hover:text-primary-foreground/70 transition-colors"
-      >
-        <Settings className="h-3 w-3" />
-        Admin
-      </button>
+      {hasCity && (
+        <button
+          onClick={() => navigate("/cadastro-motoboy")}
+          className="mt-5 text-sm font-medium text-primary-foreground/80 hover:text-primary-foreground transition-colors tracking-wide"
+        >
+          Quer ser motoboy? <span className="underline underline-offset-4 font-semibold">Cadastre-se aqui</span>
+        </button>
+      )}
 
-      <p className="mt-4 text-xs text-primary-foreground/50">
+      <p className="mt-6 text-xs text-primary-foreground/50">
         ChamaMoto © {new Date().getFullYear()}
       </p>
-
-      {pwa.canShow && !pwa.isInstalled && (
-        <PWAInstallPrompt
-          variant="client"
-          isIOS={pwa.isIOS}
-          hasNativePrompt={pwa.hasNativePrompt}
-          onInstall={pwa.installNative}
-          onDismiss={pwa.dismiss}
-        />
-      )}
     </div>
   );
 };
