@@ -38,7 +38,8 @@ export async function dispatchOrderToMotoboys(
 
   if (!available || available.length === 0) return [];
 
-  // 2. Check which ones DON'T have an active ride
+  // 2. Count active rides per motoboy (max 2 simultâneas)
+  const MAX_ACTIVE = 2;
   const motoboyIds = available.map((m) => m.id);
   const { data: activeOrders } = await supabase
     .from("orders")
@@ -46,8 +47,11 @@ export async function dispatchOrderToMotoboys(
     .in("motoboy_id", motoboyIds)
     .in("status", ["accepted", "picking_up", "delivering"]);
 
-  const busyIds = new Set((activeOrders || []).map((o) => o.motoboy_id));
-  const free = available.filter((m) => !busyIds.has(m.id));
+  const counts: Record<string, number> = {};
+  (activeOrders || []).forEach((o) => {
+    if (o.motoboy_id) counts[o.motoboy_id] = (counts[o.motoboy_id] || 0) + 1;
+  });
+  const free = available.filter((m) => (counts[m.id] || 0) < MAX_ACTIVE);
 
   if (free.length === 0) return [];
 
@@ -99,6 +103,7 @@ export async function redispatchOrder(
   const { data: available } = await query;
   if (!available || available.length === 0) return [];
 
+  const MAX_ACTIVE = 2;
   const motoboyIds = available.map((m) => m.id);
   const { data: activeOrders } = await supabase
     .from("orders")
@@ -106,13 +111,16 @@ export async function redispatchOrder(
     .in("motoboy_id", motoboyIds)
     .in("status", ["accepted", "picking_up", "delivering"]);
 
-  const busyIds = new Set((activeOrders || []).map((o) => o.motoboy_id));
+  const counts: Record<string, number> = {};
+  (activeOrders || []).forEach((o) => {
+    if (o.motoboy_id) counts[o.motoboy_id] = (counts[o.motoboy_id] || 0) + 1;
+  });
   const excludeSet = new Set(excludeIds);
-  const free = available.filter((m) => !busyIds.has(m.id) && !excludeSet.has(m.id));
+  const free = available.filter((m) => (counts[m.id] || 0) < MAX_ACTIVE && !excludeSet.has(m.id));
 
   if (free.length === 0) {
     // If no new motoboys, try all available again
-    const allFree = available.filter((m) => !busyIds.has(m.id));
+    const allFree = available.filter((m) => (counts[m.id] || 0) < MAX_ACTIVE);
     if (allFree.length === 0) return [];
     const shuffled = allFree.sort(() => Math.random() - 0.5);
     const selected = shuffled.slice(0, 2);
