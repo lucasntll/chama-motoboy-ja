@@ -1,12 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Loader2, Ban, CheckCircle, DollarSign, Users, Package, Calendar, ChevronDown, ChevronUp, Star, UserPlus, X, Eye, MapPin, Store, Plus, Trash2, TrendingUp, BarChart3, Copy, Pill, LayoutGrid } from "lucide-react";
-import { openWhatsApp } from "@/lib/whatsapp";
+import {
+  LogOut, Loader2, LayoutDashboard, Store, Bike, Package, DollarSign,
+  Plus, Copy, CheckCircle, X, Power, MapPin, Phone, TrendingUp, Calendar,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 
-type Tab = "motoboys" | "orders" | "payments" | "feedback" | "applications" | "cities" | "establishments" | "financeiro" | "farmacias" | "categorias";
+type Tab = "dashboard" | "establishments" | "motoboys" | "orders" | "financeiro";
+
+const ESTAB_COMMISSION = 2;
+const MOTOBOY_COMMISSION = 1;
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -15,6 +20,48 @@ const AdminDashboard = () => {
     if (sessionStorage.getItem("admin_auth") !== "true") {
       navigate("/login", { replace: true });
     }
+  }, [navigate]);
+
+  const [tab, setTab] = useState<Tab>("dashboard");
+  const [loading, setLoading] = useState(true);
+  const [motoboys, setMotoboys] = useState<any[]>([]);
+  const [establishments, setEstablishments] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+
+  // Modais
+  const [showAddEst, setShowAddEst] = useState(false);
+  const [showAddMoto, setShowAddMoto] = useState(false);
+
+  const fetchData = async () => {
+    const [m, e, o, c, p] = await Promise.all([
+      supabase.from("motoboys").select("*").order("name"),
+      supabase.from("establishments").select("*").order("name"),
+      supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("cities").select("*").eq("is_active", true).order("name"),
+      supabase.from("payments").select("*").order("created_at", { ascending: false }),
+    ]);
+    setMotoboys(m.data || []);
+    setEstablishments(e.data || []);
+    setOrders(o.data || []);
+    setCities(c.data || []);
+    setPayments(p.data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+  useRefetchOnFocus(() => fetchData());
+
+  // Realtime
+  useEffect(() => {
+    const ch = supabase.channel("admin-all")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, fetchData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "motoboys" }, fetchData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "establishments" }, fetchData)
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, fetchData)
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
   }, []);
 
   const handleLogout = () => {
@@ -22,177 +69,29 @@ const AdminDashboard = () => {
     navigate("/login", { replace: true });
   };
 
-  const [tab, setTab] = useState<Tab>("motoboys");
-  const [motoboys, setMotoboys] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [applications, setApplications] = useState<any[]>([]);
-  const [cities, setCities] = useState<any[]>([]);
-  const [establishments, setEstablishments] = useState<any[]>([]);
-  const [estApplications, setEstApplications] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState("");
-  const [expandedMotoboy, setExpandedMotoboy] = useState<string | null>(null);
-  const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
-  const [newCityName, setNewCityName] = useState("");
-  const [newCityState, setNewCityState] = useState("MG");
-  const [removingEstId, setRemovingEstId] = useState<string | null>(null);
+  // ============ STATS ============
+  const today = new Date(); today.setHours(0,0,0,0);
+  const ordersToday = orders.filter(o => new Date(o.created_at) >= today);
+  const ordersInProgress = orders.filter(o => ["accepted","picked_up","in_transit"].includes(o.status));
+  const finishedToday = ordersToday.filter(o => o.status === "completed");
+  const activeEsts = establishments.filter(e => e.status === "active").length;
+  const onlineMotos = motoboys.filter(m => m.status === "available" || m.status === "busy").length;
+  const revenueToday = finishedToday.length * (ESTAB_COMMISSION + MOTOBOY_COMMISSION);
 
-  useEffect(() => { fetchData(); }, []);
-
-  // Re-sync when admin returns from background
-  useRefetchOnFocus(() => fetchData());
-
-
-  // Realtime subscriptions: keep admin panel always in sync
-  useEffect(() => {
-    const applyChange = <T extends { id: string }>(
-      setter: React.Dispatch<React.SetStateAction<any[]>>,
-      payload: any
-    ) => {
-      setter((prev) => {
-        if (payload.eventType === "INSERT") {
-          if (prev.some((x) => x.id === payload.new.id)) return prev;
-          return [payload.new, ...prev];
-        }
-        if (payload.eventType === "UPDATE") {
-          return prev.map((x) => (x.id === payload.new.id ? { ...x, ...payload.new } : x));
-        }
-        if (payload.eventType === "DELETE") {
-          return prev.filter((x) => x.id !== payload.old.id);
-        }
-        return prev;
-      });
-    };
-
-    const channel = supabase
-      .channel("admin-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "motoboys" }, (p) => applyChange(setMotoboys, p))
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (p) => applyChange(setOrders, p))
-      .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, (p) => applyChange(setReviews, p))
-      .on("postgres_changes", { event: "*", schema: "public", table: "motoboy_applications" }, (p) => applyChange(setApplications, p))
-      .on("postgres_changes", { event: "*", schema: "public", table: "cities" }, (p) => applyChange(setCities, p))
-      .on("postgres_changes", { event: "*", schema: "public", table: "establishments" }, (p) => applyChange(setEstablishments, p))
-      .on("postgres_changes", { event: "*", schema: "public", table: "establishment_applications" }, (p) => applyChange(setEstApplications, p))
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
-  const fetchData = async () => {
-    const [m, o, r, a, c, e, ea] = await Promise.all([
-      supabase.from("motoboys").select("*").order("name"),
-      supabase.from("orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("reviews" as any).select("*").order("created_at", { ascending: false }),
-      supabase.from("motoboy_applications" as any).select("*").order("created_at", { ascending: false }),
-      supabase.from("cities").select("*").order("name"),
-      supabase.from("establishments").select("*").order("name"),
-      supabase.from("establishment_applications").select("*").order("created_at", { ascending: false }),
-    ]);
-    setMotoboys(m.data || []);
-    setOrders(o.data || []);
-    setReviews(r.data || []);
-    setApplications(a.data || []);
-    setCities(c.data || []);
-    setEstablishments(e.data || []);
-    setEstApplications(ea.data || []);
-    setLoading(false);
-  };
-
-  const filteredOrders = useMemo(() => {
-    if (!dateFilter) return orders;
-    return orders.filter((o) => {
-      const d = new Date(o.completed_at || o.created_at).toISOString().slice(0, 10);
-      return d === dateFilter;
-    });
-  }, [orders, dateFilter]);
-
-  const getMotoboyStats = (motoboyId: string) => {
-    const motoboyOrders = filteredOrders.filter((o) => o.motoboy_id === motoboyId && o.status === "completed");
-    const totalRides = motoboyOrders.length;
-    const totalCommission = totalRides * 2;
-    const paidOrders = motoboyOrders.filter((o: any) => o.is_paid);
-    const totalPaid = paidOrders.length * 2;
-    const owed = totalCommission - totalPaid;
-    const motoboyReviews = reviews.filter((r: any) => r.motoboy_id === motoboyId);
-    const avgRating = motoboyReviews.length > 0
-      ? (motoboyReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / motoboyReviews.length).toFixed(1)
-      : "—";
-    return { totalRides, totalCommission, owed, avgRating, reviewCount: motoboyReviews.length };
-  };
-
-  const getMotoboyDailyBreakdown = (motoboyId: string) => {
-    const completed = orders.filter((o) => o.motoboy_id === motoboyId && o.status === "completed");
-    const groups: Record<string, { label: string; rides: number; amount: number }> = {};
-    completed.forEach((o) => {
-      const d = new Date(o.completed_at || o.created_at);
-      const key = d.toISOString().slice(0, 10);
-      const label = d.toLocaleDateString("pt-BR");
-      if (!groups[key]) groups[key] = { label, rides: 0, amount: 0 };
-      groups[key].rides++;
-      groups[key].amount += 2;
-    });
-    return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a)).map(([, v]) => v);
-  };
-
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-
-  const toggleBlock = async (motoboy: any) => {
-    setActionLoading(motoboy.id + "_block");
-    const newAvailable = !motoboy.is_available;
-    const { error } = await supabase.from("motoboys").update({
-      is_available: newAvailable,
-      status: newAvailable ? "available" : "inactive",
-    }).eq("id", motoboy.id);
-    setActionLoading(null);
-    if (error) {
-      toast({ title: "Erro ao atualizar status", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: newAvailable ? "Motoboy desbloqueado ✅" : "Motoboy bloqueado ⛔" });
-    fetchData();
-  };
-
-  const removeMotoboy = async (motoboy: any) => {
-    if (!confirm(`Tem certeza que deseja remover ${motoboy.name}? Esta ação não pode ser desfeita.`)) return;
-    setActionLoading(motoboy.id + "_remove");
-    const { error } = await supabase.from("motoboys").delete().eq("id", motoboy.id);
-    setActionLoading(null);
-    if (error) {
-      toast({ title: "Erro ao remover motoboy", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: `${motoboy.name} removido com sucesso ✅` });
-    setMotoboys((prev) => prev.filter((m) => m.id !== motoboy.id));
-  };
-
-  const markAsPaid = async (motoboyId: string) => {
-    const unpaid = orders.filter((o) => o.motoboy_id === motoboyId && o.status === "completed" && !o.is_paid);
-    for (const order of unpaid) {
-      await supabase.from("orders").update({ is_paid: true } as any).eq("id", order.id);
-    }
-    if (unpaid.length > 0) {
-      await supabase.from("payments" as any).insert({
-        motoboy_id: motoboyId,
-        amount: unpaid.length * 2,
-        admin_note: `Pagamento de ${unpaid.length} corridas`,
-      });
-    }
-    toast({ title: `Pagamento registrado! ${unpaid.length} corridas` });
-    fetchData();
-  };
-
-  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
-  const [cleaning, setCleaning] = useState(false);
-
-  const cleanupHistory = async () => {
-    setCleaning(true);
-    await supabase.from("orders").delete().eq("status", "completed");
-    toast({ title: "Histórico de corridas finalizadas apagado com sucesso!" });
-    setShowCleanupConfirm(false);
-    setCleaning(false);
-    fetchData();
-  };
+  // ============ CARD ============
+  const StatCard = ({ icon: Icon, label, value, color }: any) => (
+    <div className="rounded-2xl bg-card p-4 shadow-sm border border-border">
+      <div className="flex items-center gap-3">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${color}`}>
+          <Icon className="h-5 w-5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground truncate">{label}</p>
+          <p className="text-xl font-bold text-foreground truncate">{value}</p>
+        </div>
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -202,885 +101,496 @@ const AdminDashboard = () => {
     );
   }
 
-  const totalCompletedOrders = orders.filter((o) => o.status === "completed").length;
-  const motoboyRevenue = totalCompletedOrders * 2;
-  const partnerOrders = orders.filter((o) => o.status === "completed" && o.order_type === "partner");
-  const estRevenue = partnerOrders.length * 2;
-  const totalRevenue = motoboyRevenue + estRevenue;
-
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <header className="flex items-center justify-between bg-card px-4 py-3 border-b">
-        <div>
-          <h1 className="text-lg font-bold">Painel Admin</h1>
-          <p className="text-xs text-muted-foreground">ChamaMotoboy</p>
+    <div className="min-h-screen bg-muted/30 pb-24">
+      {/* HEADER */}
+      <header className="sticky top-0 z-20 bg-primary text-primary-foreground shadow-md">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div>
+            <h1 className="text-lg font-bold">Painel Admin</h1>
+            <p className="text-xs opacity-80">ChamaMoto</p>
+          </div>
+          <button onClick={handleLogout} className="flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-2 text-sm font-medium active:scale-95">
+            <LogOut className="h-4 w-4" /> Sair
+          </button>
         </div>
-        <button onClick={handleLogout} className="p-2 rounded-lg hover:bg-secondary">
-          <LogOut className="h-5 w-5 text-muted-foreground" />
-        </button>
       </header>
 
-      {(() => {
-        const availableCount = motoboys.filter((m) => m.status === "available" && m.is_available).length;
-        const busyCount = motoboys.filter((m) => m.status === "busy").length;
-        const activeOrders = orders.filter((o) => ["accepted", "picking_up", "delivering"].includes(o.status)).length;
-        const queuedOrders = orders.filter((o) => o.status === "queued").length;
-        const pendingOrders = orders.filter((o) => o.status === "pending").length;
-        return (
-          <div className="px-4 py-3 space-y-2">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-lg border bg-card p-3 text-center">
-                <p className="text-lg font-bold">{totalCompletedOrders}</p>
-                <p className="text-[10px] text-muted-foreground">Corridas</p>
-              </div>
-              <div className="rounded-lg border bg-card p-3 text-center">
-                <p className="text-lg font-bold text-primary">R${totalRevenue}</p>
-                <p className="text-[10px] text-muted-foreground">Comissões</p>
-              </div>
-              <div className="rounded-lg border bg-card p-3 text-center">
-                <p className="text-lg font-bold">{motoboys.length}</p>
-                <p className="text-[10px] text-muted-foreground">Motoboys</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              <div className="rounded-lg border bg-card p-2 text-center">
-                <p className="text-sm font-bold text-green-600">🟢 {availableCount}</p>
-                <p className="text-[9px] text-muted-foreground">Disponíveis</p>
-              </div>
-              <div className="rounded-lg border bg-card p-2 text-center">
-                <p className="text-sm font-bold text-red-500">🔴 {busyCount}</p>
-                <p className="text-[9px] text-muted-foreground">Em corrida</p>
-              </div>
-              <div className="rounded-lg border bg-card p-2 text-center">
-                <p className="text-sm font-bold text-blue-600">📦 {activeOrders + pendingOrders}</p>
-                <p className="text-[9px] text-muted-foreground">Andamento</p>
-              </div>
-              <div className="rounded-lg border bg-card p-2 text-center">
-                <p className={`text-sm font-bold ${queuedOrders > 0 ? "text-orange-600" : ""}`}>⏳ {queuedOrders}</p>
-                <p className="text-[9px] text-muted-foreground">Na fila</p>
-              </div>
-            </div>
-            {queuedOrders >= 3 && (
-              <div className="rounded-lg bg-orange-50 border border-orange-200 px-3 py-2">
-                <p className="text-xs font-semibold text-orange-700">⚠️ Alta demanda! {queuedOrders} pedidos aguardando na fila.</p>
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      <div className="px-4 pb-2 flex items-center gap-2">
-        <Calendar className="h-4 w-4 text-muted-foreground" />
-        <input
-          type="date"
-          value={dateFilter}
-          onChange={(e) => setDateFilter(e.target.value)}
-          className="flex-1 rounded-lg border bg-card px-3 py-2 text-sm"
-        />
-        {dateFilter && (
-          <button onClick={() => setDateFilter("")} className="text-xs text-primary font-medium">
-            Limpar
-          </button>
-        )}
-      </div>
-
-      <div className="flex border-b px-4 overflow-x-auto">
-        {([
-          { key: "motoboys" as Tab, label: "Motoboys", icon: Users },
-          { key: "orders" as Tab, label: "Corridas", icon: Package },
-          { key: "payments" as Tab, label: "Pagamentos", icon: DollarSign },
-          { key: "feedback" as Tab, label: "Feedback", icon: Star },
-          { key: "applications" as Tab, label: "Solicitações", icon: UserPlus },
-          { key: "cities" as Tab, label: "Cidades", icon: MapPin },
-          { key: "establishments" as Tab, label: "Parceiros", icon: Store },
-          { key: "farmacias" as Tab, label: "Farmácias", icon: Pill },
-          { key: "categorias" as Tab, label: "Categorias", icon: LayoutGrid },
-          { key: "financeiro" as Tab, label: "Financeiro", icon: TrendingUp },
-        ]).map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              tab === key ? "border-primary text-primary" : "border-transparent text-muted-foreground"
-            }`}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <main className="flex-1 px-4 py-3 space-y-3 overflow-y-auto pb-6">
-        {tab === "motoboys" && motoboys.map((m) => {
-          const stats = getMotoboyStats(m.id);
-          const isExpanded = expandedMotoboy === m.id;
-          const dailyBreakdown = isExpanded ? getMotoboyDailyBreakdown(m.id) : [];
-          return (
-            <div key={m.id} className="rounded-xl border bg-card p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold">{m.name}</p>
-                  <p className="text-xs text-muted-foreground">{m.phone} • {m.vehicle}</p>
-                </div>
-                <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                  m.status === "available" ? "bg-green-100 text-green-700" :
-                  m.status === "busy" ? "bg-red-100 text-red-700" :
-                  "bg-gray-100 text-gray-500"
-                }`}>
-                  {m.status === "available" ? "Disponível" : m.status === "busy" ? "Ocupado" : "Inativo"}
-                </span>
-              </div>
-              <div className="grid grid-cols-4 gap-1 text-center">
-                <div>
-                  <p className="text-xs font-bold">{stats.totalRides}</p>
-                  <p className="text-[9px] text-muted-foreground">Corridas</p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold">R${stats.totalCommission}</p>
-                  <p className="text-[9px] text-muted-foreground">Comissão</p>
-                </div>
-                <div>
-                  <p className={`text-xs font-bold ${stats.owed > 0 ? "text-destructive" : "text-primary"}`}>
-                    R${stats.owed}
-                  </p>
-                  <p className="text-[9px] text-muted-foreground">Deve</p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold">⭐ {stats.avgRating}</p>
-                  <p className="text-[9px] text-muted-foreground">{stats.reviewCount} aval.</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setExpandedMotoboy(isExpanded ? null : m.id)}
-                className="flex w-full items-center justify-center gap-1 text-xs text-muted-foreground py-1"
-              >
-                {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                {isExpanded ? "Ocultar detalhes" : "Ver por dia"}
-              </button>
-
-              {isExpanded && dailyBreakdown.length > 0 && (
-                <div className="space-y-1 border-t pt-2">
-                  {dailyBreakdown.map((d, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs px-1">
-                      <span className="text-muted-foreground">{d.label}</span>
-                      <span className="font-medium">{d.rides} corridas — R${d.amount}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={() => markAsPaid(m.id)}
-                  disabled={stats.owed <= 0}
-                  className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground disabled:opacity-40 active:scale-[0.97]"
-                >
-                  <CheckCircle className="h-3 w-3" /> Marcar Pago
-                </button>
-                <button
-                  onClick={() => toggleBlock(m)}
-                  disabled={actionLoading === m.id + "_block"}
-                  className={`flex-1 flex items-center justify-center gap-1 rounded-lg py-2 text-xs font-bold active:scale-[0.97] ${
-                    m.is_available ? "bg-destructive text-destructive-foreground" : "bg-secondary text-secondary-foreground"
-                  }`}
-                >
-                  {actionLoading === m.id + "_block" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Ban className="h-3 w-3" />}
-                  {m.is_available ? "Bloquear" : "Desbloquear"}
-                </button>
-                <button
-                  onClick={() => removeMotoboy(m)}
-                  disabled={actionLoading === m.id + "_remove"}
-                  className="flex items-center justify-center gap-1 rounded-lg bg-destructive/10 text-destructive px-3 py-2 text-xs font-bold active:scale-[0.97]"
-                >
-                  {actionLoading === m.id + "_remove" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                </button>
-              </div>
-            </div>
-          );
-        })}
-
-        {tab === "orders" && filteredOrders.map((o) => {
-          const motoboy = motoboys.find((m) => m.id === o.motoboy_id);
-          const d = new Date(o.created_at);
-          return (
-            <div key={o.id} className="rounded-xl border bg-card p-3 space-y-1">
-              <div className="flex items-start justify-between">
-                <p className="text-sm font-bold">{o.item_description}</p>
-                <span className="text-xs text-muted-foreground">
-                  {d.toLocaleDateString("pt-BR")} {d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">📍 {o.delivery_address}</p>
-              <p className="text-xs text-muted-foreground">👤 {o.customer_name} • {o.customer_phone}</p>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium">🏍️ {motoboy?.name || "—"}</span>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  o.status === "completed" ? "bg-green-100 text-green-700" :
-                  o.status === "queued" ? "bg-orange-100 text-orange-700" :
-                  o.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                  o.status === "cancelled" ? "bg-red-100 text-red-700" :
-                  "bg-blue-100 text-blue-700"
-                }`}>
-                  {o.status === "queued" ? "Na fila" : o.status === "pending" ? "Aguardando" : o.status}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-
-        {tab === "payments" && motoboys.map((m) => {
-          const stats = getMotoboyStats(m.id);
-          if (stats.totalRides === 0) return null;
-          return (
-            <div key={m.id} className="rounded-xl border bg-card p-4 space-y-2">
-              <p className="text-sm font-bold">{m.name}</p>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Total comissão:</span>
-                <span className="font-bold">R${stats.totalCommission}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Valor devido:</span>
-                <span className={`font-bold ${stats.owed > 0 ? "text-destructive" : "text-primary"}`}>R${stats.owed}</span>
-              </div>
-              {stats.owed > 0 && (
-                <button
-                  onClick={() => markAsPaid(m.id)}
-                  className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground active:scale-[0.97]"
-                >
-                  Marcar como Pago (R${stats.owed})
-                </button>
-              )}
-            </div>
-          );
-        })}
-
-        {tab === "feedback" && (
-          <div className="space-y-3">
-            {reviews.length === 0 ? (
-              <div className="flex flex-col items-center py-12 text-center">
-                <span className="text-4xl mb-3">⭐</span>
-                <p className="text-sm text-muted-foreground">Nenhuma avaliação ainda.</p>
-              </div>
-            ) : (
-              reviews.map((r: any) => {
-                const m = motoboys.find((mb) => mb.id === r.motoboy_id);
-                const d = new Date(r.created_at);
-                return (
-                  <div key={r.id} className="rounded-xl border bg-card p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-bold">🏍️ {m?.name || "—"}</p>
-                      <span className="text-xs text-muted-foreground">
-                        {d.toLocaleDateString("pt-BR")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star
-                          key={s}
-                          className={`h-4 w-4 ${s <= r.rating ? "fill-yellow-400 text-yellow-400" : "text-muted"}`}
-                        />
-                      ))}
-                      <span className="text-sm font-bold ml-1">{r.rating}/5</span>
-                    </div>
-                    {r.comment && (
-                      <p className="text-sm text-muted-foreground italic">"{r.comment}"</p>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
-
-        {tab === "applications" && (
-          <div className="space-y-3">
-            {applications.filter((a: any) => a.status === "pending").length === 0 && (
-              <div className="flex flex-col items-center py-12 text-center">
-                <UserPlus className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground">Nenhuma solicitação pendente.</p>
-              </div>
-            )}
-            {applications.map((app: any) => {
-              const d = new Date(app.created_at);
-              return (
-                <div key={app.id} className="rounded-xl border bg-card p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-bold">{app.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{app.phone}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                        app.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                        app.status === "approved" ? "bg-green-100 text-green-700" :
-                        "bg-red-100 text-red-700"
-                      }`}>
-                        {app.status === "pending" ? "Pendente" : app.status === "approved" ? "Aprovado" : "Recusado"}
-                      </span>
-                      <p className="text-[10px] text-muted-foreground mt-1">{d.toLocaleDateString("pt-BR")}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1 text-xs">
-                    <p><span className="text-muted-foreground">Cidade:</span> {app.city}</p>
-                    <p><span className="text-muted-foreground">Veículo:</span> {app.vehicle_type}</p>
-                    <p className="col-span-2"><span className="text-muted-foreground">Endereço:</span> {app.address}</p>
-                    {app.experience && <p className="col-span-2"><span className="text-muted-foreground">Experiência:</span> {app.experience}</p>}
-                  </div>
-                  <div className="flex gap-2">
-                    {app.face_photo_url && (
-                      <button onClick={() => setViewingPhoto(app.face_photo_url)} className="flex items-center gap-1 text-xs text-primary font-medium">
-                        <Eye className="h-3 w-3" /> Foto rosto
-                      </button>
-                    )}
-                    {app.vehicle_photo_url && (
-                      <button onClick={() => setViewingPhoto(app.vehicle_photo_url)} className="flex items-center gap-1 text-xs text-primary font-medium">
-                        <Eye className="h-3 w-3" /> Foto veículo
-                      </button>
-                    )}
-                  </div>
-                  {app.status === "pending" && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={async () => {
-                          // Check duplicate phone
-                          const { data: existing } = await supabase.from("motoboys").select("id").eq("phone", app.phone).maybeSingle();
-                          if (existing) {
-                            toast({ title: "Motoboy com este telefone já existe!", variant: "destructive" });
-                            return;
-                          }
-                          // Generate access code: firstName + 123
-                          const firstName = app.full_name.split(" ")[0];
-                          const accessCode = `${firstName}123`;
-                          await supabase.from("motoboys").insert({
-                            name: app.full_name,
-                            phone: app.phone,
-                            region: app.city,
-                            vehicle: app.vehicle_type,
-                            photo: app.face_photo_url || "",
-                            access_code: accessCode,
-                          });
-                          await supabase.from("motoboy_applications" as any).update({ status: "approved" }).eq("id", app.id);
-                          toast({ title: `${app.full_name} aprovado! Código: ${accessCode}` });
-                          fetchData();
-                        }}
-                        className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground active:scale-[0.97]"
-                      >
-                        <CheckCircle className="h-3 w-3" /> Aprovar
-                      </button>
-                      <button
-                        onClick={async () => {
-                          await supabase.from("motoboy_applications" as any).update({ status: "rejected" }).eq("id", app.id);
-                          toast({ title: `${app.full_name} recusado` });
-                          fetchData();
-                        }}
-                        className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-destructive py-2 text-xs font-bold text-destructive-foreground active:scale-[0.97]"
-                      >
-                        <X className="h-3 w-3" /> Recusar
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {tab === "cities" && (
-          <div className="space-y-3">
-            <div className="rounded-xl border bg-card p-4 space-y-3">
-              <h3 className="text-sm font-bold">Adicionar cidade</h3>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newCityName}
-                  onChange={(e) => setNewCityName(e.target.value)}
-                  placeholder="Nome da cidade"
-                  className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
-                />
-                <input
-                  type="text"
-                  value={newCityState}
-                  onChange={(e) => setNewCityState(e.target.value)}
-                  placeholder="UF"
-                  className="w-16 rounded-lg border bg-background px-3 py-2 text-sm text-center"
-                  maxLength={2}
-                />
-                <button
-                  onClick={async () => {
-                    if (!newCityName.trim()) return;
-                    await supabase.from("cities").insert({ name: newCityName.trim(), state: newCityState.trim().toUpperCase() || "MG" });
-                    setNewCityName("");
-                    toast({ title: `Cidade ${newCityName} adicionada!` });
-                    fetchData();
-                  }}
-                  className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground active:scale-[0.97]"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Adicionar
-                </button>
-              </div>
-            </div>
-            {cities.map((city: any) => (
-              <div key={city.id} className="flex items-center justify-between rounded-xl border bg-card p-4">
-                <div>
-                  <p className="text-sm font-bold">{city.name} - {city.state}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {establishments.filter((e: any) => e.city_id === city.id).length} estabelecimentos •{" "}
-                    {motoboys.filter((m: any) => m.city_id === city.id).length} motoboys
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={async () => {
-                      await supabase.from("cities").update({ is_active: !city.is_active }).eq("id", city.id);
-                      toast({ title: city.is_active ? "Cidade desativada" : "Cidade ativada" });
-                      fetchData();
-                    }}
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      city.is_active ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {city.is_active ? "Ativa" : "Inativa"}
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await supabase.from("cities").delete().eq("id", city.id);
-                      toast({ title: "Cidade removida" });
-                      fetchData();
-                    }}
-                    className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {cities.length === 0 && (
-              <div className="flex flex-col items-center py-12 text-center">
-                <MapPin className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground">Nenhuma cidade cadastrada.</p>
-              </div>
-            )}
-          </div>
+      {/* CONTENT */}
+      <main className="px-4 py-4 max-w-3xl mx-auto space-y-4">
+        {tab === "dashboard" && (
+          <DashboardSection
+            ordersToday={ordersToday.length}
+            inProgress={ordersInProgress.length}
+            activeEsts={activeEsts}
+            onlineMotos={onlineMotos}
+            revenueToday={revenueToday}
+            StatCard={StatCard}
+          />
         )}
 
         {tab === "establishments" && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold uppercase text-muted-foreground">Solicitações de parceiros</h3>
-            {estApplications.filter((a: any) => a.status === "pending").length === 0 && (
-              <div className="rounded-xl border bg-card p-4 text-center">
-                <p className="text-xs text-muted-foreground">Nenhuma solicitação pendente.</p>
-              </div>
-            )}
-            {estApplications.filter((a: any) => a.status === "pending").map((app: any) => {
-              const d = new Date(app.created_at);
-              return (
-                <div key={app.id} className="rounded-xl border bg-card p-4 space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-bold">{app.name}</p>
-                      <p className="text-xs text-muted-foreground">{app.category} • {app.city}</p>
-                    </div>
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">Pendente</span>
-                  </div>
-                  <div className="text-xs space-y-0.5">
-                    <p><span className="text-muted-foreground">Responsável:</span> {app.owner_name}</p>
-                    <p><span className="text-muted-foreground">Telefone:</span> {app.phone}</p>
-                    <p><span className="text-muted-foreground">Endereço:</span> {app.address}</p>
-                    {app.description && <p><span className="text-muted-foreground">Descrição:</span> {app.description}</p>}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={async () => {
-                        // Find or create city
-                        let cityMatch = cities.find((c: any) => c.name.toLowerCase() === app.city.toLowerCase());
-                        if (!cityMatch) {
-                          const { data: newCity, error: cityErr } = await supabase.from("cities").insert({ name: app.city.trim(), state: "MG" }).select().single();
-                          if (cityErr || !newCity) {
-                            toast({ title: "Erro ao criar cidade automaticamente.", variant: "destructive" });
-                            return;
-                          }
-                          cityMatch = newCity;
-                          toast({ title: `📍 Cidade "${newCity.name}" criada automaticamente` });
-                        }
-
-                        // Generate unique access code (6 chars alphanumeric)
-                        const generateCode = () => {
-                          const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-                          let code = "";
-                          for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
-                          return code;
-                        };
-                        let accessCode = generateCode();
-                        // Check uniqueness
-                        const { data: existingCodes } = await supabase.from("establishments").select("access_code");
-                        const usedCodes = new Set((existingCodes || []).map((e: any) => e.access_code));
-                        while (usedCodes.has(accessCode)) accessCode = generateCode();
-
-                        const { error: insertErr } = await supabase.from("establishments").insert({
-                          name: app.name,
-                          phone: app.phone,
-                          address: app.address,
-                          city_id: cityMatch.id,
-                          category: app.category,
-                          access_code: accessCode,
-                          status: "active",
-                        });
-                        if (insertErr) {
-                          toast({ title: "Erro ao criar estabelecimento: " + insertErr.message, variant: "destructive" });
-                          return;
-                        }
-                        const { error: updateErr } = await supabase.from("establishment_applications").update({ status: "approved" } as any).eq("id", app.id);
-                        if (updateErr) {
-                          toast({ title: "Erro ao atualizar solicitação: " + updateErr.message, variant: "destructive" });
-                        }
-                        toast({ title: `✅ Estabelecimento aprovado com sucesso! Código: ${accessCode}` });
-
-                        // Send WhatsApp notification
-                        openWhatsApp(app.phone, `Olá! Seu cadastro no ChamaMotoboy foi aprovado! 🎉\n\nSeu código de acesso é: *${accessCode}*\n\nUse esse código para acessar o painel do seu estabelecimento.`);
-
-                        fetchData();
-                      }}
-                      className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground active:scale-[0.97]"
-                    >
-                      <CheckCircle className="h-3 w-3" /> Aprovar
-                    </button>
-                    <button
-                      onClick={async () => {
-                        const { error } = await supabase.from("establishment_applications").update({ status: "rejected" } as any).eq("id", app.id);
-                        if (error) {
-                          toast({ title: "Erro ao recusar: " + error.message, variant: "destructive" });
-                          return;
-                        }
-                        toast({ title: `❌ Estabelecimento recusado com sucesso` });
-                        fetchData();
-                      }}
-                      className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-destructive py-2 text-xs font-bold text-destructive-foreground active:scale-[0.97]"
-                    >
-                      <X className="h-3 w-3" /> Recusar
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-
-            <h3 className="text-sm font-bold uppercase text-muted-foreground pt-2">Estabelecimentos ativos</h3>
-            {establishments.filter((e: any) => e.status === "active").map((est: any) => {
-              const city = cities.find((c: any) => c.id === est.city_id);
-              return (
-                <div key={est.id} className="rounded-xl border bg-card p-4 space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-bold">{est.name}</p>
-                      <p className="text-xs text-muted-foreground">{est.category} • {city?.name || "—"}</p>
-                      <p className="text-xs text-muted-foreground">📞 {est.phone}</p>
-                    </div>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                      est.is_open ? "bg-green-100 text-green-700" : "bg-muted text-muted-foreground"
-                    }`}>
-                      {est.is_open ? "Aberto" : "Fechado"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-secondary/50 rounded-lg px-3 py-2">
-                    <span className="text-xs font-medium">🔑 Código: <span className="font-bold">{est.access_code}</span></span>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(est.access_code || "");
-                        toast({ title: "📋 Código copiado!" });
-                      }}
-                      className="ml-auto flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                    >
-                      <Copy className="h-3 w-3" /> Copiar
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setRemovingEstId(est.id)}
-                      className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-destructive py-2 text-xs font-bold text-destructive-foreground active:scale-[0.97]"
-                    >
-                      <Trash2 className="h-3 w-3" /> Remover
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            {establishments.filter((e: any) => e.status === "active").length === 0 && (
-              <div className="flex flex-col items-center py-12 text-center">
-                <Store className="h-10 w-10 text-muted-foreground mb-3" />
-                <p className="text-sm text-muted-foreground">Nenhum estabelecimento ativo.</p>
-              </div>
-            )}
-          </div>
+          <EstablishmentsSection
+            establishments={establishments}
+            orders={orders}
+            onAdd={() => setShowAddEst(true)}
+            onRefresh={fetchData}
+          />
         )}
 
-        {tab === "farmacias" && (
-          <div className="flex flex-col items-center py-8 space-y-4">
-            <span className="text-5xl">💊</span>
-            <p className="text-sm text-muted-foreground text-center">Gerencie farmácias, produtos e categorias</p>
-            <button
-              onClick={() => navigate("/admin/farmacias")}
-              className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground active:scale-[0.97] shadow-lg"
-            >
-              <Pill className="h-4 w-4" /> Abrir Gestão de Farmácias
-            </button>
-          </div>
+        {tab === "motoboys" && (
+          <MotoboysSection
+            motoboys={motoboys}
+            orders={orders}
+            payments={payments}
+            onAdd={() => setShowAddMoto(true)}
+            onRefresh={fetchData}
+          />
         )}
 
-        {tab === "categorias" && (
-          <div className="flex flex-col items-center py-8 space-y-4">
-            <span className="text-5xl">🗂️</span>
-            <p className="text-sm text-muted-foreground text-center">Gerencie categorias e estabelecimentos do app</p>
-            <button
-              onClick={() => navigate("/admin/categorias")}
-              className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground active:scale-[0.97] shadow-lg"
-            >
-              <LayoutGrid className="h-4 w-4" /> Abrir Gestão de Categorias
-            </button>
-          </div>
+        {tab === "orders" && (
+          <OrdersSection
+            orders={orders}
+            establishments={establishments}
+            motoboys={motoboys}
+          />
         )}
 
-        {tab === "financeiro" && (() => {
-          const completed = orders.filter((o) => o.status === "completed");
-          const partner = completed.filter((o) => o.order_type === "partner");
-
-          // Daily breakdown
-          const dailyMap: Record<string, { date: string; label: string; motoboy: number; est: number; total: number }> = {};
-          completed.forEach((o) => {
-            const d = new Date(o.completed_at || o.created_at);
-            const key = d.toISOString().slice(0, 10);
-            if (!dailyMap[key]) dailyMap[key] = { date: key, label: d.toLocaleDateString("pt-BR"), motoboy: 0, est: 0, total: 0 };
-            dailyMap[key].motoboy += 2;
-            dailyMap[key].total += 2;
-          });
-          partner.forEach((o) => {
-            const d = new Date(o.completed_at || o.created_at);
-            const key = d.toISOString().slice(0, 10);
-            if (dailyMap[key]) {
-              dailyMap[key].est += 2;
-              dailyMap[key].total += 2;
-            }
-          });
-          const daily = Object.values(dailyMap).sort((a, b) => b.date.localeCompare(a.date));
-
-          // By city
-          const cityMap: Record<string, { name: string; motoboy: number; est: number; total: number }> = {};
-          completed.forEach((o) => {
-            const city = cities.find((c: any) => c.id === o.city_id);
-            const name = city?.name || "Sem cidade";
-            if (!cityMap[name]) cityMap[name] = { name, motoboy: 0, est: 0, total: 0 };
-            cityMap[name].motoboy += 2;
-            cityMap[name].total += 2;
-          });
-          partner.forEach((o) => {
-            const city = cities.find((c: any) => c.id === o.city_id);
-            const name = city?.name || "Sem cidade";
-            if (cityMap[name]) {
-              cityMap[name].est += 2;
-              cityMap[name].total += 2;
-            }
-          });
-          const byCity = Object.values(cityMap).sort((a, b) => b.total - a.total);
-
-          // By establishment
-          const estMap: Record<string, { name: string; orders: number; commission: number }> = {};
-          partner.forEach((o) => {
-            const est = establishments.find((e: any) => e.id === o.establishment_id);
-            const name = est?.name || "Desconhecido";
-            if (!estMap[name]) estMap[name] = { name, orders: 0, commission: 0 };
-            estMap[name].orders++;
-            estMap[name].commission += 2;
-          });
-          const byEst = Object.values(estMap).sort((a, b) => b.commission - a.commission);
-
-          return (
-            <div className="space-y-4">
-              {/* Summary cards */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-xl border bg-card p-3 text-center">
-                  <p className="text-lg font-bold text-primary">R${motoboyRevenue + estRevenue}</p>
-                  <p className="text-[10px] text-muted-foreground">Receita Total</p>
-                </div>
-                <div className="rounded-xl border bg-card p-3 text-center">
-                  <p className="text-lg font-bold">R${motoboyRevenue}</p>
-                  <p className="text-[10px] text-muted-foreground">Motoboys</p>
-                </div>
-                <div className="rounded-xl border bg-card p-3 text-center">
-                  <p className="text-lg font-bold">R${estRevenue}</p>
-                  <p className="text-[10px] text-muted-foreground">Parceiros</p>
-                </div>
-              </div>
-
-              {/* Daily breakdown */}
-              <div className="rounded-xl border bg-card p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-bold">Receita por dia</h3>
-                </div>
-                {daily.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">Nenhuma corrida finalizada ainda.</p>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {daily.map((d) => (
-                      <div key={d.date} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
-                        <span className="text-muted-foreground text-xs">{d.label}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-muted-foreground">🏍️ R${d.motoboy}</span>
-                          {d.est > 0 && <span className="text-[10px] text-muted-foreground">🏪 R${d.est}</span>}
-                          <span className="font-bold text-xs text-primary">R${d.total}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* By city */}
-              {byCity.length > 0 && (
-                <div className="rounded-xl border bg-card p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-bold">Receita por cidade</h3>
-                  </div>
-                  <div className="space-y-2">
-                    {byCity.map((c) => (
-                      <div key={c.name} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
-                        <span className="text-xs font-medium">{c.name}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] text-muted-foreground">🏍️ R${c.motoboy}</span>
-                          {c.est > 0 && <span className="text-[10px] text-muted-foreground">🏪 R${c.est}</span>}
-                          <span className="font-bold text-xs text-primary">R${c.total}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* By establishment */}
-              {byEst.length > 0 && (
-                <div className="rounded-xl border bg-card p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Store className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-bold">Comissão por estabelecimento</h3>
-                  </div>
-                  <div className="space-y-2">
-                    {byEst.map((e) => (
-                      <div key={e.name} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
-                        <div>
-                          <p className="text-xs font-medium">{e.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{e.orders} pedidos</p>
-                        </div>
-                        <span className="font-bold text-xs text-primary">R${e.commission}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Motoboy breakdown */}
-              <div className="rounded-xl border bg-card p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-bold">Comissão por motoboy</h3>
-                </div>
-                <div className="space-y-2">
-                  {motoboys.filter((m) => {
-                    const stats = getMotoboyStats(m.id);
-                    return stats.totalRides > 0;
-                  }).map((m) => {
-                    const stats = getMotoboyStats(m.id);
-                    return (
-                      <div key={m.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
-                        <div>
-                          <p className="text-xs font-medium">{m.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{stats.totalRides} corridas • Deve: R${stats.owed}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-bold text-xs text-primary">R${stats.totalCommission}</span>
-                          {stats.owed > 0 && (
-                            <button
-                              onClick={() => markAsPaid(m.id)}
-                              className="block mt-1 text-[10px] font-bold text-primary underline"
-                            >
-                              Marcar pago
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        <div className="pt-4 border-t">
-          <button
-            onClick={() => setShowCleanupConfirm(true)}
-            className="w-full rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97]"
-          >
-            🗑️ Limpar histórico de corridas
-          </button>
-        </div>
+        {tab === "financeiro" && (
+          <FinanceSection
+            orders={orders}
+            establishments={establishments}
+            motoboys={motoboys}
+            payments={payments}
+            onRefresh={fetchData}
+          />
+        )}
       </main>
 
-      {showCleanupConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
-          <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
-            <h3 className="text-lg font-bold text-center">⚠️ Limpar histórico?</h3>
-            <p className="text-sm text-muted-foreground text-center">
-              Tem certeza que deseja apagar todo o histórico de corridas finalizadas? Essa ação não pode ser desfeita.
-            </p>
-            <p className="text-xs text-muted-foreground text-center">
-              Corridas em andamento ou pendentes serão mantidas.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowCleanupConfirm(false)} className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">Cancelar</button>
-              <button onClick={cleanupHistory} disabled={cleaning} className="flex-1 rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97] disabled:opacity-50">
-                {cleaning ? "Apagando..." : "Confirmar"}
-              </button>
-            </div>
-          </div>
+      {/* BOTTOM NAV */}
+      <nav className="fixed bottom-0 inset-x-0 z-30 bg-card border-t border-border shadow-lg">
+        <div className="grid grid-cols-5 max-w-3xl mx-auto">
+          {[
+            { id: "dashboard", icon: LayoutDashboard, label: "Início" },
+            { id: "establishments", icon: Store, label: "Estab." },
+            { id: "motoboys", icon: Bike, label: "Motoboys" },
+            { id: "orders", icon: Package, label: "Corridas" },
+            { id: "financeiro", icon: DollarSign, label: "Financeiro" },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id as Tab)}
+              className={`flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium transition-colors ${
+                tab === t.id ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <t.icon className="h-5 w-5" />
+              <span className="truncate">{t.label}</span>
+            </button>
+          ))}
         </div>
-      )}
+      </nav>
 
-      {removingEstId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
-          <div className="w-full max-w-sm rounded-2xl bg-card p-6 space-y-4 shadow-xl">
-            <h3 className="text-lg font-bold text-center">⚠️ Remover estabelecimento?</h3>
-            <p className="text-sm text-muted-foreground text-center">
-              Tem certeza que deseja remover este estabelecimento? Ele não receberá mais pedidos e não aparecerá para clientes.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setRemovingEstId(null)} className="flex-1 rounded-xl border py-3 text-sm font-bold text-muted-foreground active:scale-[0.97]">Cancelar</button>
-              <button
-                onClick={async () => {
-                  const { error } = await supabase.from("establishments").update({ status: "inactive" }).eq("id", removingEstId);
-                  if (error) {
-                    toast({ title: "Erro ao remover: " + error.message, variant: "destructive" });
-                    return;
-                  }
-                  toast({ title: "✅ Estabelecimento removido com sucesso" });
-                  setRemovingEstId(null);
-                  fetchData();
-                }}
-                className="flex-1 rounded-xl bg-destructive py-3 text-sm font-bold text-destructive-foreground active:scale-[0.97]"
-              >
-                Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* MODAIS */}
+      {showAddEst && (
+        <AddEstablishmentModal
+          cities={cities}
+          onClose={() => setShowAddEst(false)}
+          onSuccess={() => { setShowAddEst(false); fetchData(); }}
+        />
       )}
-
-      {viewingPhoto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6" onClick={() => setViewingPhoto(null)}>
-          <img src={viewingPhoto} alt="Foto" className="max-h-[80vh] max-w-full rounded-xl shadow-xl" />
-        </div>
+      {showAddMoto && (
+        <AddMotoboyModal
+          cities={cities}
+          onClose={() => setShowAddMoto(false)}
+          onSuccess={() => { setShowAddMoto(false); fetchData(); }}
+        />
       )}
     </div>
   );
 };
+
+// ==================== DASHBOARD ====================
+const DashboardSection = ({ ordersToday, inProgress, activeEsts, onlineMotos, revenueToday, StatCard }: any) => (
+  <div className="space-y-3 animate-fade-in">
+    <h2 className="text-lg font-bold text-foreground">Resumo de hoje</h2>
+    <div className="grid grid-cols-2 gap-3">
+      <StatCard icon={Package} label="Corridas hoje" value={ordersToday} color="bg-blue-500" />
+      <StatCard icon={TrendingUp} label="Em andamento" value={inProgress} color="bg-orange-500" />
+      <StatCard icon={Store} label="Estab. ativos" value={activeEsts} color="bg-purple-500" />
+      <StatCard icon={Bike} label="Motoboys online" value={onlineMotos} color="bg-emerald-500" />
+    </div>
+    <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-5 text-primary-foreground shadow-lg">
+      <div className="flex items-center gap-2 mb-1">
+        <DollarSign className="h-5 w-5" />
+        <span className="text-sm font-medium opacity-90">Faturamento de hoje</span>
+      </div>
+      <p className="text-3xl font-bold">R$ {revenueToday.toFixed(2)}</p>
+      <p className="text-xs opacity-80 mt-1">R$2 estabelecimento + R$1 motoboy por corrida finalizada</p>
+    </div>
+  </div>
+);
+
+// ==================== ESTABELECIMENTOS ====================
+const EstablishmentsSection = ({ establishments, orders, onAdd, onRefresh }: any) => {
+  const stats = (estId: string) => {
+    const list = orders.filter((o: any) => o.establishment_id === estId && o.status === "completed");
+    return { count: list.length, total: list.length * ESTAB_COMMISSION };
+  };
+
+  const toggleStatus = async (e: any) => {
+    const newStatus = e.status === "active" ? "inactive" : "active";
+    await supabase.from("establishments").update({ status: newStatus }).eq("id", e.id);
+    toast({ title: newStatus === "active" ? "Ativado" : "Desativado" });
+    onRefresh();
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast({ title: "Código copiado!" });
+  };
+
+  return (
+    <div className="space-y-3 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold">Estabelecimentos ({establishments.length})</h2>
+        <button onClick={onAdd} className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground active:scale-95">
+          <Plus className="h-4 w-4" /> Adicionar
+        </button>
+      </div>
+      {establishments.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhum estabelecimento cadastrado</p>}
+      {establishments.map((e: any) => {
+        const s = stats(e.id);
+        return (
+          <div key={e.id} className="rounded-2xl bg-card p-4 shadow-sm border border-border space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-foreground truncate">{e.name}</h3>
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Phone className="h-3 w-3" />{e.phone}</p>
+                <p className="text-xs text-muted-foreground flex items-start gap-1 mt-0.5"><MapPin className="h-3 w-3 mt-0.5 shrink-0" /><span className="break-words">{e.address}</span></p>
+              </div>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${e.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                {e.status === "active" ? "Ativo" : "Inativo"}
+              </span>
+            </div>
+            {e.access_code && (
+              <button onClick={() => copyCode(e.access_code)} className="flex items-center gap-1.5 rounded-lg bg-muted px-2 py-1 text-xs font-mono text-foreground hover:bg-muted/70 w-fit">
+                🔑 {e.access_code} <Copy className="h-3 w-3" />
+              </button>
+            )}
+            <div className="flex gap-3 text-xs pt-1 border-t border-border">
+              <span><b>{s.count}</b> corridas</span>
+              <span className="text-emerald-600 font-semibold">R$ {s.total.toFixed(2)}</span>
+            </div>
+            <button onClick={() => toggleStatus(e)} className="flex items-center justify-center gap-1.5 rounded-lg bg-muted py-1.5 text-xs font-semibold w-full hover:bg-muted/70">
+              <Power className="h-3 w-3" /> {e.status === "active" ? "Desativar" : "Ativar"}
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ==================== MOTOBOYS ====================
+const MotoboysSection = ({ motoboys, orders, payments, onAdd, onRefresh }: any) => {
+  const stats = (motoId: string) => {
+    const finished = orders.filter((o: any) => o.motoboy_id === motoId && o.status === "completed");
+    const paidIds = new Set(payments.filter((p: any) => p.motoboy_id === motoId).map((p: any) => p.id));
+    const total = finished.length * MOTOBOY_COMMISSION;
+    const paid = payments.filter((p: any) => p.motoboy_id === motoId).reduce((s: number, p: any) => s + Number(p.amount), 0);
+    return { count: finished.length, total, due: total - paid };
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast({ title: "Código copiado!" });
+  };
+
+  return (
+    <div className="space-y-3 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold">Motoboys ({motoboys.length})</h2>
+        <button onClick={onAdd} className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground active:scale-95">
+          <Plus className="h-4 w-4" /> Adicionar
+        </button>
+      </div>
+      {motoboys.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhum motoboy cadastrado</p>}
+      {motoboys.map((m: any) => {
+        const s = stats(m.id);
+        const online = m.status === "available" || m.status === "busy";
+        return (
+          <div key={m.id} className="rounded-2xl bg-card p-4 shadow-sm border border-border space-y-2">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-foreground truncate">{m.name}</h3>
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Phone className="h-3 w-3" />{m.phone}</p>
+              </div>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${online ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                {online ? "🟢 Online" : "Offline"}
+              </span>
+            </div>
+            {m.access_code && (
+              <button onClick={() => copyCode(m.access_code)} className="flex items-center gap-1.5 rounded-lg bg-muted px-2 py-1 text-xs font-mono text-foreground hover:bg-muted/70 w-fit">
+                🔑 {m.access_code} <Copy className="h-3 w-3" />
+              </button>
+            )}
+            <div className="flex gap-3 text-xs pt-1 border-t border-border flex-wrap">
+              <span><b>{s.count}</b> corridas</span>
+              <span className="text-emerald-600 font-semibold">Total: R$ {s.total.toFixed(2)}</span>
+              {s.due > 0 && <span className="text-orange-600 font-semibold">Devido: R$ {s.due.toFixed(2)}</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ==================== CORRIDAS ====================
+const OrdersSection = ({ orders, establishments, motoboys }: any) => {
+  const estName = (id: string) => establishments.find((e: any) => e.id === id)?.name || "—";
+  const motoName = (id: string) => motoboys.find((m: any) => m.id === id)?.name || "Aguardando…";
+
+  const statusColor = (s: string) => ({
+    pending: "bg-yellow-100 text-yellow-700",
+    accepted: "bg-blue-100 text-blue-700",
+    picked_up: "bg-indigo-100 text-indigo-700",
+    in_transit: "bg-purple-100 text-purple-700",
+    completed: "bg-emerald-100 text-emerald-700",
+    cancelled: "bg-red-100 text-red-700",
+  }[s] || "bg-muted text-muted-foreground");
+
+  const statusLabel = (s: string) => ({
+    pending: "Pendente", accepted: "Aceita", picked_up: "Coletado",
+    in_transit: "A caminho", completed: "Finalizada", cancelled: "Cancelada",
+  }[s] || s);
+
+  return (
+    <div className="space-y-3 animate-fade-in">
+      <h2 className="text-lg font-bold">Corridas ({orders.length})</h2>
+      {orders.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhuma corrida registrada</p>}
+      {orders.map((o: any) => (
+        <div key={o.id} className="rounded-2xl bg-card p-4 shadow-sm border border-border space-y-1.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("pt-BR")}</p>
+              <p className="font-semibold text-foreground truncate">🏪 {estName(o.establishment_id)}</p>
+            </div>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${statusColor(o.status)}`}>{statusLabel(o.status)}</span>
+          </div>
+          <p className="text-sm text-foreground"><b>Cliente:</b> {o.customer_name} — {o.customer_phone}</p>
+          <p className="text-sm text-muted-foreground break-words"><b>Endereço:</b> {o.delivery_address}</p>
+          <p className="text-sm text-muted-foreground"><b>Motoboy:</b> {motoName(o.motoboy_id)}</p>
+          {o.item_description && <p className="text-xs text-muted-foreground break-words bg-muted/50 rounded p-1.5">📦 {o.item_description}</p>}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ==================== FINANCEIRO ====================
+const FinanceSection = ({ orders, establishments, motoboys, payments, onRefresh }: any) => {
+  const finished = orders.filter((o: any) => o.status === "completed");
+  const totalEst = finished.length * ESTAB_COMMISSION;
+  const totalMoto = finished.length * MOTOBOY_COMMISSION;
+  const totalGeneral = totalEst + totalMoto;
+
+  const estStats = useMemo(() => establishments.map((e: any) => {
+    const c = finished.filter((o: any) => o.establishment_id === e.id).length;
+    return { ...e, count: c, total: c * ESTAB_COMMISSION };
+  }).sort((a: any, b: any) => b.total - a.total), [establishments, finished]);
+
+  const motoStats = useMemo(() => motoboys.map((m: any) => {
+    const c = finished.filter((o: any) => o.motoboy_id === m.id).length;
+    const total = c * MOTOBOY_COMMISSION;
+    const paid = payments.filter((p: any) => p.motoboy_id === m.id).reduce((s: number, p: any) => s + Number(p.amount), 0);
+    return { ...m, count: c, total, due: total - paid };
+  }).sort((a: any, b: any) => b.due - a.due), [motoboys, finished, payments]);
+
+  const markPaid = async (moto: any) => {
+    if (moto.due <= 0) { toast({ title: "Nada a pagar" }); return; }
+    const { error } = await supabase.from("payments").insert({
+      motoboy_id: moto.id,
+      amount: moto.due,
+      admin_note: `Quitação de R$ ${moto.due.toFixed(2)}`,
+    });
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Pagamento registrado!" });
+    onRefresh();
+  };
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/80 p-5 text-primary-foreground shadow-lg">
+        <p className="text-sm opacity-90">Faturamento geral</p>
+        <p className="text-3xl font-bold">R$ {totalGeneral.toFixed(2)}</p>
+        <div className="flex gap-4 mt-2 text-xs opacity-90">
+          <span>Estab: R$ {totalEst.toFixed(2)}</span>
+          <span>Motoboys: R$ {totalMoto.toFixed(2)}</span>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-bold mb-2 text-foreground">Por estabelecimento</h3>
+        <div className="space-y-2">
+          {estStats.length === 0 && <p className="text-sm text-muted-foreground">Nenhum dado</p>}
+          {estStats.map((e: any) => (
+            <div key={e.id} className="flex items-center justify-between gap-2 rounded-xl bg-card p-3 shadow-sm border border-border">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold truncate">{e.name}</p>
+                <p className="text-xs text-muted-foreground">{e.count} corridas</p>
+              </div>
+              <span className="font-bold text-emerald-600 shrink-0">R$ {e.total.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-bold mb-2 text-foreground">Por motoboy</h3>
+        <div className="space-y-2">
+          {motoStats.length === 0 && <p className="text-sm text-muted-foreground">Nenhum dado</p>}
+          {motoStats.map((m: any) => (
+            <div key={m.id} className="rounded-xl bg-card p-3 shadow-sm border border-border space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold truncate">{m.name}</p>
+                  <p className="text-xs text-muted-foreground">{m.count} corridas — total R$ {m.total.toFixed(2)}</p>
+                </div>
+                <span className={`font-bold shrink-0 ${m.due > 0 ? "text-orange-600" : "text-emerald-600"}`}>
+                  R$ {m.due.toFixed(2)}
+                </span>
+              </div>
+              {m.due > 0 && (
+                <button onClick={() => markPaid(m)} className="w-full rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white active:scale-95">
+                  ✓ MARCAR COMO PAGO
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ==================== MODAL: ADD ESTABELECIMENTO ====================
+const AddEstablishmentModal = ({ cities, onClose, onSuccess }: any) => {
+  const [form, setForm] = useState({ name: "", phone: "", address: "", access_code: "", city_id: cities[0]?.id || "" });
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!form.name || !form.phone || !form.address || !form.access_code || !form.city_id) {
+      toast({ title: "Preencha todos os campos", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from("establishments").insert({
+      name: form.name.trim(),
+      phone: form.phone.replace(/\D/g, ""),
+      address: form.address.trim(),
+      access_code: form.access_code.trim().toUpperCase(),
+      city_id: form.city_id,
+      category: "Geral",
+      status: "active",
+      is_open: true,
+    });
+    setSaving(false);
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Estabelecimento cadastrado!" });
+    onSuccess();
+  };
+
+  return (
+    <Modal title="Novo estabelecimento" onClose={onClose}>
+      <Field label="Nome" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+      <Field label="Telefone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="(35) 99999-9999" />
+      <Field label="Endereço de retirada" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
+      <Field label="Código de acesso" value={form.access_code} onChange={(v) => setForm({ ...form, access_code: v.toUpperCase() })} placeholder="EX: MAXSUL" />
+      <div className="space-y-1">
+        <label className="text-sm font-semibold">Cidade</label>
+        <select value={form.city_id} onChange={(e) => setForm({ ...form, city_id: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm">
+          {cities.map((c: any) => <option key={c.id} value={c.id}>{c.name} - {c.state}</option>)}
+        </select>
+      </div>
+      <button onClick={submit} disabled={saving} className="w-full rounded-xl bg-primary py-3 font-bold text-primary-foreground active:scale-95 disabled:opacity-50">
+        {saving ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "CADASTRAR"}
+      </button>
+    </Modal>
+  );
+};
+
+// ==================== MODAL: ADD MOTOBOY ====================
+const AddMotoboyModal = ({ cities, onClose, onSuccess }: any) => {
+  const [form, setForm] = useState({ name: "", phone: "", vehicle: "Moto", access_code: "", city_id: cities[0]?.id || "", region: "" });
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!form.name || !form.phone || !form.access_code || !form.city_id) {
+      toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    const cityName = cities.find((c: any) => c.id === form.city_id)?.name || "";
+    const { error } = await supabase.from("motoboys").insert({
+      name: form.name.trim(),
+      phone: form.phone.replace(/\D/g, ""),
+      vehicle: form.vehicle,
+      access_code: form.access_code.trim().toUpperCase(),
+      city_id: form.city_id,
+      region: form.region || cityName,
+      status: "offline",
+      is_available: false,
+    });
+    setSaving(false);
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Motoboy cadastrado!" });
+    onSuccess();
+  };
+
+  return (
+    <Modal title="Novo motoboy" onClose={onClose}>
+      <Field label="Nome" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
+      <Field label="Telefone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="(35) 99999-9999" />
+      <Field label="Veículo" value={form.vehicle} onChange={(v) => setForm({ ...form, vehicle: v })} placeholder="Moto / Bicicleta" />
+      <Field label="Código de acesso" value={form.access_code} onChange={(v) => setForm({ ...form, access_code: v.toUpperCase() })} placeholder="EX: EDUARDO123" />
+      <div className="space-y-1">
+        <label className="text-sm font-semibold">Cidade</label>
+        <select value={form.city_id} onChange={(e) => setForm({ ...form, city_id: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm">
+          {cities.map((c: any) => <option key={c.id} value={c.id}>{c.name} - {c.state}</option>)}
+        </select>
+      </div>
+      <button onClick={submit} disabled={saving} className="w-full rounded-xl bg-primary py-3 font-bold text-primary-foreground active:scale-95 disabled:opacity-50">
+        {saving ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "CADASTRAR"}
+      </button>
+    </Modal>
+  );
+};
+
+// ==================== HELPERS ====================
+const Modal = ({ title, children, onClose }: any) => (
+  <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 animate-fade-in" onClick={onClose}>
+    <div className="bg-card rounded-t-3xl sm:rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto p-5 space-y-3 animate-slide-in-right" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold">{title}</h3>
+        <button onClick={onClose} className="rounded-full p-1 hover:bg-muted"><X className="h-5 w-5" /></button>
+      </div>
+      {children}
+    </div>
+  </div>
+);
+
+const Field = ({ label, value, onChange, placeholder }: any) => (
+  <div className="space-y-1">
+    <label className="text-sm font-semibold">{label}</label>
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
+    />
+  </div>
+);
 
 export default AdminDashboard;
