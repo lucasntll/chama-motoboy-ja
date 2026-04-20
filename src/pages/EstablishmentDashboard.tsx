@@ -10,6 +10,7 @@ import { notifyClientValueDefined } from "@/lib/whatsappNotify";
 import { MessageCircle } from "lucide-react";
 import PushSetupCard from "@/components/notifications/PushSetupCard";
 import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
+import { getDeliveryFee } from "@/lib/deliveryPricing";
 
 interface Order {
   id: string;
@@ -36,7 +37,7 @@ const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; colo
   completed: { label: "Finalizado", icon: <CheckCircle className="h-4 w-4" />, color: "bg-gray-100 text-gray-600" },
 };
 
-const DELIVERY_FEE = 5;
+// Frete dinâmico por horário (diurno R$7 / noturno R$10) — ver src/lib/deliveryPricing.ts
 
 const EstablishmentDashboard = () => {
   const navigate = useNavigate();
@@ -131,9 +132,10 @@ const EstablishmentDashboard = () => {
       return;
     }
     const productValue = Number(rawValue.replace(",", "."));
+    const deliveryFee = getDeliveryFee();
     await supabase.from("orders").update({
       product_value: productValue,
-      delivery_fee: DELIVERY_FEE,
+      delivery_fee: deliveryFee,
       status: "awaiting_customer_confirmation",
     } as any).eq("id", orderId);
 
@@ -259,7 +261,7 @@ const EstablishmentDashboard = () => {
                           className="flex-1 rounded-lg border bg-white px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-400"
                         />
                       </div>
-                      <p className="text-[10px] text-purple-600">Frete: R$ {DELIVERY_FEE.toFixed(2)} será adicionado automaticamente</p>
+                      <p className="text-[10px] text-purple-600">Frete: R$ {getDeliveryFee().toFixed(2)} será adicionado automaticamente (diurno R$ 7,00 / noturno R$ 10,00)</p>
                       <button
                         onClick={() => confirmOrderValue(order.id)}
                         className="w-full rounded-xl bg-purple-600 py-2.5 text-sm font-bold text-white active:scale-[0.97]"
@@ -274,13 +276,13 @@ const EstablishmentDashboard = () => {
                     <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3 space-y-2">
                       <p className="text-xs font-bold text-indigo-700">⏳ Aguardando confirmação do cliente</p>
                       <p className="text-xs text-indigo-600">
-                        Produtos: R$ {(order.product_value ?? 0).toFixed(2)} + Frete: R$ {(order.delivery_fee ?? DELIVERY_FEE).toFixed(2)} = <span className="font-bold">R$ {((order.product_value ?? 0) + (order.delivery_fee ?? DELIVERY_FEE)).toFixed(2)}</span>
+                        Produtos: R$ {(order.product_value ?? 0).toFixed(2)} + Frete: R$ {(order.delivery_fee ?? getDeliveryFee()).toFixed(2)} = <span className="font-bold">R$ {((order.product_value ?? 0) + (order.delivery_fee ?? getDeliveryFee())).toFixed(2)}</span>
                       </p>
                       <button
                         onClick={() => notifyClientValueDefined(
                           order.customer_phone,
                           order.product_value ?? 0,
-                          order.delivery_fee ?? DELIVERY_FEE,
+                          order.delivery_fee ?? getDeliveryFee(),
                           order.id
                         )}
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--whatsapp))] py-2 text-xs font-bold text-white active:scale-[0.97]"
