@@ -1,16 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Store, LogOut, Bell, Package, Clock, CheckCircle, Loader2, DollarSign } from "lucide-react";
+import { Store, LogOut, Bell, Plus, Loader2, X, MapPin, Phone, MessageCircle, CheckCircle2, Clock, Bike } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { playLoudAlarm, requestNotificationPermission, showBrowserNotification } from "@/lib/notifications";
+import { playLoudAlarm, requestNotificationPermission } from "@/lib/notifications";
 import { sendPushNotification } from "@/lib/sendPushNotification";
 import { subscribeToPush } from "@/lib/pushSubscription";
-import { notifyClientValueDefined } from "@/lib/whatsappNotify";
-import { MessageCircle } from "lucide-react";
 import PushSetupCard from "@/components/notifications/PushSetupCard";
 import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
-import { getDeliveryFee } from "@/lib/deliveryPricing";
+import { dispatchOrderToMotoboys } from "@/lib/dispatchOrder";
 
 interface Order {
   id: string;
@@ -18,48 +16,78 @@ interface Order {
   customer_phone: string;
   delivery_address: string;
   item_description: string;
-  house_reference: string;
+  house_reference: string | null;
   status: string;
   created_at: string;
-  product_value?: number | null;
-  delivery_fee?: number | null;
+  motoboy_id: string | null;
 }
 
 const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  awaiting_confirmation: { label: "Confirmar valor", icon: <DollarSign className="h-4 w-4" />, color: "bg-purple-100 text-purple-800" },
-  pending: { label: "Novo pedido", icon: <Bell className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
-  awaiting_preparation: { label: "Novo pedido", icon: <Bell className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
-  awaiting_customer_confirmation: { label: "Aguardando cliente", icon: <Clock className="h-4 w-4" />, color: "bg-indigo-100 text-indigo-800" },
-  preparing: { label: "Em preparo", icon: <Clock className="h-4 w-4" />, color: "bg-yellow-100 text-yellow-800" },
-  ready: { label: "Pronto p/ retirada", icon: <CheckCircle className="h-4 w-4" />, color: "bg-green-100 text-green-800" },
-  ready_for_pickup: { label: "Pronto p/ retirada", icon: <CheckCircle className="h-4 w-4" />, color: "bg-green-100 text-green-800" },
-  in_transit: { label: "Em entrega", icon: <Package className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
-  completed: { label: "Finalizado", icon: <CheckCircle className="h-4 w-4" />, color: "bg-gray-100 text-gray-600" },
+  pending: { label: "Procurando motoboy", icon: <Clock className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
+  queued: { label: "Em fila", icon: <Clock className="h-4 w-4" />, color: "bg-yellow-100 text-yellow-800" },
+  accepted: { label: "Motoboy aceitou", icon: <Bike className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
+  picking_up: { label: "A caminho da retirada", icon: <Bike className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
+  delivering: { label: "Em entrega", icon: <Bike className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
+  completed: { label: "Finalizado", icon: <CheckCircle2 className="h-4 w-4" />, color: "bg-green-100 text-green-700" },
 };
-
-// Frete dinâmico por horário (diurno R$7 / noturno R$10) — ver src/lib/deliveryPricing.ts
 
 const EstablishmentDashboard = () => {
   const navigate = useNavigate();
   const [establishment, setEstablishment] = useState<any>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [motoboysMap, setMotoboysMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
-  const [isOpen, setIsOpen] = useState(false);
-  const [flashNew, setFlashNew] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(false);
-  const [valueInputs, setValueInputs] = useState<Record<string, string>>({});
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Form state
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [houseRef, setHouseRef] = useState("");
+  const [itemDescription, setItemDescription] = useState("");
 
   const estId = localStorage.getItem("establishment_id");
   const estName = localStorage.getItem("establishment_name");
 
   useEffect(() => {
     requestNotificationPermission().then(setNotifEnabled);
-    // Also subscribe to push if permission already granted
     if (estId && Notification.permission === "granted") {
       const cityId = localStorage.getItem("selected_city_id");
       subscribeToPush("establishment", estId, cityId);
     }
   }, []);
+
+  const loadOrders = useCallback(async () => {
+    if (!estId) return;
+    const { data } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("establishment_id", estId)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    const list = (data || []) as Order[];
+    setOrders(list);
+
+    // Fetch motoboys assigned to these orders for display
+    const motoIds = Array.from(new Set(list.map((o) => o.motoboy_id).filter(Boolean))) as string[];
+    if (motoIds.length > 0) {
+      const { data: motos } = await supabase.from("motoboys").select("id, name, phone").in("id", motoIds);
+      const map: Record<string, any> = {};
+      (motos || []).forEach((m) => { map[m.id] = m; });
+      setMotoboysMap(map);
+    }
+  }, [estId]);
+
+  const loadData = useCallback(async () => {
+    if (!estId) return;
+    setLoading(true);
+    const { data: est } = await supabase.from("establishments").select("*").eq("id", estId).single();
+    setEstablishment(est);
+    await loadOrders();
+    setLoading(false);
+  }, [estId, loadOrders]);
 
   useEffect(() => {
     if (!estId) {
@@ -67,97 +95,91 @@ const EstablishmentDashboard = () => {
       return;
     }
     loadData();
+
     const channel = supabase
       .channel("est-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `establishment_id=eq.${estId}` }, (payload) => {
-        if (payload.eventType === "INSERT") {
-          playLoudAlarm();
-          showBrowserNotification(
-            "🔔 NOVO PEDIDO!",
-            `Pedido de ${(payload.new as any)?.customer_name || "cliente"} recebido!`
-          );
-          setFlashNew(true);
-          setTimeout(() => setFlashNew(false), 3000);
-          toast("🔔 NOVO PEDIDO RECEBIDO!", { duration: 8000 });
-          // Vibration is now handled inside playLoudAlarm for a prolonged pattern
+        if (payload.eventType === "UPDATE") {
+          const newRow = payload.new as any;
+          const oldRow = payload.old as any;
+          if (oldRow.status !== "accepted" && newRow.status === "accepted") {
+            playLoudAlarm();
+            toast.success("🛵 Um motoboy aceitou a corrida!", { duration: 6000 });
+          }
         }
         loadOrders();
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [estId, loadData, loadOrders, navigate]);
 
-  // Re-sync when establishment app returns from background
   useRefetchOnFocus(() => loadData(), !!estId);
-
-  const loadData = async () => {
-    setLoading(true);
-    const { data: est } = await supabase.from("establishments").select("*").eq("id", estId!).single();
-    if (est) {
-      setEstablishment(est);
-      setIsOpen((est as any).is_open);
-    }
-    await loadOrders();
-    setLoading(false);
-  };
-
-  const loadOrders = async () => {
-    const { data } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("establishment_id", estId!)
-      .in("status", ["awaiting_confirmation", "awaiting_customer_confirmation", "awaiting_preparation", "preparing", "ready_for_pickup", "ready", "in_transit", "pending", "accepted", "delivering"])
-      .order("created_at", { ascending: false });
-    setOrders((data || []) as Order[]);
-  };
-
-  const toggleOpen = async () => {
-    const newVal = !isOpen;
-    await supabase.from("establishments").update({ is_open: newVal } as any).eq("id", estId!);
-    setIsOpen(newVal);
-    toast.success(newVal ? "Estabelecimento ABERTO!" : "Estabelecimento FECHADO");
-  };
-
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
-    await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
-    toast.success("Status atualizado!");
-    loadOrders();
-  };
-
-  const confirmOrderValue = async (orderId: string) => {
-    const rawValue = valueInputs[orderId];
-    if (!rawValue || isNaN(Number(rawValue.replace(",", "."))) || Number(rawValue.replace(",", ".")) <= 0) {
-      toast.error("Insira um valor válido para os produtos");
-      return;
-    }
-    const productValue = Number(rawValue.replace(",", "."));
-    const deliveryFee = getDeliveryFee();
-    await supabase.from("orders").update({
-      product_value: productValue,
-      delivery_fee: deliveryFee,
-      status: "awaiting_customer_confirmation",
-    } as any).eq("id", orderId);
-
-    // Find order to get customer phone
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-      sendPushNotification({
-        event: "value_defined",
-        order_id: orderId,
-        customer_phone: order.customer_phone,
-      });
-    }
-
-    toast.success("Valor enviado para confirmação do cliente!");
-    setValueInputs((prev) => { const n = { ...prev }; delete n[orderId]; return n; });
-    loadOrders();
-  };
 
   const handleLogout = () => {
     localStorage.removeItem("establishment_id");
     localStorage.removeItem("establishment_name");
     navigate("/", { replace: true });
+  };
+
+  const resetForm = () => {
+    setCustomerName("");
+    setCustomerPhone("");
+    setDeliveryAddress("");
+    setHouseRef("");
+    setItemDescription("");
+  };
+
+  const handleCreateOrder = async () => {
+    if (!customerName.trim() || !customerPhone.trim() || !deliveryAddress.trim() || !itemDescription.trim()) {
+      toast.error("Preencha cliente, telefone, endereço e o que entregar");
+      return;
+    }
+    if (!establishment) {
+      toast.error("Estabelecimento não carregado");
+      return;
+    }
+
+    setSubmitting(true);
+    const cityId = establishment.city_id || localStorage.getItem("selected_city_id");
+
+    const { data: inserted, error } = await supabase.from("orders").insert({
+      customer_name: customerName.trim(),
+      customer_phone: customerPhone.trim().replace(/\D/g, ""),
+      delivery_address: deliveryAddress.trim(),
+      house_reference: houseRef.trim() || null,
+      item_description: itemDescription.trim(),
+      service_type: "entrega",
+      order_type: "partner",
+      establishment_id: estId,
+      establishment_commission: 2,  // R$2 por corrida finalizada
+      commission_amount: 1,          // R$1 motoboy por corrida finalizada
+      city_id: cityId,
+      status: "pending",
+      // pickup vem do estabelecimento (campos do banco já têm endereço do estabelecimento)
+      purchase_location: establishment.name,
+    } as any).select("id").single();
+
+    if (error || !inserted) {
+      console.error(error);
+      toast.error("Erro ao criar a corrida");
+      setSubmitting(false);
+      return;
+    }
+
+    // Despacha pra até 2 motoboys disponíveis
+    const dispatched = await dispatchOrderToMotoboys(inserted.id, cityId);
+    if (dispatched.length === 0) {
+      await supabase.from("orders").update({ status: "queued" } as any).eq("id", inserted.id);
+      toast("Nenhum motoboy disponível agora. Pedido entrou na fila 👊", { duration: 5000 });
+    } else {
+      toast.success(`🛵 Procurando motoboy! (${dispatched.length} avisado${dispatched.length > 1 ? "s" : ""})`);
+    }
+
+    resetForm();
+    setShowForm(false);
+    setSubmitting(false);
+    loadOrders();
   };
 
   if (loading) {
@@ -169,173 +191,206 @@ const EstablishmentDashboard = () => {
   }
 
   const activeOrders = orders.filter((o) => o.status !== "completed");
+  const recentCompleted = orders.filter((o) => o.status === "completed").slice(0, 5);
 
   return (
-    <div className={`flex min-h-screen flex-col bg-background transition-all ${flashNew ? "animate-pulse ring-4 ring-orange-500" : ""}`}>
+    <div className="flex min-h-screen flex-col bg-background">
       <header className="flex items-center justify-between bg-card px-4 py-3 border-b">
-        <div className="flex items-center gap-3">
-          <Store className="h-5 w-5 text-primary" />
-          <div>
-            <h1 className="text-base font-bold">{estName}</h1>
-            <p className="text-xs text-muted-foreground">{activeOrders.length} pedido(s) ativo(s)</p>
+        <div className="flex items-center gap-3 min-w-0">
+          <Store className="h-5 w-5 text-primary shrink-0" />
+          <div className="min-w-0">
+            <h1 className="text-base font-bold truncate">{estName}</h1>
+            <p className="text-xs text-muted-foreground">{activeOrders.length} corrida(s) ativa(s)</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {!notifEnabled && (
-            <button
-              onClick={async () => {
-                const cityId = localStorage.getItem("selected_city_id");
-                const result = await subscribeToPush("establishment", estId!, cityId);
-                setNotifEnabled(result.success);
-                if (result.success) toast.success("Notificações ativadas!");
-                else if (result.reason === "denied") toast.error("Notificações bloqueadas. Ative nas configurações do navegador.");
-                else toast.error("Não foi possível ativar notificações.");
-              }}
-              className="flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground animate-pulse"
-            >
-              <Bell className="h-3 w-3" /> Ativar alertas
-            </button>
-          )}
-          <button
-            onClick={toggleOpen}
-            className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
-              isOpen ? "bg-green-500 text-white" : "bg-red-500 text-white"
-            }`}
-          >
-            {isOpen ? "ABERTO" : "FECHADO"}
-          </button>
-          <button onClick={handleLogout} className="p-2 rounded-full hover:bg-secondary">
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
+        <button onClick={handleLogout} className="p-2 rounded-full hover:bg-secondary shrink-0">
+          <LogOut className="h-4 w-4" />
+        </button>
       </header>
 
-      <main className="flex-1 px-4 py-4 space-y-3">
-        {estId && (
-          <PushSetupCard userType="establishment" referenceId={estId} />
+      <main className="flex-1 px-4 py-4 space-y-4">
+        {estId && <PushSetupCard userType="establishment" referenceId={estId} />}
+
+        {/* BOTÃO PRINCIPAL */}
+        <button
+          onClick={() => setShowForm(true)}
+          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-primary py-6 text-xl font-extrabold text-primary-foreground shadow-lg active:scale-[0.97] transition-all"
+        >
+          <Plus className="h-7 w-7" />
+          🛵 NOVA ENTREGA
+        </button>
+
+        {establishment?.address && (
+          <p className="text-center text-xs text-muted-foreground">
+            📍 Retirada: {establishment.address}{establishment.address_number ? `, ${establishment.address_number}` : ""}
+          </p>
         )}
 
-        {activeOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Bell className="h-12 w-12 text-muted-foreground/30 mb-4" />
-            <p className="text-lg font-semibold text-muted-foreground">Nenhum pedido no momento</p>
-            <p className="text-sm text-muted-foreground/60">Novos pedidos aparecerão aqui automaticamente</p>
+        {/* Lista de corridas ativas */}
+        {activeOrders.length === 0 && recentCompleted.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Bell className="h-12 w-12 text-muted-foreground/30 mb-3" />
+            <p className="text-base font-semibold text-muted-foreground">Nenhuma corrida ativa</p>
+            <p className="text-sm text-muted-foreground/60">Toque em "Nova Entrega" para chamar um motoboy</p>
           </div>
         ) : (
-          activeOrders.map((order) => {
-            const statusInfo = STATUS_LABELS[order.status] || { label: order.status, icon: null, color: "bg-gray-100" };
-            return (
-              <div key={order.id} className="rounded-2xl border bg-card p-4 space-y-3 shadow-sm">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-bold text-foreground">{order.customer_name}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
-                  </div>
-                  <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${statusInfo.color}`}>
-                    {statusInfo.icon} {statusInfo.label}
-                  </span>
-                </div>
-
-                <div className="rounded-xl bg-secondary/50 p-3">
-                  <p className="text-sm font-medium">{order.item_description}</p>
-                </div>
-
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>📍 {order.delivery_address}</p>
-                  {order.house_reference && <p>🏠 {order.house_reference}</p>}
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  {/* Step 1: Establishment confirms product value */}
-                  {order.status === "awaiting_confirmation" && (
-                    <div className="space-y-2 rounded-xl border-2 border-purple-300 bg-purple-50 p-3">
-                      <p className="text-xs font-bold text-purple-800">💰 Informe o valor total dos produtos:</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-purple-700">R$</span>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="0,00"
-                          value={valueInputs[order.id] || ""}
-                          onChange={(e) => setValueInputs((prev) => ({ ...prev, [order.id]: e.target.value }))}
-                          className="flex-1 rounded-lg border bg-white px-3 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-purple-400"
-                        />
+          <>
+            {activeOrders.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Corridas ativas</h2>
+                {activeOrders.map((order) => {
+                  const statusInfo = STATUS_LABELS[order.status] || { label: order.status, icon: null, color: "bg-gray-100" };
+                  const moto = order.motoboy_id ? motoboysMap[order.motoboy_id] : null;
+                  return (
+                    <div key={order.id} className="rounded-2xl border bg-card p-4 space-y-3 shadow-sm overflow-hidden">
+                      <div className="flex items-start justify-between gap-2 min-w-0">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-foreground truncate">{order.customer_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(order.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                        <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shrink-0 ${statusInfo.color}`}>
+                          {statusInfo.icon} {statusInfo.label}
+                        </span>
                       </div>
-                      <p className="text-[10px] text-purple-600">Frete: R$ {getDeliveryFee().toFixed(2)} será adicionado automaticamente (diurno R$ 7,00 / noturno R$ 10,00)</p>
-                      <button
-                        onClick={() => confirmOrderValue(order.id)}
-                        className="w-full rounded-xl bg-purple-600 py-2.5 text-sm font-bold text-white active:scale-[0.97]"
-                      >
-                        💲 Confirmar Valor do Pedido
-                      </button>
-                    </div>
-                  )}
 
-                  {/* Step 2: Waiting for customer confirmation */}
-                  {order.status === "awaiting_customer_confirmation" && (
-                    <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3 space-y-2">
-                      <p className="text-xs font-bold text-indigo-700">⏳ Aguardando confirmação do cliente</p>
-                      <p className="text-xs text-indigo-600">
-                        Produtos: R$ {(order.product_value ?? 0).toFixed(2)} + Frete: R$ {(order.delivery_fee ?? getDeliveryFee()).toFixed(2)} = <span className="font-bold">R$ {((order.product_value ?? 0) + (order.delivery_fee ?? getDeliveryFee())).toFixed(2)}</span>
-                      </p>
-                      <button
-                        onClick={() => notifyClientValueDefined(
-                          order.customer_phone,
-                          order.product_value ?? 0,
-                          order.delivery_fee ?? getDeliveryFee(),
-                          order.id
-                        )}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--whatsapp))] py-2 text-xs font-bold text-white active:scale-[0.97]"
-                      >
-                        <MessageCircle className="h-4 w-4" /> Notificar cliente via WhatsApp
-                      </button>
-                    </div>
-                  )}
+                      <div className="rounded-xl bg-secondary/50 p-3 min-w-0">
+                        <p className="text-sm font-medium break-words">{order.item_description}</p>
+                      </div>
 
-                  {/* Regular flow after customer confirms */}
-                  {(order.status === "awaiting_preparation" || order.status === "pending") && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, "preparing")}
-                      className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground active:scale-[0.97]"
-                    >
-                      🔥 Iniciar Preparo
-                    </button>
-                  )}
-                  {order.status === "preparing" && (
-                    <button
-                      onClick={() => updateOrderStatus(order.id, "ready_for_pickup")}
-                      className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground active:scale-[0.97]"
-                    >
-                      ✅ Pedido Pronto
-                    </button>
-                  )}
-                  {order.status === "ready_for_pickup" && (
-                    <div className="space-y-2">
-                      <p className="flex-1 text-center text-xs font-semibold text-muted-foreground py-1">
-                        ⏳ Aguardando motoboy retirar...
-                      </p>
-                      <button
-                        onClick={async () => {
-                          const { openWhatsApp } = await import("@/lib/whatsapp");
-                          openWhatsApp("5535997570009", `🟢 Pedido PRONTO para retirada!\n\n📦 ${order.item_description}\n📍 ${order.delivery_address}\n\n👉 Acesse: https://chama-motoboy-ja.lovable.app/motoboy`);
-                        }}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--whatsapp))] py-2 text-xs font-bold text-white active:scale-[0.97]"
-                      >
-                        <MessageCircle className="h-4 w-4" /> Chamar motoboy via WhatsApp
-                      </button>
+                      <div className="text-xs text-muted-foreground space-y-1 min-w-0">
+                        <p className="break-words"><MapPin className="inline h-3 w-3 mr-1" />{order.delivery_address}</p>
+                        {order.house_reference && <p className="break-words">🏠 {order.house_reference}</p>}
+                        <p>📞 {order.customer_phone}</p>
+                      </div>
+
+                      {moto && (
+                        <div className="rounded-xl bg-primary/10 border border-primary/30 p-3 space-y-2">
+                          <p className="text-sm font-bold text-primary flex items-center gap-2">
+                            <Bike className="h-4 w-4" /> {moto.name}
+                          </p>
+                          <div className="flex gap-2">
+                            <a
+                              href={`tel:${moto.phone}`}
+                              className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground"
+                            >
+                              <Phone className="h-3 w-3" /> Ligar
+                            </a>
+                            <a
+                              href={`https://wa.me/${moto.phone.replace(/\D/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-[hsl(var(--whatsapp))] py-2 text-xs font-bold text-white"
+                            >
+                              <MessageCircle className="h-3 w-3" /> WhatsApp
+                            </a>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {["accepted", "delivering"].includes(order.status) && (
-                    <p className="flex-1 text-center text-xs font-semibold text-muted-foreground py-2.5">
-                      🛵 Motoboy a caminho / em entrega
-                    </p>
-                  )}
-                </div>
+                  );
+                })}
               </div>
-            );
-          })
+            )}
+
+            {recentCompleted.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Últimas finalizadas</h2>
+                {recentCompleted.map((order) => (
+                  <div key={order.id} className="rounded-xl border bg-muted/30 p-3 text-xs overflow-hidden">
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <p className="font-semibold truncate flex-1">{order.customer_name}</p>
+                      <span className="text-green-700 font-bold shrink-0">✓ Finalizado</span>
+                    </div>
+                    <p className="text-muted-foreground truncate">{order.item_description}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
+
+      {/* Modal de Nova Entrega */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+          <div className="w-full sm:max-w-md bg-card rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-card z-10">
+              <h2 className="text-lg font-bold">🛵 Nova Entrega</h2>
+              <button onClick={() => setShowForm(false)} className="p-2 rounded-full hover:bg-secondary">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Nome do cliente</label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Ex: João Silva"
+                  className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Telefone do cliente</label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="(35) 99999-9999"
+                  className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Endereço de entrega</label>
+                <input
+                  type="text"
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  placeholder="Rua, número, bairro"
+                  className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Referência (opcional)</label>
+                <input
+                  type="text"
+                  value={houseRef}
+                  onChange={(e) => setHouseRef(e.target.value)}
+                  placeholder="Ex: portão azul, ao lado da padaria"
+                  className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Observação do pedido</label>
+                <textarea
+                  value={itemDescription}
+                  onChange={(e) => setItemDescription(e.target.value)}
+                  placeholder="Ex: 2 x-burguer + coca / remédio / documento"
+                  rows={3}
+                  className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium resize-none"
+                />
+              </div>
+
+              <div className="rounded-xl bg-secondary/50 p-3 text-xs text-muted-foreground">
+                <p className="font-bold mb-1">📍 Retirada (automática):</p>
+                <p>{establishment?.address || "Endereço não cadastrado"}</p>
+              </div>
+
+              <button
+                onClick={handleCreateOrder}
+                disabled={submitting}
+                className="w-full rounded-2xl bg-primary py-5 text-lg font-extrabold text-primary-foreground active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>🛵 CHAMAR MOTOBOY AGORA</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
