@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Bike, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizePhone } from "@/lib/phoneMask";
 
 const MotoboyAccess = () => {
   const navigate = useNavigate();
@@ -13,7 +14,8 @@ const MotoboyAccess = () => {
   useEffect(() => {
     const savedId = localStorage.getItem("motoboy_id");
     const savedName = localStorage.getItem("motoboy_name");
-    if (savedId && savedName) {
+    const userType = localStorage.getItem("tipo_usuario");
+    if (savedId && savedName && userType === "motoboy") {
       navigate("/motoboy", { replace: true });
     }
   }, [navigate]);
@@ -27,26 +29,37 @@ const MotoboyAccess = () => {
     setLoading(true);
     setError("");
 
-    const { data } = await supabase
+    const normalized = normalizePhone(phone);
+    const codeNormalized = code.trim();
+
+    console.log("[LOGIN MOTOBOY] digitado:", phone, "| normalizado:", normalized);
+
+    const { data, error: qErr } = await supabase
       .from("motoboys")
       .select("*")
-      .eq("phone", phone.trim())
+      .eq("phone", normalized)
       .maybeSingle();
+
+    console.log("[LOGIN MOTOBOY] resultado:", data, "erro:", qErr);
 
     setLoading(false);
 
     if (!data) {
-      setError("Telefone não cadastrado");
+      setError("Motoboy não encontrado. Verifique telefone e código.");
       return;
     }
 
-    if ((data as any).access_code !== code.trim()) {
+    if ((data as any).access_code !== codeNormalized) {
       setError("Código de acesso incorreto");
       return;
     }
 
     localStorage.setItem("motoboy_id", data.id);
     localStorage.setItem("motoboy_name", data.name);
+    localStorage.setItem("usuario_logado", "true");
+    localStorage.setItem("tipo_usuario", "motoboy");
+    localStorage.setItem("usuario_id", data.id);
+    localStorage.setItem("nome_usuario", data.name);
     navigate("/motoboy", { replace: true });
   };
 

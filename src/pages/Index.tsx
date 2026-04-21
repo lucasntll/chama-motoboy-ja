@@ -1,12 +1,23 @@
 import { Store, Bike, Settings } from "lucide-react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "@/assets/logo-chamamoto.png";
 import CitySelector from "@/components/CitySelector";
 import { useCitySelection } from "@/hooks/useCitySelection";
+import { getSession } from "@/lib/session";
 
 const Index = () => {
   const navigate = useNavigate();
   const { cities, selectedCity, loading: citiesLoading, selectCity, clearCity } = useCitySelection();
+
+  // Sessão persistente: redireciona ao painel correto se já houver login salvo
+  useEffect(() => {
+    const s = getSession();
+    if (s.loggedIn && s.id) {
+      if (s.type === "estabelecimento") navigate("/estabelecimento", { replace: true });
+      else if (s.type === "motoboy") navigate("/motoboy", { replace: true });
+    }
+  }, [navigate]);
 
   const hasCity = !!selectedCity;
 
