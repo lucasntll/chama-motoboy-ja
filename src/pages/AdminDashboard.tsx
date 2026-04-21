@@ -543,19 +543,37 @@ const FinanceSection = ({ orders, establishments, motoboys, payments, onRefresh 
 
 // ==================== MODAL: ADD ESTABELECIMENTO ====================
 const AddEstablishmentModal = ({ cities, onClose, onSuccess }: any) => {
-  const [form, setForm] = useState({ name: "", phone: "", address: "", access_code: "", city_id: cities[0]?.id || "" });
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    address: "",
+    address_number: "",
+    neighborhood: "",
+    complement: "",
+    latitude: "",
+    longitude: "",
+    access_code: "",
+    city_id: cities[0]?.id || "",
+  });
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (!form.name || !form.phone || !form.address || !form.access_code || !form.city_id) {
-      toast({ title: "Preencha todos os campos", variant: "destructive" });
+    if (!form.name || !form.phone || !form.address || !form.address_number || !form.neighborhood || !form.access_code || !form.city_id) {
+      toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
     }
     setSaving(true);
+    const lat = form.latitude ? parseFloat(form.latitude.replace(",", ".")) : null;
+    const lng = form.longitude ? parseFloat(form.longitude.replace(",", ".")) : null;
     const { error } = await supabase.from("establishments").insert({
       name: form.name.trim(),
       phone: form.phone.replace(/\D/g, "").slice(-11),
       address: form.address.trim(),
+      address_number: form.address_number.trim(),
+      neighborhood: form.neighborhood.trim(),
+      complement: form.complement.trim(),
+      latitude: Number.isFinite(lat as number) ? lat : null,
+      longitude: Number.isFinite(lng as number) ? lng : null,
       access_code: form.access_code.trim().toUpperCase(),
       city_id: form.city_id,
       category: "Geral",
@@ -570,10 +588,17 @@ const AddEstablishmentModal = ({ cities, onClose, onSuccess }: any) => {
 
   return (
     <Modal title="Novo estabelecimento" onClose={onClose}>
-      <Field label="Nome" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
-      <Field label="Telefone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="(35) 99999-9999" />
-      <Field label="Endereço de retirada" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
-      <Field label="Código de acesso" value={form.access_code} onChange={(v) => setForm({ ...form, access_code: v.toUpperCase() })} placeholder="EX: MAXSUL" />
+      <Field label="Nome do estabelecimento *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Ex: Lanchonete do Centro" />
+      <Field label="Telefone *" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} placeholder="(35) 99999-9999" />
+      <Field label="Endereço (rua) *" value={form.address} onChange={(v) => setForm({ ...form, address: v })} placeholder="Ex: Rua XV de Novembro" />
+      <Field label="Número *" value={form.address_number} onChange={(v) => setForm({ ...form, address_number: v })} placeholder="Ex: 120" />
+      <Field label="Bairro *" value={form.neighborhood} onChange={(v) => setForm({ ...form, neighborhood: v })} placeholder="Ex: Centro" />
+      <Field label="Ponto de referência" value={form.complement} onChange={(v) => setForm({ ...form, complement: v })} placeholder="Ex: Próximo à praça" />
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Latitude" value={form.latitude} onChange={(v) => setForm({ ...form, latitude: v })} placeholder="-21.7642" />
+        <Field label="Longitude" value={form.longitude} onChange={(v) => setForm({ ...form, longitude: v })} placeholder="-45.4254" />
+      </div>
+      <Field label="Código de acesso *" value={form.access_code} onChange={(v) => setForm({ ...form, access_code: v.toUpperCase() })} placeholder="EX: MAXSUL" />
       <div className="space-y-1">
         <label className="text-sm font-semibold">Cidade</label>
         <select value={form.city_id} onChange={(e) => setForm({ ...form, city_id: e.target.value })} className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm">
