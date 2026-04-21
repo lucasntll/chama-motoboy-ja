@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   LogOut, Loader2, LayoutDashboard, Store, Bike, Package, DollarSign,
   Plus, Copy, CheckCircle, X, Power, MapPin, Phone, TrendingUp, Calendar,
+  Trash2, Snowflake, Sun,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
