@@ -391,6 +391,15 @@ const MotoboyDashboard = () => {
     }
   };
 
+  const openPickupMaps = (order: any) => {
+    const q = order.purchase_location;
+    if (!q) {
+      toast.error("Local de retirada não informado");
+      return;
+    }
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`, "_blank");
+  };
+
   const handleLogout = () => {
     clearSession();
     navigate("/", { replace: true });
