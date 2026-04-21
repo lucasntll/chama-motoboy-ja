@@ -567,10 +567,13 @@ const EmptyState = ({ emoji, title, subtitle }: { emoji: string; title: string; 
   </div>
 );
 
-const ActiveOrderCard = ({ order, onFinalize, onCancel, onGoogleMaps, onWaze, onWhatsApp }: any) => (
+const ActiveOrderCard = ({ order, onFinalize, onCancel, onGoogleMaps, onWaze, onPickupMaps, onWhatsApp }: any) => (
   <div className="space-y-2">
     <h2 className="text-sm font-bold uppercase text-muted-foreground">Corrida em andamento</h2>
     <div className="rounded-xl border-2 border-primary bg-card p-4 space-y-3">
+      {order.purchase_location && (
+        <PickupBlock location={order.purchase_location} onPickupMaps={() => onPickupMaps(order)} />
+      )}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-bold">🛒 {order.item_description}</p>
