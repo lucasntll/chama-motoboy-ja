@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   LogOut, Loader2, LayoutDashboard, Store, Bike, Package, DollarSign,
   Plus, Copy, CheckCircle, X, Power, MapPin, Phone, TrendingUp, Calendar,
+  Trash2, Snowflake, Sun,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -250,6 +251,18 @@ const EstablishmentsSection = ({ establishments, orders, onAdd, onRefresh }: any
     toast({ title: "Código copiado!" });
   };
 
+  const handleDelete = async (e: any) => {
+    const ok = window.confirm(`Tem certeza que deseja excluir o estabelecimento "${e.name}"?\n\nEsta ação não pode ser desfeita.`);
+    if (!ok) return;
+    const { error } = await supabase.from("establishments").delete().eq("id", e.id);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Estabelecimento excluído com sucesso" });
+    onRefresh();
+  };
+
   return (
     <div className="space-y-3 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -282,9 +295,14 @@ const EstablishmentsSection = ({ establishments, orders, onAdd, onRefresh }: any
               <span><b>{s.count}</b> corridas</span>
               <span className="text-emerald-600 font-semibold">R$ {s.total.toFixed(2)}</span>
             </div>
-            <button onClick={() => toggleStatus(e)} className="flex items-center justify-center gap-1.5 rounded-lg bg-muted py-1.5 text-xs font-semibold w-full hover:bg-muted/70">
-              <Power className="h-3 w-3" /> {e.status === "active" ? "Desativar" : "Ativar"}
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => toggleStatus(e)} className="flex items-center justify-center gap-1.5 rounded-lg bg-muted py-2 text-xs font-semibold hover:bg-muted/70 transition-colors">
+                <Power className="h-3.5 w-3.5" /> {e.status === "active" ? "Desativar" : "Ativar"}
+              </button>
+              <button onClick={() => handleDelete(e)} className="flex items-center justify-center gap-1.5 rounded-lg bg-red-500 text-white py-2 text-xs font-semibold hover:bg-red-600 transition-colors active:scale-95">
+                <Trash2 className="h-3.5 w-3.5" /> Excluir
+              </button>
+            </div>
           </div>
         );
       })}
@@ -307,6 +325,33 @@ const MotoboysSection = ({ motoboys, orders, payments, onAdd, onRefresh }: any) 
     toast({ title: "Código copiado!" });
   };
 
+  const handleDelete = async (m: any) => {
+    const ok = window.confirm(`Tem certeza que deseja excluir o motoboy "${m.name}"?\n\nEsta ação não pode ser desfeita.`);
+    if (!ok) return;
+    const { error } = await supabase.from("motoboys").delete().eq("id", m.id);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Motoboy excluído com sucesso" });
+    onRefresh();
+  };
+
+  const toggleFreeze = async (m: any) => {
+    const isFrozen = m.status === "frozen";
+    const newStatus = isFrozen ? "offline" : "frozen";
+    const { error } = await supabase
+      .from("motoboys")
+      .update({ status: newStatus, is_available: false })
+      .eq("id", m.id);
+    if (error) {
+      toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: isFrozen ? "Motoboy reativado" : "Motoboy congelado" });
+    onRefresh();
+  };
+
   return (
     <div className="space-y-3 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -318,17 +363,24 @@ const MotoboysSection = ({ motoboys, orders, payments, onAdd, onRefresh }: any) 
       {motoboys.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhum motoboy cadastrado</p>}
       {motoboys.map((m: any) => {
         const s = stats(m.id);
-        const online = m.status === "available" || m.status === "busy";
+        const frozen = m.status === "frozen";
+        const online = !frozen && (m.status === "available" || m.status === "busy");
         return (
-          <div key={m.id} className="rounded-2xl bg-card p-4 shadow-sm border border-border space-y-2">
+          <div key={m.id} className={`rounded-2xl p-4 shadow-sm border space-y-2 transition-colors ${frozen ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900/40" : "bg-card border-border"}`}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-foreground truncate">{m.name}</h3>
+                <h3 className={`font-bold truncate ${frozen ? "text-red-700 dark:text-red-400" : "text-foreground"}`}>{m.name}</h3>
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5"><Phone className="h-3 w-3" />{m.phone}</p>
               </div>
-              <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${online ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
-                {online ? "🟢 Online" : "Offline"}
-              </span>
+              {frozen ? (
+                <span className="shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold bg-red-500 text-white">
+                  <Snowflake className="h-3 w-3" /> Congelado
+                </span>
+              ) : (
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${online ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                  {online ? "🟢 Online" : "Offline"}
+                </span>
+              )}
             </div>
             {m.access_code && (
               <button onClick={() => copyCode(m.access_code)} className="flex items-center gap-1.5 rounded-lg bg-muted px-2 py-1 text-xs font-mono text-foreground hover:bg-muted/70 w-fit">
@@ -339,6 +391,20 @@ const MotoboysSection = ({ motoboys, orders, payments, onAdd, onRefresh }: any) 
               <span><b>{s.count}</b> corridas</span>
               <span className="text-emerald-600 font-semibold">Total: R$ {s.total.toFixed(2)}</span>
               {s.due > 0 && <span className="text-orange-600 font-semibold">Devido: R$ {s.due.toFixed(2)}</span>}
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              {frozen ? (
+                <button onClick={() => toggleFreeze(m)} className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500 text-white py-2 text-xs font-semibold hover:bg-emerald-600 transition-colors active:scale-95">
+                  <Sun className="h-3.5 w-3.5" /> Reativar
+                </button>
+              ) : (
+                <button onClick={() => toggleFreeze(m)} className="flex items-center justify-center gap-1.5 rounded-lg bg-amber-500 text-white py-2 text-xs font-semibold hover:bg-amber-600 transition-colors active:scale-95">
+                  <Snowflake className="h-3.5 w-3.5" /> Congelar
+                </button>
+              )}
+              <button onClick={() => handleDelete(m)} className="flex items-center justify-center gap-1.5 rounded-lg bg-red-500 text-white py-2 text-xs font-semibold hover:bg-red-600 transition-colors active:scale-95">
+                <Trash2 className="h-3.5 w-3.5" /> Excluir
+              </button>
             </div>
           </div>
         );

@@ -54,6 +54,11 @@ const MotoboyAccess = () => {
       return;
     }
 
+    if ((data as any).status === "frozen") {
+      setError("Sua conta está congelada. Entre em contato com o suporte.");
+      return;
+    }
+
     localStorage.setItem("motoboy_id", data.id);
     localStorage.setItem("motoboy_name", data.name);
     localStorage.setItem("usuario_logado", "true");
