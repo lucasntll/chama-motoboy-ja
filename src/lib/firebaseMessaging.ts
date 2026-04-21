@@ -3,17 +3,17 @@ import { getFirebaseMessaging, FIREBASE_VAPID_KEY } from "./firebase";
 import { toast } from "sonner";
 
 export const isNotificationSupported = (): boolean => {
-  return "Notification" in window && "serviceWorker" in navigator;
+  return typeof window !== "undefined" && typeof window.Notification !== "undefined" && "serviceWorker" in navigator;
 };
 
 export const getNotificationPermission = (): NotificationPermission | "unsupported" => {
   if (!isNotificationSupported()) return "unsupported";
-  return Notification.permission;
+  return window.Notification.permission;
 };
 
 export const requestNotificationPermission = async (): Promise<NotificationPermission> => {
   if (!isNotificationSupported()) throw new Error("Notificações não suportadas neste navegador");
-  return Notification.requestPermission();
+  return window.Notification.requestPermission();
 };
 
 export const registerServiceWorker = async (): Promise<ServiceWorkerRegistration> => {
