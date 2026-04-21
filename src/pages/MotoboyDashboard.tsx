@@ -11,6 +11,7 @@ import PushSetupCard from "@/components/notifications/PushSetupCard";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 import { clearSession } from "@/lib/session";
+import { dispatchOrderToMotoboys } from "@/lib/dispatchOrder";
 
 interface DayGroup {
   date: string;
@@ -323,8 +324,6 @@ const MotoboyDashboard = () => {
     }
 
     // Auto-dispatch: promote next queued order and dispatch to this motoboy
-    const { dispatchOrderToMotoboys } = await import("@/lib/dispatchOrder");
-    
     let nextQuery = supabase
       .from("orders")
       .select("id")
@@ -358,7 +357,6 @@ const MotoboyDashboard = () => {
     await supabase.from("orders").update({ status: "pending", motoboy_id: null, dispatched_to: [] } as any).eq("id", orderId);
     await supabase.from("motoboys").update({ last_activity: new Date().toISOString() }).eq("id", motoboyId!);
     // Re-dispatch to available motoboys
-    const { dispatchOrderToMotoboys } = await import("@/lib/dispatchOrder");
     const orderData = await supabase.from("orders").select("city_id").eq("id", orderId).maybeSingle();
     await dispatchOrderToMotoboys(orderId, orderData?.data?.city_id);
     toast.success("Corrida cancelada. Ela voltou para a lista.");
