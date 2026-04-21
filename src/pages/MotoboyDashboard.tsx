@@ -559,6 +559,30 @@ const StatCard = ({ label, value, highlight }: { label: string; value: string; h
   </div>
 );
 
+const PickupBlock = ({ location, onPickupMaps }: { location: string; onPickupMaps: () => void }) => {
+  // location format: "Nome — Rua, 123 — Bairro — Ref: ..."
+  const parts = location.split(" — ");
+  const name = parts[0] || "";
+  const rest = parts.slice(1);
+  return (
+    <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-3 space-y-2">
+      <p className="text-[10px] font-extrabold tracking-widest text-primary">📦 RETIRAR EM</p>
+      <div className="space-y-0.5">
+        <p className="text-base font-extrabold text-foreground leading-tight">{name}</p>
+        {rest.map((line, i) => (
+          <p key={i} className="text-xs text-foreground/80 leading-snug">{line}</p>
+        ))}
+      </div>
+      <button
+        onClick={onPickupMaps}
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-xs font-bold text-primary-foreground active:scale-[0.97]"
+      >
+        <MapPin className="h-3.5 w-3.5" /> 📍 ABRIR NO MAPA
+      </button>
+    </div>
+  );
+};
+
 const EmptyState = ({ emoji, title, subtitle }: { emoji: string; title: string; subtitle: string }) => (
   <div className="flex flex-col items-center justify-center py-12 text-center">
     <span className="text-4xl mb-3">{emoji}</span>
