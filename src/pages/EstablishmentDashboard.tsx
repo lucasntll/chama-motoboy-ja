@@ -24,7 +24,7 @@ interface Order {
 }
 
 const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  pending: { label: "Procurando motoboy", icon: <Clock className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
+  pending: { label: "Motoboy a caminho", icon: <Clock className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
   queued: { label: "Em fila", icon: <Clock className="h-4 w-4" />, color: "bg-yellow-100 text-yellow-800" },
   accepted: { label: "Motoboy aceitou", icon: <Bike className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
   picking_up: { label: "A caminho da retirada", icon: <Bike className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
