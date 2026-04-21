@@ -2,8 +2,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { sendPushNotification } from "@/lib/sendPushNotification";
 
 /**
- * Dispatch an order to up to 2 available motoboys.
- * Returns the IDs of dispatched motoboys.
+ * Notifica TODOS os motoboys online disponíveis (com menos de 2 corridas
+ * ativas) sobre uma nova corrida. A corrida fica visível para todos eles e
+ * o primeiro que aceitar fica com ela (corrida volante).
+ * Retorna os IDs dos motoboys notificados.
  */
 export async function dispatchOrderToMotoboys(
   orderId: string,
@@ -55,12 +57,14 @@ export async function dispatchOrderToMotoboys(
 
   if (free.length === 0) return [];
 
-  // 3. Randomly select up to 2
-  const shuffled = free.sort(() => Math.random() - 0.5);
-  const selected = shuffled.slice(0, 2);
+  // 3. Notifica TODOS os motoboys livres (sem limite). A corrida fica visível
+  // para todos eles via realtime; o primeiro a clicar em "Aceitar" leva.
+  const selected = free;
   const selectedIds = selected.map((m) => m.id);
 
-  // 4. Update order with dispatched_to
+  // 4. Marca os motoboys notificados (apenas para auditoria/push). A
+  // visibilidade NÃO depende mais desse campo — qualquer motoboy online
+  // enxerga corridas com motoboy_id=null.
   await supabase
     .from("orders")
     .update({
@@ -69,7 +73,7 @@ export async function dispatchOrderToMotoboys(
     } as any)
     .eq("id", orderId);
 
-  // 5. Send push notifications to selected motoboys
+  // 5. Envia push para TODOS os motoboys online disponíveis
   for (const motoboy of selected) {
     sendPushNotification({
       event: "new_order",
