@@ -251,6 +251,18 @@ const EstablishmentsSection = ({ establishments, orders, onAdd, onRefresh }: any
     toast({ title: "Código copiado!" });
   };
 
+  const handleDelete = async (e: any) => {
+    const ok = window.confirm(`Tem certeza que deseja excluir o estabelecimento "${e.name}"?\n\nEsta ação não pode ser desfeita.`);
+    if (!ok) return;
+    const { error } = await supabase.from("establishments").delete().eq("id", e.id);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Estabelecimento excluído com sucesso" });
+    onRefresh();
+  };
+
   return (
     <div className="space-y-3 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -283,9 +295,14 @@ const EstablishmentsSection = ({ establishments, orders, onAdd, onRefresh }: any
               <span><b>{s.count}</b> corridas</span>
               <span className="text-emerald-600 font-semibold">R$ {s.total.toFixed(2)}</span>
             </div>
-            <button onClick={() => toggleStatus(e)} className="flex items-center justify-center gap-1.5 rounded-lg bg-muted py-1.5 text-xs font-semibold w-full hover:bg-muted/70">
-              <Power className="h-3 w-3" /> {e.status === "active" ? "Desativar" : "Ativar"}
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => toggleStatus(e)} className="flex items-center justify-center gap-1.5 rounded-lg bg-muted py-2 text-xs font-semibold hover:bg-muted/70 transition-colors">
+                <Power className="h-3.5 w-3.5" /> {e.status === "active" ? "Desativar" : "Ativar"}
+              </button>
+              <button onClick={() => handleDelete(e)} className="flex items-center justify-center gap-1.5 rounded-lg bg-red-500 text-white py-2 text-xs font-semibold hover:bg-red-600 transition-colors active:scale-95">
+                <Trash2 className="h-3.5 w-3.5" /> Excluir
+              </button>
+            </div>
           </div>
         );
       })}
