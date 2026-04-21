@@ -391,6 +391,15 @@ const MotoboyDashboard = () => {
     }
   };
 
+  const openPickupMaps = (order: any) => {
+    const q = order.purchase_location;
+    if (!q) {
+      toast.error("Local de retirada não informado");
+      return;
+    }
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`, "_blank");
+  };
+
   const handleLogout = () => {
     clearSession();
     navigate("/", { replace: true });
@@ -475,6 +484,7 @@ const MotoboyDashboard = () => {
             onCancel={() => setCancelOrderId(activeOrder.id)}
             onGoogleMaps={openGoogleMaps}
             onWaze={openWaze}
+            onPickupMaps={openPickupMaps}
             onWhatsApp={handleWhatsApp}
           />
         )}
@@ -485,7 +495,7 @@ const MotoboyDashboard = () => {
               Corridas disponíveis ({visiblePending.length})
             </h2>
             {visiblePending.map((order) => (
-              <PendingOrderCard key={order.id} order={order} onAccept={() => setConfirmOrderId(order.id)} onDecline={() => declineOrder(order.id)} onGoogleMaps={openGoogleMaps} onWaze={openWaze} />
+              <PendingOrderCard key={order.id} order={order} onAccept={() => setConfirmOrderId(order.id)} onDecline={() => declineOrder(order.id)} onGoogleMaps={openGoogleMaps} onWaze={openWaze} onPickupMaps={openPickupMaps} />
             ))}
           </div>
         )}
@@ -549,6 +559,30 @@ const StatCard = ({ label, value, highlight }: { label: string; value: string; h
   </div>
 );
 
+const PickupBlock = ({ location, onPickupMaps }: { location: string; onPickupMaps: () => void }) => {
+  // location format: "Nome — Rua, 123 — Bairro — Ref: ..."
+  const parts = location.split(" — ");
+  const name = parts[0] || "";
+  const rest = parts.slice(1);
+  return (
+    <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-3 space-y-2">
+      <p className="text-[10px] font-extrabold tracking-widest text-primary">📦 RETIRAR EM</p>
+      <div className="space-y-0.5">
+        <p className="text-base font-extrabold text-foreground leading-tight">{name}</p>
+        {rest.map((line, i) => (
+          <p key={i} className="text-xs text-foreground/80 leading-snug">{line}</p>
+        ))}
+      </div>
+      <button
+        onClick={onPickupMaps}
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-xs font-bold text-primary-foreground active:scale-[0.97]"
+      >
+        <MapPin className="h-3.5 w-3.5" /> 📍 ABRIR NO MAPA
+      </button>
+    </div>
+  );
+};
+
 const EmptyState = ({ emoji, title, subtitle }: { emoji: string; title: string; subtitle: string }) => (
   <div className="flex flex-col items-center justify-center py-12 text-center">
     <span className="text-4xl mb-3">{emoji}</span>
@@ -557,10 +591,13 @@ const EmptyState = ({ emoji, title, subtitle }: { emoji: string; title: string; 
   </div>
 );
 
-const ActiveOrderCard = ({ order, onFinalize, onCancel, onGoogleMaps, onWaze, onWhatsApp }: any) => (
+const ActiveOrderCard = ({ order, onFinalize, onCancel, onGoogleMaps, onWaze, onPickupMaps, onWhatsApp }: any) => (
   <div className="space-y-2">
     <h2 className="text-sm font-bold uppercase text-muted-foreground">Corrida em andamento</h2>
     <div className="rounded-xl border-2 border-primary bg-card p-4 space-y-3">
+      {order.purchase_location && (
+        <PickupBlock location={order.purchase_location} onPickupMaps={() => onPickupMaps(order)} />
+      )}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-sm font-bold">🛒 {order.item_description}</p>
@@ -632,11 +669,14 @@ const OrderTypeBadge = ({ orderType }: { orderType: string }) => {
   );
 };
 
-const PendingOrderCard = ({ order, onAccept, onDecline, onGoogleMaps, onWaze }: any) => {
+const PendingOrderCard = ({ order, onAccept, onDecline, onGoogleMaps, onWaze, onPickupMaps }: any) => {
   const urgency = getUrgencyLevel(order.created_at);
 
   return (
     <div className={`rounded-xl border-2 bg-card p-4 space-y-3 transition-colors ${urgencyStyles[urgency]}`}>
+      {order.purchase_location && (
+        <PickupBlock location={order.purchase_location} onPickupMaps={() => onPickupMaps(order)} />
+      )}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between flex-wrap gap-1">
           <p className="text-sm font-bold">🛒 {order.item_description}</p>
@@ -654,7 +694,6 @@ const PendingOrderCard = ({ order, onAccept, onDecline, onGoogleMaps, onWaze }: 
             )}
           </div>
         </div>
-        {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
         <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
         <p className="text-xs text-muted-foreground">👤 {order.customer_name} • 📞 {order.customer_phone}</p>
         <OrderTimeInfo createdAt={order.created_at} />

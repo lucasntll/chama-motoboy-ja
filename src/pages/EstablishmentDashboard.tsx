@@ -32,6 +32,17 @@ const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; colo
   completed: { label: "Finalizado", icon: <CheckCircle2 className="h-4 w-4" />, color: "bg-green-100 text-green-700" },
 };
 
+const buildPickupLocation = (est: any): string => {
+  if (!est) return "";
+  const parts: string[] = [];
+  if (est.name) parts.push(est.name);
+  const addr = [est.address, est.address_number].filter(Boolean).join(", ");
+  if (addr) parts.push(addr);
+  if (est.neighborhood) parts.push(est.neighborhood);
+  if (est.complement) parts.push(`Ref: ${est.complement}`);
+  return parts.join(" — ");
+};
+
 const EstablishmentDashboard = () => {
   const navigate = useNavigate();
   const [establishment, setEstablishment] = useState<any>(null);
@@ -156,12 +167,8 @@ const EstablishmentDashboard = () => {
       commission_amount: 1,          // R$1 motoboy por corrida finalizada
       city_id: cityId,
       status: "pending",
-      // pickup vem do estabelecimento: nome + endereço completo para o motoboy
-      purchase_location: `${establishment.name}${
-        establishment.address
-          ? ` — ${establishment.address}${establishment.address_number ? `, ${establishment.address_number}` : ""}`
-          : ""
-      }`,
+      // pickup vem do estabelecimento: nome + endereço completo + bairro + referência
+      purchase_location: buildPickupLocation(establishment),
     } as any).select("id").single();
 
     if (error || !inserted) {
@@ -381,7 +388,10 @@ const EstablishmentDashboard = () => {
 
               <div className="rounded-xl bg-secondary/50 p-3 text-xs text-muted-foreground">
                 <p className="font-bold mb-1">📍 Retirada (automática):</p>
-                <p>{establishment?.address || "Endereço não cadastrado"}</p>
+                <p className="font-semibold text-foreground">{establishment?.name}</p>
+                <p>{[establishment?.address, establishment?.address_number].filter(Boolean).join(", ") || "Endereço não cadastrado"}</p>
+                {establishment?.neighborhood && <p>{establishment.neighborhood}</p>}
+                {establishment?.complement && <p>📌 {establishment.complement}</p>}
               </div>
 
               <button
