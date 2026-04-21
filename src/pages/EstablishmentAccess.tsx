@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Store, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { applyPhoneMask, stripPhoneMask } from "@/lib/phoneMask";
+import { applyPhoneMask, normalizePhone } from "@/lib/phoneMask";
 
 const EstablishmentAccess = () => {
   const navigate = useNavigate();
@@ -14,7 +14,8 @@ const EstablishmentAccess = () => {
   useEffect(() => {
     const savedId = localStorage.getItem("establishment_id");
     const savedName = localStorage.getItem("establishment_name");
-    if (savedId && savedName) {
+    const userType = localStorage.getItem("tipo_usuario");
+    if (savedId && savedName && userType === "estabelecimento") {
       navigate("/estabelecimento", { replace: true });
     }
   }, [navigate]);
@@ -28,32 +29,38 @@ const EstablishmentAccess = () => {
     setLoading(true);
     setError("");
 
-    const stripped = stripPhoneMask(phone);
-    const withCountry = stripped.startsWith("55") ? stripped : `55${stripped}`;
-    const withoutCountry = stripped.startsWith("55") ? stripped.slice(2) : stripped;
+    const normalized = normalizePhone(phone);
+    const codeNormalized = code.trim().toUpperCase();
 
-    // Try matching with all phone format variations
-    const { data } = await supabase
+    console.log("[LOGIN ESTAB] digitado:", phone, "| normalizado:", normalized, "| código:", codeNormalized);
+
+    const { data, error: qErr } = await supabase
       .from("establishments")
       .select("*")
-      .or(`phone.eq.${stripped},phone.eq.${withCountry},phone.eq.${withoutCountry},phone.eq.${phone.trim()}`)
+      .eq("phone", normalized)
       .eq("status", "active")
       .maybeSingle();
+
+    console.log("[LOGIN ESTAB] resultado:", data, "erro:", qErr);
 
     setLoading(false);
 
     if (!data) {
-      setError("Estabelecimento não encontrado. Verifique o telefone ou cadastre-se abaixo.");
+      setError("Estabelecimento não encontrado. Verifique telefone e código.");
       return;
     }
 
-    if ((data as any).access_code !== code.trim().toUpperCase()) {
+    if ((data as any).access_code !== codeNormalized) {
       setError("Código de acesso incorreto");
       return;
     }
 
     localStorage.setItem("establishment_id", (data as any).id);
     localStorage.setItem("establishment_name", (data as any).name);
+    localStorage.setItem("usuario_logado", "true");
+    localStorage.setItem("tipo_usuario", "estabelecimento");
+    localStorage.setItem("usuario_id", (data as any).id);
+    localStorage.setItem("nome_usuario", (data as any).name);
     navigate("/estabelecimento", { replace: true });
   };
 
