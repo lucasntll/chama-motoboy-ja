@@ -112,16 +112,6 @@ const EstablishmentAccess = () => {
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "ENTRAR"}
             </button>
-
-            <p className="text-center text-sm text-muted-foreground">
-              Você ainda não tem conta com a gente?{" "}
-              <button
-                onClick={() => navigate("/cadastro-estabelecimento")}
-                className="font-semibold text-primary hover:underline"
-              >
-                Cadastre-aqui
-              </button>
-            </p>
           </div>
         </div>
       </main>
