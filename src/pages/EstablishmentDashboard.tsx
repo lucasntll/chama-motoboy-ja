@@ -32,6 +32,17 @@ const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; colo
   completed: { label: "Finalizado", icon: <CheckCircle2 className="h-4 w-4" />, color: "bg-green-100 text-green-700" },
 };
 
+const buildPickupLocation = (est: any): string => {
+  if (!est) return "";
+  const parts: string[] = [];
+  if (est.name) parts.push(est.name);
+  const addr = [est.address, est.address_number].filter(Boolean).join(", ");
+  if (addr) parts.push(addr);
+  if (est.neighborhood) parts.push(est.neighborhood);
+  if (est.complement) parts.push(`Ref: ${est.complement}`);
+  return parts.join(" — ");
+};
+
 const EstablishmentDashboard = () => {
   const navigate = useNavigate();
   const [establishment, setEstablishment] = useState<any>(null);
