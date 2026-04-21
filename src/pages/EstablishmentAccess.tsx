@@ -105,13 +105,23 @@ const EstablishmentAccess = () => {
               <p className="text-center text-sm font-semibold text-destructive">{error}</p>
             )}
 
-            <button
+<button
               onClick={handleLogin}
               disabled={!phone.trim() || !code.trim() || loading}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground active:scale-[0.97] disabled:opacity-50"
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "ENTRAR"}
             </button>
+
+            <p className="text-center text-sm text-muted-foreground">
+              Você ainda não tem conta com a gente?{" "}
+              <button
+                onClick={() => navigate("/cadastro-estabelecimento")}
+                className="font-semibold text-primary hover:underline"
+              >
+                Cadastre-aqui
+              </button>
+            </p>
           </div>
         </div>
       </main>
