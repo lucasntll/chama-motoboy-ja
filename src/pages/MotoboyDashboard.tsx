@@ -484,6 +484,7 @@ const MotoboyDashboard = () => {
             onCancel={() => setCancelOrderId(activeOrder.id)}
             onGoogleMaps={openGoogleMaps}
             onWaze={openWaze}
+            onPickupMaps={openPickupMaps}
             onWhatsApp={handleWhatsApp}
           />
         )}
@@ -494,7 +495,7 @@ const MotoboyDashboard = () => {
               Corridas disponíveis ({visiblePending.length})
             </h2>
             {visiblePending.map((order) => (
-              <PendingOrderCard key={order.id} order={order} onAccept={() => setConfirmOrderId(order.id)} onDecline={() => declineOrder(order.id)} onGoogleMaps={openGoogleMaps} onWaze={openWaze} />
+              <PendingOrderCard key={order.id} order={order} onAccept={() => setConfirmOrderId(order.id)} onDecline={() => declineOrder(order.id)} onGoogleMaps={openGoogleMaps} onWaze={openWaze} onPickupMaps={openPickupMaps} />
             ))}
           </div>
         )}
