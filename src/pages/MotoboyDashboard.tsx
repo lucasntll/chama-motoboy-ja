@@ -114,15 +114,11 @@ const MotoboyDashboard = () => {
       finalPending = allPendingData || [];
     }
     
-    // Show orders: dispatched to this motoboy first, then any unassigned
-    const myPending = finalPending.filter((o: any) => {
-      const dispatched = o.dispatched_to as string[] | null;
-      // Show if dispatched to this motoboy, or if no specific dispatch (available to all)
-      if (!dispatched || dispatched.length === 0) return true;
-      return dispatched.includes(motoboyId!);
-    });
-    
-    setAllPending(myPending);
+    // Toda corrida pendente sem motoboy fica visível para todos os motoboys online.
+    // (Antes filtrávamos por dispatched_to, o que escondia a corrida de quem não
+    // estava no "sorteio". Agora a regra é: se o pedido não tem motoboy,
+    // ele aparece pra todo mundo e o primeiro que aceitar fica com ela.)
+    setAllPending(finalPending);
     setLoading(false);
   }, [motoboyId]);
 
