@@ -645,11 +645,14 @@ const OrderTypeBadge = ({ orderType }: { orderType: string }) => {
   );
 };
 
-const PendingOrderCard = ({ order, onAccept, onDecline, onGoogleMaps, onWaze }: any) => {
+const PendingOrderCard = ({ order, onAccept, onDecline, onGoogleMaps, onWaze, onPickupMaps }: any) => {
   const urgency = getUrgencyLevel(order.created_at);
 
   return (
     <div className={`rounded-xl border-2 bg-card p-4 space-y-3 transition-colors ${urgencyStyles[urgency]}`}>
+      {order.purchase_location && (
+        <PickupBlock location={order.purchase_location} onPickupMaps={() => onPickupMaps(order)} />
+      )}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between flex-wrap gap-1">
           <p className="text-sm font-bold">🛒 {order.item_description}</p>
