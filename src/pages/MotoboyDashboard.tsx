@@ -667,7 +667,6 @@ const PendingOrderCard = ({ order, onAccept, onDecline, onGoogleMaps, onWaze }: 
             )}
           </div>
         </div>
-        {order.purchase_location && <p className="text-xs text-muted-foreground">🏪 {order.purchase_location}</p>}
         <p className="text-xs text-muted-foreground">📍 {order.delivery_address}</p>
         <p className="text-xs text-muted-foreground">👤 {order.customer_name} • 📞 {order.customer_phone}</p>
         <OrderTimeInfo createdAt={order.created_at} />
