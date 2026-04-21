@@ -388,7 +388,10 @@ const EstablishmentDashboard = () => {
 
               <div className="rounded-xl bg-secondary/50 p-3 text-xs text-muted-foreground">
                 <p className="font-bold mb-1">📍 Retirada (automática):</p>
-                <p>{establishment?.address || "Endereço não cadastrado"}</p>
+                <p className="font-semibold text-foreground">{establishment?.name}</p>
+                <p>{[establishment?.address, establishment?.address_number].filter(Boolean).join(", ") || "Endereço não cadastrado"}</p>
+                {establishment?.neighborhood && <p>{establishment.neighborhood}</p>}
+                {establishment?.complement && <p>📌 {establishment.complement}</p>}
               </div>
 
               <button
