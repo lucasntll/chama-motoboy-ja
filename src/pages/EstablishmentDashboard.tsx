@@ -156,8 +156,12 @@ const EstablishmentDashboard = () => {
       commission_amount: 1,          // R$1 motoboy por corrida finalizada
       city_id: cityId,
       status: "pending",
-      // pickup vem do estabelecimento (campos do banco já têm endereço do estabelecimento)
-      purchase_location: establishment.name,
+      // pickup vem do estabelecimento: nome + endereço completo para o motoboy
+      purchase_location: `${establishment.name}${
+        establishment.address
+          ? ` — ${establishment.address}${establishment.address_number ? `, ${establishment.address_number}` : ""}`
+          : ""
+      }`,
     } as any).select("id").single();
 
     if (error || !inserted) {
