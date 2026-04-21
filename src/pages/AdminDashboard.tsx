@@ -488,7 +488,7 @@ const AddEstablishmentModal = ({ cities, onClose, onSuccess }: any) => {
     setSaving(true);
     const { error } = await supabase.from("establishments").insert({
       name: form.name.trim(),
-      phone: form.phone.replace(/\D/g, ""),
+      phone: form.phone.replace(/\D/g, "").slice(-11),
       address: form.address.trim(),
       access_code: form.access_code.trim().toUpperCase(),
       city_id: form.city_id,
@@ -535,7 +535,7 @@ const AddMotoboyModal = ({ cities, onClose, onSuccess }: any) => {
     const cityName = cities.find((c: any) => c.id === form.city_id)?.name || "";
     const { error } = await supabase.from("motoboys").insert({
       name: form.name.trim(),
-      phone: form.phone.replace(/\D/g, ""),
+      phone: form.phone.replace(/\D/g, "").slice(-11),
       vehicle: form.vehicle,
       access_code: form.access_code.trim().toUpperCase(),
       city_id: form.city_id,
