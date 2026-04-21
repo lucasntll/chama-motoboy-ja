@@ -9,6 +9,7 @@ import { subscribeToPush } from "@/lib/pushSubscription";
 import PushSetupCard from "@/components/notifications/PushSetupCard";
 import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 import { dispatchOrderToMotoboys } from "@/lib/dispatchOrder";
+import { clearSession } from "@/lib/session";
 
 interface Order {
   id: string;
@@ -117,8 +118,7 @@ const EstablishmentDashboard = () => {
   useRefetchOnFocus(() => loadData(), !!estId);
 
   const handleLogout = () => {
-    localStorage.removeItem("establishment_id");
-    localStorage.removeItem("establishment_name");
+    clearSession();
     navigate("/", { replace: true });
   };
 

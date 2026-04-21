@@ -10,6 +10,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import PushSetupCard from "@/components/notifications/PushSetupCard";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
+import { clearSession } from "@/lib/session";
 
 interface DayGroup {
   date: string;
@@ -391,8 +392,7 @@ const MotoboyDashboard = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("motoboy_id");
-    localStorage.removeItem("motoboy_name");
+    clearSession();
     navigate("/", { replace: true });
   };
 
