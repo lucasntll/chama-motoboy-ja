@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Store, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { applyPhoneMask, normalizePhone } from "@/lib/phoneMask";
+import { saveSession, getSession } from "@/lib/session";
 
 const EstablishmentAccess = () => {
   const navigate = useNavigate();
@@ -12,10 +13,8 @@ const EstablishmentAccess = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const savedId = localStorage.getItem("establishment_id");
-    const savedName = localStorage.getItem("establishment_name");
-    const userType = localStorage.getItem("tipo_usuario");
-    if (savedId && savedName && userType === "estabelecimento") {
+    const s = getSession();
+    if (s.loggedIn && s.type === "estabelecimento" && s.id) {
       navigate("/estabelecimento", { replace: true });
     }
   }, [navigate]);
@@ -55,12 +54,12 @@ const EstablishmentAccess = () => {
       return;
     }
 
-    localStorage.setItem("establishment_id", (data as any).id);
-    localStorage.setItem("establishment_name", (data as any).name);
-    localStorage.setItem("usuario_logado", "true");
-    localStorage.setItem("tipo_usuario", "estabelecimento");
-    localStorage.setItem("usuario_id", (data as any).id);
-    localStorage.setItem("nome_usuario", (data as any).name);
+    saveSession({
+      type: "estabelecimento",
+      id: (data as any).id,
+      name: (data as any).name,
+      phone: (data as any).phone,
+    });
     navigate("/estabelecimento", { replace: true });
   };
 
