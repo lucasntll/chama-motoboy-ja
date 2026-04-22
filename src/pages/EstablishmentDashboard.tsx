@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Store, LogOut, Bell, Loader2, MapPin, Phone, MessageCircle,
-  CheckCircle2, Clock, Bike, Zap, History, RotateCcw, AlertTriangle,
+  CheckCircle2, Clock, Bike, Zap, History, RotateCcw, AlertTriangle, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -41,9 +41,6 @@ const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; colo
   completed: { label: "Finalizado", icon: <CheckCircle2 className="h-4 w-4" />, color: "bg-green-100 text-green-700" },
   cancelled: { label: "Cancelada", icon: <X className="h-4 w-4" />, color: "bg-red-100 text-red-700" },
 };
-
-// Importação implícita do X (do lucide) — declaração local pra status:
-import { X } from "lucide-react";
 
 const buildPickupLocation = (est: any): string => {
   if (!est) return "";
