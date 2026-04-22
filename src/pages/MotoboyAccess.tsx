@@ -59,12 +59,13 @@ const MotoboyAccess = () => {
       return;
     }
 
-    localStorage.setItem("motoboy_id", data.id);
-    localStorage.setItem("motoboy_name", data.name);
-    localStorage.setItem("usuario_logado", "true");
-    localStorage.setItem("tipo_usuario", "motoboy");
-    localStorage.setItem("usuario_id", data.id);
-    localStorage.setItem("nome_usuario", data.name);
+    const { saveSession } = await import("@/lib/session");
+    saveSession({
+      type: "motoboy",
+      id: data.id,
+      name: data.name,
+      phone: (data as any).phone,
+    });
     navigate("/motoboy", { replace: true });
   };
 
