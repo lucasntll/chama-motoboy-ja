@@ -1,15 +1,21 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Store, LogOut, Bell, Plus, Loader2, X, MapPin, Phone, MessageCircle, CheckCircle2, Clock, Bike } from "lucide-react";
+import {
+  Store, LogOut, Bell, Loader2, MapPin, Phone, MessageCircle,
+  CheckCircle2, Clock, Bike, Zap, History, RotateCcw, AlertTriangle, X,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { playLoudAlarm, requestNotificationPermission } from "@/lib/notifications";
-import { sendPushNotification } from "@/lib/sendPushNotification";
 import { subscribeToPush } from "@/lib/pushSubscription";
 import PushSetupCard from "@/components/notifications/PushSetupCard";
 import { useRefetchOnFocus } from "@/hooks/useRefetchOnFocus";
 import { dispatchOrderToMotoboys } from "@/lib/dispatchOrder";
 import { clearSession } from "@/lib/session";
+import NewDeliveryModal from "@/components/establishment/NewDeliveryModal";
+import DaySummary from "@/components/establishment/DaySummary";
+import HistoryModal from "@/components/establishment/HistoryModal";
+import { saveCustomer, type SavedCustomer } from "@/lib/establishmentCustomers";
 
 interface Order {
   id: string;
@@ -21,15 +27,19 @@ interface Order {
   status: string;
   created_at: string;
   motoboy_id: string | null;
+  dispatched_at: string | null;
+  completed_at: string | null;
+  establishment_commission: number | null;
 }
 
 const STATUS_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  pending: { label: "Motoboy a caminho", icon: <Clock className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
+  pending: { label: "Procurando motoboy", icon: <Clock className="h-4 w-4" />, color: "bg-orange-100 text-orange-800" },
   queued: { label: "Em fila", icon: <Clock className="h-4 w-4" />, color: "bg-yellow-100 text-yellow-800" },
   accepted: { label: "Motoboy aceitou", icon: <Bike className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
-  picking_up: { label: "A caminho da retirada", icon: <Bike className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
+  picking_up: { label: "Indo retirar", icon: <Bike className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
   delivering: { label: "Em entrega", icon: <Bike className="h-4 w-4" />, color: "bg-blue-100 text-blue-800" },
   completed: { label: "Finalizado", icon: <CheckCircle2 className="h-4 w-4" />, color: "bg-green-100 text-green-700" },
+  cancelled: { label: "Cancelada", icon: <X className="h-4 w-4" />, color: "bg-red-100 text-red-700" },
 };
 
 const buildPickupLocation = (est: any): string => {
@@ -43,32 +53,47 @@ const buildPickupLocation = (est: any): string => {
   return parts.join(" — ");
 };
 
+const isToday = (iso: string) => {
+  const d = new Date(iso);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+};
+
+const minutesBetween = (a: string, b: string) => {
+  const diff = (new Date(b).getTime() - new Date(a).getTime()) / 60000;
+  return Math.max(0, Math.round(diff));
+};
+
 const EstablishmentDashboard = () => {
   const navigate = useNavigate();
   const [establishment, setEstablishment] = useState<any>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [motoboysMap, setMotoboysMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
-  const [notifEnabled, setNotifEnabled] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState<"fast" | "full">("fast");
+  const [prefill, setPrefill] = useState<Partial<SavedCustomer> | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  // Form state
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [houseRef, setHouseRef] = useState("");
-  const [itemDescription, setItemDescription] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
+  const [failsafeOrderId, setFailsafeOrderId] = useState<string | null>(null);
+  const [, forceTick] = useState(0);
+  const failsafeTimerRef = useRef<number | null>(null);
 
   const estId = localStorage.getItem("establishment_id");
   const estName = localStorage.getItem("establishment_name");
 
   useEffect(() => {
-    requestNotificationPermission().then(setNotifEnabled);
+    requestNotificationPermission();
     if (estId && Notification.permission === "granted") {
       const cityId = localStorage.getItem("selected_city_id");
       subscribeToPush("establishment", estId, cityId);
     }
+  }, [estId]);
+
+  // Tick a cada 10s pra refrescar contagem do failsafe
+  useEffect(() => {
+    const id = window.setInterval(() => forceTick((n) => n + 1), 10000);
+    return () => window.clearInterval(id);
   }, []);
 
   const loadOrders = useCallback(async () => {
@@ -78,11 +103,10 @@ const EstablishmentDashboard = () => {
       .select("*")
       .eq("establishment_id", estId)
       .order("created_at", { ascending: false })
-      .limit(30);
+      .limit(50);
     const list = (data || []) as Order[];
     setOrders(list);
 
-    // Fetch motoboys assigned to these orders for display
     const motoIds = Array.from(new Set(list.map((o) => o.motoboy_id).filter(Boolean))) as string[];
     if (motoIds.length > 0) {
       const { data: motos } = await supabase.from("motoboys").select("id, name, phone").in("id", motoIds);
@@ -117,6 +141,8 @@ const EstablishmentDashboard = () => {
           if (oldRow.status !== "accepted" && newRow.status === "accepted") {
             playLoudAlarm();
             toast.success("🛵 Um motoboy aceitou a corrida!", { duration: 6000 });
+            // se era o pedido em failsafe, limpa
+            if (failsafeOrderId === newRow.id) setFailsafeOrderId(null);
           }
         }
         loadOrders();
@@ -124,7 +150,7 @@ const EstablishmentDashboard = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [estId, loadData, loadOrders, navigate]);
+  }, [estId, loadData, loadOrders, navigate, failsafeOrderId]);
 
   useRefetchOnFocus(() => loadData(), !!estId);
 
@@ -133,17 +159,42 @@ const EstablishmentDashboard = () => {
     navigate("/", { replace: true });
   };
 
-  const resetForm = () => {
-    setCustomerName("");
-    setCustomerPhone("");
-    setDeliveryAddress("");
-    setHouseRef("");
-    setItemDescription("");
-  };
+  // ====== Resumo do dia ======
+  const todayCompleted = useMemo(
+    () => orders.filter((o) => o.status === "completed" && o.completed_at && isToday(o.completed_at)),
+    [orders],
+  );
+  const todayCount = todayCompleted.length;
+  const todayTotal = todayCompleted.reduce((acc, o) => acc + Number(o.establishment_commission || 0), 0);
+  const todayAvg = useMemo(() => {
+    if (todayCompleted.length === 0) return null;
+    const mins = todayCompleted.map((o) => minutesBetween(o.created_at, o.completed_at!));
+    return Math.round(mins.reduce((a, b) => a + b, 0) / mins.length);
+  }, [todayCompleted]);
 
-  const handleCreateOrder = async () => {
-    if (!customerName.trim() || !customerPhone.trim() || !deliveryAddress.trim() || !itemDescription.trim()) {
-      toast.error("Preencha cliente, telefone, endereço e o que entregar");
+  // ====== Failsafe 60s ======
+  const startFailsafe = useCallback((orderId: string) => {
+    if (failsafeTimerRef.current) window.clearTimeout(failsafeTimerRef.current);
+    setFailsafeOrderId(null);
+    failsafeTimerRef.current = window.setTimeout(async () => {
+      // Verifica se ainda está sem motoboy
+      const { data } = await supabase.from("orders").select("status, motoboy_id").eq("id", orderId).single();
+      if (data && !data.motoboy_id && (data.status === "pending" || data.status === "queued")) {
+        setFailsafeOrderId(orderId);
+        playLoudAlarm();
+      }
+    }, 60000);
+  }, []);
+
+  const handleCreateOrder = async (data: {
+    customerName: string;
+    customerPhone: string;
+    deliveryAddress: string;
+    houseRef: string;
+    itemDescription: string;
+  }) => {
+    if (!data.customerName.trim() || !data.deliveryAddress.trim()) {
+      toast.error("Preencha pelo menos nome do cliente e endereço");
       return;
     }
     if (!establishment) {
@@ -155,19 +206,18 @@ const EstablishmentDashboard = () => {
     const cityId = establishment.city_id || localStorage.getItem("selected_city_id");
 
     const { data: inserted, error } = await supabase.from("orders").insert({
-      customer_name: customerName.trim(),
-      customer_phone: customerPhone.trim().replace(/\D/g, ""),
-      delivery_address: deliveryAddress.trim(),
-      house_reference: houseRef.trim() || null,
-      item_description: itemDescription.trim(),
+      customer_name: data.customerName.trim(),
+      customer_phone: (data.customerPhone || "").trim().replace(/\D/g, ""),
+      delivery_address: data.deliveryAddress.trim(),
+      house_reference: data.houseRef.trim() || null,
+      item_description: (data.itemDescription || "").trim() || "Entrega",
       service_type: "entrega",
       order_type: "partner",
       establishment_id: estId,
-      establishment_commission: 2,  // R$2 por corrida finalizada
-      commission_amount: 1,          // R$1 motoboy por corrida finalizada
+      establishment_commission: 2,
+      commission_amount: 1,
       city_id: cityId,
       status: "pending",
-      // pickup vem do estabelecimento: nome + endereço completo + bairro + referência
       purchase_location: buildPickupLocation(establishment),
     } as any).select("id").single();
 
@@ -178,7 +228,17 @@ const EstablishmentDashboard = () => {
       return;
     }
 
-    // Despacha pra até 2 motoboys disponíveis
+    // Salva cliente no localStorage
+    if (estId) {
+      saveCustomer(estId, {
+        name: data.customerName.trim(),
+        phone: data.customerPhone.trim(),
+        address: data.deliveryAddress.trim(),
+        reference: data.houseRef.trim(),
+        note: data.itemDescription.trim(),
+      });
+    }
+
     const dispatched = await dispatchOrderToMotoboys(inserted.id, cityId);
     if (dispatched.length === 0) {
       await supabase.from("orders").update({ status: "queued" } as any).eq("id", inserted.id);
@@ -187,10 +247,56 @@ const EstablishmentDashboard = () => {
       toast.success(`🛵 Procurando motoboy! (${dispatched.length} avisado${dispatched.length > 1 ? "s" : ""})`);
     }
 
-    resetForm();
+    // Inicia failsafe 60s
+    startFailsafe(inserted.id);
+
     setShowForm(false);
+    setPrefill(null);
     setSubmitting(false);
     loadOrders();
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    if (!confirm("Cancelar essa entrega? Não será cobrada.")) return;
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: "cancelled", motoboy_id: null } as any)
+      .eq("id", orderId)
+      .in("status", ["pending", "queued", "accepted"]);
+    if (error) {
+      toast.error("Erro ao cancelar");
+      return;
+    }
+    toast.success("Entrega cancelada");
+    if (failsafeOrderId === orderId) setFailsafeOrderId(null);
+    loadOrders();
+  };
+
+  const handleRetryFailsafe = async () => {
+    if (!failsafeOrderId) return;
+    const cityId = establishment?.city_id || localStorage.getItem("selected_city_id");
+    await supabase.from("orders").update({ status: "pending", dispatched_to: [] } as any).eq("id", failsafeOrderId);
+    const dispatched = await dispatchOrderToMotoboys(failsafeOrderId, cityId);
+    if (dispatched.length === 0) {
+      toast("Ainda sem motoboy disponível. Pedido na fila.", { duration: 4000 });
+    } else {
+      toast.success("Buscando motoboy novamente...");
+    }
+    startFailsafe(failsafeOrderId);
+    setFailsafeOrderId(null);
+    loadOrders();
+  };
+
+  const handleRedo = (o: Order) => {
+    setPrefill({
+      name: o.customer_name,
+      phone: o.customer_phone || "",
+      address: o.delivery_address,
+      reference: o.house_reference || "",
+      note: o.item_description || "",
+    });
+    setFormMode("full");
+    setShowForm(true);
   };
 
   if (loading) {
@@ -201,8 +307,8 @@ const EstablishmentDashboard = () => {
     );
   }
 
-  const activeOrders = orders.filter((o) => o.status !== "completed");
-  const recentCompleted = orders.filter((o) => o.status === "completed").slice(0, 5);
+  const activeOrders = orders.filter((o) => !["completed", "cancelled"].includes(o.status));
+  const recent = orders.filter((o) => ["completed", "cancelled"].includes(o.status)).slice(0, 5);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -214,35 +320,68 @@ const EstablishmentDashboard = () => {
             <p className="text-xs text-muted-foreground">{activeOrders.length} corrida(s) ativa(s)</p>
           </div>
         </div>
-        <button onClick={handleLogout} className="p-2 rounded-full hover:bg-secondary shrink-0">
-          <LogOut className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setShowHistory(true)} className="p-2 rounded-full hover:bg-secondary" aria-label="Histórico">
+            <History className="h-4 w-4" />
+          </button>
+          <button onClick={handleLogout} className="p-2 rounded-full hover:bg-secondary" aria-label="Sair">
+            <LogOut className="h-4 w-4" />
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 px-4 py-4 space-y-4">
         {estId && <PushSetupCard userType="establishment" referenceId={estId} />}
 
-        {/* BOTÃO PRINCIPAL */}
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-primary py-6 text-xl font-extrabold text-primary-foreground shadow-lg active:scale-[0.97] transition-all"
-        >
-          <Plus className="h-7 w-7" />
-          🛵 NOVA ENTREGA
-        </button>
+        {/* Resumo do dia */}
+        <DaySummary count={todayCount} totalFee={todayTotal} avgMinutes={todayAvg} />
 
-        {establishment?.address && (
-          <p className="text-center text-xs text-muted-foreground">
-            📍 Retirada: {establishment.address}{establishment.address_number ? `, ${establishment.address_number}` : ""}
-          </p>
+        {/* Failsafe banner */}
+        {failsafeOrderId && (
+          <div className="rounded-2xl border-2 border-destructive bg-destructive/10 p-4 space-y-3 animate-pulse">
+            <p className="text-sm font-bold text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" /> Nenhum motoboy disponível no momento
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleRetryFailsafe}
+                className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground"
+              >
+                🔄 Tentar novamente
+              </button>
+              <button
+                onClick={() => handleCancelOrder(failsafeOrderId)}
+                className="flex-1 rounded-xl border-2 border-destructive py-3 text-sm font-bold text-destructive"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
         )}
 
-        {/* Lista de corridas ativas */}
-        {activeOrders.length === 0 && recentCompleted.length === 0 ? (
+        {/* Botões principais */}
+        <div className="grid grid-cols-1 gap-2">
+          <button
+            onClick={() => { setPrefill(null); setFormMode("fast"); setShowForm(true); }}
+            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-primary py-6 text-xl font-extrabold text-primary-foreground shadow-lg active:scale-[0.97] transition-all"
+          >
+            <Zap className="h-7 w-7" />
+            ⚡ ENTREGA RÁPIDA
+          </button>
+          <button
+            onClick={() => { setPrefill(null); setFormMode("full"); setShowForm(true); }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary/30 bg-card py-3 text-sm font-bold text-primary active:scale-[0.97] transition-all"
+          >
+            📝 Nova entrega completa
+          </button>
+        </div>
+
+        {/* Lista ativa */}
+        {activeOrders.length === 0 && recent.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Bell className="h-12 w-12 text-muted-foreground/30 mb-3" />
             <p className="text-base font-semibold text-muted-foreground">Nenhuma corrida ativa</p>
-            <p className="text-sm text-muted-foreground/60">Toque em "Nova Entrega" para chamar um motoboy</p>
+            <p className="text-sm text-muted-foreground/60">Toque em "Entrega Rápida" para chamar um motoboy</p>
           </div>
         ) : (
           <>
@@ -252,6 +391,8 @@ const EstablishmentDashboard = () => {
                 {activeOrders.map((order) => {
                   const statusInfo = STATUS_LABELS[order.status] || { label: order.status, icon: null, color: "bg-gray-100" };
                   const moto = order.motoboy_id ? motoboysMap[order.motoboy_id] : null;
+                  const canCancel = ["pending", "queued", "accepted"].includes(order.status);
+                  const eta = order.status === "accepted" ? 4 : order.status === "picking_up" ? 6 : order.status === "delivering" ? 8 : null;
                   return (
                     <div key={order.id} className="rounded-2xl border bg-card p-4 space-y-3 shadow-sm overflow-hidden">
                       <div className="flex items-start justify-between gap-2 min-w-0">
@@ -273,14 +414,19 @@ const EstablishmentDashboard = () => {
                       <div className="text-xs text-muted-foreground space-y-1 min-w-0">
                         <p className="break-words"><MapPin className="inline h-3 w-3 mr-1" />{order.delivery_address}</p>
                         {order.house_reference && <p className="break-words">🏠 {order.house_reference}</p>}
-                        <p>📞 {order.customer_phone}</p>
+                        {order.customer_phone && <p>📞 {order.customer_phone}</p>}
                       </div>
 
                       {moto && (
                         <div className="rounded-xl bg-primary/10 border border-primary/30 p-3 space-y-2">
-                          <p className="text-sm font-bold text-primary flex items-center gap-2">
-                            <Bike className="h-4 w-4" /> {moto.name}
-                          </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-bold text-primary flex items-center gap-2">
+                              <Bike className="h-4 w-4" /> {moto.name}
+                            </p>
+                            {eta && (
+                              <span className="text-xs font-bold text-primary">⏱ ~{eta} min</span>
+                            )}
+                          </div>
                           <div className="flex gap-2">
                             <a
                               href={`tel:${moto.phone}`}
@@ -299,22 +445,39 @@ const EstablishmentDashboard = () => {
                           </div>
                         </div>
                       )}
+
+                      {canCancel && (
+                        <button
+                          onClick={() => handleCancelOrder(order.id)}
+                          className="w-full rounded-xl border-2 border-destructive/40 py-2.5 text-xs font-bold text-destructive active:scale-[0.97]"
+                        >
+                          ❌ CANCELAR ENTREGA
+                        </button>
+                      )}
                     </div>
                   );
                 })}
               </div>
             )}
 
-            {recentCompleted.length > 0 && (
+            {recent.length > 0 && (
               <div className="space-y-2 pt-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Últimas finalizadas</h2>
-                {recentCompleted.map((order) => (
-                  <div key={order.id} className="rounded-xl border bg-muted/30 p-3 text-xs overflow-hidden">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Últimas entregas</h2>
+                {recent.map((order) => (
+                  <div key={order.id} className="rounded-xl border bg-muted/30 p-3 text-xs overflow-hidden space-y-2">
                     <div className="flex items-center justify-between gap-2 min-w-0">
                       <p className="font-semibold truncate flex-1">{order.customer_name}</p>
-                      <span className="text-green-700 font-bold shrink-0">✓ Finalizado</span>
+                      <span className={order.status === "completed" ? "text-green-700 font-bold shrink-0" : "text-destructive font-bold shrink-0"}>
+                        {order.status === "completed" ? "✓ Finalizado" : "✕ Cancelada"}
+                      </span>
                     </div>
-                    <p className="text-muted-foreground truncate">{order.item_description}</p>
+                    <p className="text-muted-foreground truncate">{order.delivery_address}</p>
+                    <button
+                      onClick={() => handleRedo(order)}
+                      className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary/10 border border-primary/30 py-2 text-xs font-bold text-primary active:scale-[0.97]"
+                    >
+                      <RotateCcw className="h-3 w-3" /> REFAZER ENTREGA
+                    </button>
                   </div>
                 ))}
               </div>
@@ -323,87 +486,20 @@ const EstablishmentDashboard = () => {
         )}
       </main>
 
-      {/* Modal de Nova Entrega */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
-          <div className="w-full sm:max-w-md bg-card rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[95vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-card z-10">
-              <h2 className="text-lg font-bold">🛵 Nova Entrega</h2>
-              <button onClick={() => setShowForm(false)} className="p-2 rounded-full hover:bg-secondary">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      {showForm && estId && (
+        <NewDeliveryModal
+          estId={estId}
+          establishment={establishment}
+          initialMode={formMode}
+          prefill={prefill}
+          submitting={submitting}
+          onClose={() => { setShowForm(false); setPrefill(null); }}
+          onSubmit={handleCreateOrder}
+        />
+      )}
 
-            <div className="p-4 space-y-3">
-              <div>
-                <label className="text-xs font-bold text-muted-foreground uppercase">Nome do cliente</label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Ex: João Silva"
-                  className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-muted-foreground uppercase">Telefone do cliente</label>
-                <input
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="(35) 99999-9999"
-                  className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-muted-foreground uppercase">Endereço de entrega</label>
-                <input
-                  type="text"
-                  value={deliveryAddress}
-                  onChange={(e) => setDeliveryAddress(e.target.value)}
-                  placeholder="Rua, número, bairro"
-                  className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-muted-foreground uppercase">Referência (opcional)</label>
-                <input
-                  type="text"
-                  value={houseRef}
-                  onChange={(e) => setHouseRef(e.target.value)}
-                  placeholder="Ex: portão azul, ao lado da padaria"
-                  className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-muted-foreground uppercase">Observação do pedido</label>
-                <textarea
-                  value={itemDescription}
-                  onChange={(e) => setItemDescription(e.target.value)}
-                  placeholder="Ex: 2 x-burguer + coca / remédio / documento"
-                  rows={3}
-                  className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium resize-none"
-                />
-              </div>
-
-              <div className="rounded-xl bg-secondary/50 p-3 text-xs text-muted-foreground">
-                <p className="font-bold mb-1">📍 Retirada (automática):</p>
-                <p className="font-semibold text-foreground">{establishment?.name}</p>
-                <p>{[establishment?.address, establishment?.address_number].filter(Boolean).join(", ") || "Endereço não cadastrado"}</p>
-                {establishment?.neighborhood && <p>{establishment.neighborhood}</p>}
-                {establishment?.complement && <p>📌 {establishment.complement}</p>}
-              </div>
-
-              <button
-                onClick={handleCreateOrder}
-                disabled={submitting}
-                className="w-full rounded-2xl bg-primary py-5 text-lg font-extrabold text-primary-foreground active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <>🛵 CHAMAR MOTOBOY AGORA</>}
-              </button>
-            </div>
-          </div>
-        </div>
+      {showHistory && estId && (
+        <HistoryModal estId={estId} onClose={() => setShowHistory(false)} />
       )}
     </div>
   );
