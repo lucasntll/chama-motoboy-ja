@@ -193,8 +193,8 @@ const EstablishmentDashboard = () => {
     houseRef: string;
     itemDescription: string;
   }) => {
-    if (!data.customerName.trim() || !data.deliveryAddress.trim()) {
-      toast.error("Preencha pelo menos nome do cliente e endereço");
+    if (!data.customerName.trim()) {
+      toast.error("Preencha pelo menos o nome do cliente");
       return;
     }
     if (!establishment) {
