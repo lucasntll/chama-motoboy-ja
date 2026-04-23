@@ -81,6 +81,10 @@ const EstablishmentDashboard = () => {
 
   const estId = localStorage.getItem("establishment_id");
   const estName = localStorage.getItem("establishment_name");
+  const hiddenKey = `est:${estId}:hidden_recent`;
+  const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(hiddenKey) || "[]"); } catch { return []; }
+  });
 
   useEffect(() => {
     requestNotificationPermission();
