@@ -484,7 +484,18 @@ const EstablishmentDashboard = () => {
 
             {recent.length > 0 && (
               <div className="space-y-2 pt-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Últimas entregas</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Últimas entregas</h2>
+                  <button
+                    onClick={clearAllRecent}
+                    className="text-[10px] font-bold uppercase text-destructive/80 hover:text-destructive flex items-center gap-1"
+                  >
+                    <Trash2 className="h-3 w-3" /> Limpar tudo
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground/70 -mt-1">
+                  As taxas continuam salvas no painel do administrador.
+                </p>
                 {recent.map((order) => (
                   <div key={order.id} className="rounded-xl border bg-muted/30 p-3 text-xs overflow-hidden space-y-2">
                     <div className="flex items-center justify-between gap-2 min-w-0">
@@ -494,12 +505,21 @@ const EstablishmentDashboard = () => {
                       </span>
                     </div>
                     <p className="text-muted-foreground truncate">{order.delivery_address}</p>
-                    <button
-                      onClick={() => handleRedo(order)}
-                      className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary/10 border border-primary/30 py-2 text-xs font-bold text-primary active:scale-[0.97]"
-                    >
-                      <RotateCcw className="h-3 w-3" /> REFAZER ENTREGA
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleRedo(order)}
+                        className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary/10 border border-primary/30 py-2 text-xs font-bold text-primary active:scale-[0.97]"
+                      >
+                        <RotateCcw className="h-3 w-3" /> REFAZER
+                      </button>
+                      <button
+                        onClick={() => hideRecent(order.id)}
+                        title="Apagar da lista"
+                        className="flex items-center justify-center rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive active:scale-[0.97]"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
