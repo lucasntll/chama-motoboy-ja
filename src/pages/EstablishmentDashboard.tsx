@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Store, LogOut, Bell, Loader2, MapPin, Phone, MessageCircle,
-  CheckCircle2, Clock, Bike, Zap, History, RotateCcw, AlertTriangle, X,
+  CheckCircle2, Clock, Bike, Zap, History, RotateCcw, AlertTriangle, X, Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
