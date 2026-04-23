@@ -308,7 +308,29 @@ const EstablishmentDashboard = () => {
   }
 
   const activeOrders = orders.filter((o) => !["completed", "cancelled"].includes(o.status));
-  const recent = orders.filter((o) => ["completed", "cancelled"].includes(o.status)).slice(0, 5);
+  const hiddenKey = `est:${estId}:hidden_recent`;
+  const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(hiddenKey) || "[]"); } catch { return []; }
+  });
+  const recent = orders
+    .filter((o) => ["completed", "cancelled"].includes(o.status))
+    .filter((o) => !hiddenIds.includes(o.id))
+    .slice(0, 5);
+
+  const hideRecent = (id: string) => {
+    const next = Array.from(new Set([...hiddenIds, id]));
+    setHiddenIds(next);
+    localStorage.setItem(hiddenKey, JSON.stringify(next));
+    toast.success("Entrega removida da lista. A taxa continua salva no painel admin.");
+  };
+
+  const clearAllRecent = () => {
+    if (!confirm("Apagar todas as entregas finalizadas da lista? (As taxas continuam salvas no painel do admin)")) return;
+    const ids = orders.filter((o) => ["completed", "cancelled"].includes(o.status)).map((o) => o.id);
+    const next = Array.from(new Set([...hiddenIds, ...ids]));
+    setHiddenIds(next);
+    localStorage.setItem(hiddenKey, JSON.stringify(next));
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
