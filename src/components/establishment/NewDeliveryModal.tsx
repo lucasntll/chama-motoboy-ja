@@ -22,7 +22,6 @@ const NewDeliveryModal = ({ estId, establishment, initialMode, prefill, submitti
   const [mode, setMode] = useState<"fast" | "full">(initialMode);
   const [customerName, setCustomerName] = useState(prefill?.name || "");
   const [customerPhone, setCustomerPhone] = useState(prefill?.phone || "");
-  const [deliveryAddress, setDeliveryAddress] = useState(prefill?.address || "");
   const [houseRef, setHouseRef] = useState(prefill?.reference || "");
   const [itemDescription, setItemDescription] = useState(prefill?.note || "");
   const [showSaved, setShowSaved] = useState(false);
@@ -42,7 +41,6 @@ const NewDeliveryModal = ({ estId, establishment, initialMode, prefill, submitti
   const applyCustomer = (c: SavedCustomer) => {
     setCustomerName(c.name);
     setCustomerPhone(c.phone);
-    setDeliveryAddress(c.address);
     setHouseRef(c.reference);
     setItemDescription(c.note);
     setShowSaved(false);
@@ -50,10 +48,13 @@ const NewDeliveryModal = ({ estId, establishment, initialMode, prefill, submitti
   };
 
   const handleSubmit = () => {
+    const estAddress = [establishment?.address, establishment?.address_number].filter(Boolean).join(", ")
+      || establishment?.address
+      || "";
     onSubmit({
       customerName,
       customerPhone,
-      deliveryAddress,
+      deliveryAddress: estAddress,
       houseRef,
       itemDescription,
     });
@@ -144,18 +145,6 @@ const NewDeliveryModal = ({ estId, establishment, initialMode, prefill, submitti
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Endereço */}
-          <div>
-            <label className="text-xs font-bold text-muted-foreground uppercase">Endereço de entrega</label>
-            <input
-              type="text"
-              value={deliveryAddress}
-              onChange={(e) => setDeliveryAddress(e.target.value)}
-              placeholder="Rua, número, bairro"
-              className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium"
-            />
           </div>
 
           {/* Referência */}
