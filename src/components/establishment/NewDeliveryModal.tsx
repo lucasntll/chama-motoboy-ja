@@ -147,18 +147,6 @@ const NewDeliveryModal = ({ estId, establishment, initialMode, prefill, submitti
             )}
           </div>
 
-          {/* Endereço */}
-          <div>
-            <label className="text-xs font-bold text-muted-foreground uppercase">Endereço de entrega</label>
-            <input
-              type="text"
-              value={deliveryAddress}
-              onChange={(e) => setDeliveryAddress(e.target.value)}
-              placeholder="Rua, número, bairro"
-              className="mt-1 w-full rounded-xl border bg-background py-3 px-4 text-base font-medium"
-            />
-          </div>
-
           {/* Referência */}
           <div>
             <label className="text-xs font-bold text-muted-foreground uppercase">Número / Referência</label>
