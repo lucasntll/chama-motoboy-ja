@@ -312,10 +312,6 @@ const EstablishmentDashboard = () => {
   }
 
   const activeOrders = orders.filter((o) => !["completed", "cancelled"].includes(o.status));
-  const hiddenKey = `est:${estId}:hidden_recent`;
-  const [hiddenIds, setHiddenIds] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(hiddenKey) || "[]"); } catch { return []; }
-  });
   const recent = orders
     .filter((o) => ["completed", "cancelled"].includes(o.status))
     .filter((o) => !hiddenIds.includes(o.id))
