@@ -577,9 +577,8 @@ const PickupBlock = ({ location, onPickupMaps }: { location: string; onPickupMap
  );
 };
 
-const EmptyState = ({ emoji, title, subtitle }: { emoji: string; title: string; subtitle: string }) => (
+const EmptyState = ({ title, subtitle }: { emoji?: string; title: string; subtitle: string }) => (
  <div className="flex flex-col items-center justify-center py-12 text-center">
- <span className="text-4xl mb-3">{emoji}</span>
  <p className="text-sm font-semibold text-muted-foreground">{title}</p>
  <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
  </div>
