@@ -495,11 +495,11 @@ const MotoboyDashboard = () => {
  )}
 
  {isOnline && !hasActiveRide && visiblePending.length === 0 && (
- <EmptyState emoji="" title="Nenhuma corrida disponível" subtitle="Aguarde novos pedidos..." />
+ <EmptyState title="Nenhuma corrida disponível" subtitle="Aguarde novos pedidos..." />
  )}
 
  {!isOnline && (
- <EmptyState emoji="" title="Você está offline" subtitle="Fique online para receber corridas" />
+ <EmptyState title="Você está offline" subtitle="Fique online para receber corridas" />
  )}
  </main>
 
